@@ -1,0 +1,7 @@
+node_modules
+.next
+pnpm-lock.yaml
+apps/web/src/types/database.types.ts
+apps/web/src/components/ui
+supabase/.temp
+*.sql

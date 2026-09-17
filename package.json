@@ -1,0 +1,29 @@
+{
+  "name": "estoque-ia",
+  "private": true,
+  "packageManager": "pnpm@11.0.8",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @estoque-ia/web dev",
+    "build": "pnpm --filter @estoque-ia/web build",
+    "start": "pnpm --filter @estoque-ia/web start",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:db": "pnpm --filter @estoque-ia/database test",
+    "db:types": "pnpm --filter @estoque-ia/database gen:types",
+    "db:push": "supabase db push",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "seed:dev": "pnpm --filter @estoque-ia/database seed:dev",
+    "admin:grant": "pnpm --filter @estoque-ia/database admin:grant"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.7",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "supabase": "2.117.0"
+  }
+}

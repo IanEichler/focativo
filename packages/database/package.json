@@ -1,0 +1,24 @@
+{
+  "name": "@estoque-ia/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "gen:types": "tsx scripts/gen-types.ts",
+    "seed:dev": "tsx scripts/seed-dev.ts",
+    "admin:grant": "tsx scripts/grant-super-admin.ts"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.116.0",
+    "@types/node": "^22",
+    "@types/pg": "^8.15.0",
+    "embedded-postgres": "17.10.0-beta.17",
+    "pg": "^8.23.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5",
+    "vitest": "^4.0.0"
+  }
+}
