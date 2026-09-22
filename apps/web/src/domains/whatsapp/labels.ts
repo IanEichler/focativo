@@ -23,12 +23,14 @@ export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
   AI_ACTIVE: "IA atendendo",
   HUMAN_ACTIVE: "Atendimento humano",
   PAUSED: "Pausada",
+  CLOSED: "Encerrada",
 };
 
 export const CONVERSATION_STATUS_TONES: Record<ConversationStatus, StatusTone> = {
   AI_ACTIVE: "brand",
   HUMAN_ACTIVE: "info",
   PAUSED: "neutral",
+  CLOSED: "success",
 };
 
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {

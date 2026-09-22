@@ -189,7 +189,11 @@ export async function sendMessageAction(
 }
 
 type ConversationRpc =
-  "conversation_assume" | "conversation_return_to_ai" | "conversation_pause" | "conversation_mark_read";
+  | "conversation_assume"
+  | "conversation_return_to_ai"
+  | "conversation_pause"
+  | "conversation_close"
+  | "conversation_mark_read";
 
 async function transition(
   rpc: ConversationRpc,
@@ -215,6 +219,9 @@ export async function returnToAiAction(conversationId: string) {
 }
 export async function pauseConversationAction(conversationId: string) {
   return transition("conversation_pause", "whatsapp.write", conversationId);
+}
+export async function closeConversationAction(conversationId: string) {
+  return transition("conversation_close", "whatsapp.write", conversationId);
 }
 export async function markReadAction(conversationId: string) {
   return transition("conversation_mark_read", "whatsapp.read", conversationId);

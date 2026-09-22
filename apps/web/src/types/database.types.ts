@@ -3215,6 +3215,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      conversation_close: {
+        Args: {
+          p_conversation_id: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
       conversation_mark_read: {
         Args: {
           p_conversation_id: string
@@ -3644,7 +3651,7 @@ export type Database = {
       appointment_status: "SCHEDULED" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW"
       attribute_data_type: "BOOLEAN" | "NUMBER" | "TEXT" | "ENUM"
       audit_actor_type: "USER" | "SYSTEM" | "AI" | "INTEGRATION" | "PLATFORM_ADMIN"
-      conversation_status: "AI_ACTIVE" | "HUMAN_ACTIVE" | "PAUSED"
+      conversation_status: "AI_ACTIVE" | "HUMAN_ACTIVE" | "PAUSED" | "CLOSED"
       info_source: "LABEL" | "MANUFACTURER" | "TECHNICAL_SHEET" | "MANUAL"
       membership_status: "INVITED" | "ACTIVE" | "DISABLED"
       message_direction: "INBOUND" | "OUTBOUND"
@@ -3681,7 +3688,7 @@ export const Constants = {
       appointment_status: ["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"],
       attribute_data_type: ["BOOLEAN", "NUMBER", "TEXT", "ENUM"],
       audit_actor_type: ["USER", "SYSTEM", "AI", "INTEGRATION", "PLATFORM_ADMIN"],
-      conversation_status: ["AI_ACTIVE", "HUMAN_ACTIVE", "PAUSED"],
+      conversation_status: ["AI_ACTIVE", "HUMAN_ACTIVE", "PAUSED", "CLOSED"],
       info_source: ["LABEL", "MANUFACTURER", "TECHNICAL_SHEET", "MANUAL"],
       membership_status: ["INVITED", "ACTIVE", "DISABLED"],
       message_direction: ["INBOUND", "OUTBOUND"],

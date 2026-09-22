@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useActionState } from "react";
-import { Bot, Pause, User } from "lucide-react";
+import { Bot, CircleCheck, Pause, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -10,7 +10,13 @@ import { useActionFeedback } from "@/components/forms/use-action-feedback";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { assumeConversationAction, pauseConversationAction, returnToAiAction, sendMessageAction } from "../actions";
+import {
+  assumeConversationAction,
+  closeConversationAction,
+  pauseConversationAction,
+  returnToAiAction,
+  sendMessageAction,
+} from "../actions";
 import { CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_TONES, MESSAGE_STATUS_LABELS } from "../labels";
 import type { ConversationDetail, MessageRow } from "../queries";
 import type { SendMessageField } from "../schemas";
@@ -56,28 +62,38 @@ export function ChatPanel({
             </StatusBadge>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {conversation.status !== "HUMAN_ACTIVE" && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => runTransition(assumeConversationAction)}
-            >
-              <User className="size-4" /> Assumir
+        {conversation.status !== "CLOSED" && (
+          <div className="flex items-center gap-2">
+            {conversation.status !== "HUMAN_ACTIVE" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => runTransition(assumeConversationAction)}
+              >
+                <User className="size-4" /> Assumir
+              </Button>
+            )}
+            {conversation.status !== "AI_ACTIVE" && (
+              <Button size="sm" variant="outline" disabled={pending} onClick={() => runTransition(returnToAiAction)}>
+                <Bot className="size-4" /> Devolver à IA
+              </Button>
+            )}
+            {conversation.status !== "PAUSED" && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => runTransition(pauseConversationAction)}
+              >
+                <Pause className="size-4" /> Pausar
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" disabled={pending} onClick={() => runTransition(closeConversationAction)}>
+              <CircleCheck className="size-4" /> Finalizar
             </Button>
-          )}
-          {conversation.status !== "AI_ACTIVE" && (
-            <Button size="sm" variant="outline" disabled={pending} onClick={() => runTransition(returnToAiAction)}>
-              <Bot className="size-4" /> Devolver à IA
-            </Button>
-          )}
-          {conversation.status !== "PAUSED" && (
-            <Button size="sm" variant="ghost" disabled={pending} onClick={() => runTransition(pauseConversationAction)}>
-              <Pause className="size-4" /> Pausar
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">

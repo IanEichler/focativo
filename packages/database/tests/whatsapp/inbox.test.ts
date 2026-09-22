@@ -241,6 +241,102 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     expect(row!.unread_count).toBe(0);
   });
 
+  it("closes a conversation, clearing the responsible user and logging a timeline event", async () => {
+    const conversation = await seedConversation("11866665555");
+    await db.as(sellerId).rpc("conversation_assume", { p_conversation_id: conversation.id });
+
+    await db.as(sellerId).rpc("conversation_close", { p_conversation_id: conversation.id, p_reason: "Resolvido" });
+    const [row] = await db.admin.query<{ status: string; responsible_user_id: string | null }>(
+      "select status, responsible_user_id from public.conversations where id = $1",
+      [conversation.id],
+    );
+    expect(row!.status).toBe("CLOSED");
+    expect(row!.responsible_user_id).toBeNull();
+
+    const events = await db
+      .as(ownerId)
+      .query<{ type: string }>("select type from public.timeline_events where customer_id = $1 and type = $2", [
+        conversation.customer_id,
+        "conversation.closed",
+      ]);
+    expect(events).toHaveLength(1);
+  });
+
+  it("rejects closing a conversation that is already closed", async () => {
+    const conversation = await seedConversation("11855554444");
+    await db.as(sellerId).rpc("conversation_close", { p_conversation_id: conversation.id });
+    await expect(db.as(sellerId).rpc("conversation_close", { p_conversation_id: conversation.id })).rejects.toThrow(
+      "invalid_input",
+    );
+  });
+
+  it("reopens a closed conversation as HUMAN_ACTIVE on the next message when the tenant has no AI enabled", async () => {
+    const conversation = await seedConversation("11844443333");
+    await db.as(sellerId).rpc("conversation_close", { p_conversation_id: conversation.id });
+
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11844443333",
+      p_content: "Voltei",
+      p_external_message_id: `wa-reopen-${Date.now()}`,
+    });
+
+    const [row] = await db.admin.query<{ status: string }>("select status from public.conversations where id = $1", [
+      conversation.id,
+    ]);
+    expect(row!.status).toBe("HUMAN_ACTIVE");
+  });
+
+  it("reopens a closed conversation as AI_ACTIVE on the next message when the tenant has AI enabled", async () => {
+    const aiTenant = await db.createTenantWithOwner("Loja com IA");
+    await db
+      .as(aiTenant.ownerId)
+      .rpc("ai_settings_update", { p_tenant_id: aiTenant.tenantId, p_enabled: true, p_model: "claude-sonnet-5" });
+
+    const [created] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: aiTenant.tenantId,
+      p_whatsapp_number: "11833332222",
+      p_content: "Oi",
+      p_external_message_id: `wa-ai-1-${Date.now()}`,
+    });
+    void created;
+    const [conversation] = await db.admin.query<{ id: string }>(
+      `select c.id from public.conversations c join public.customers cu on cu.id = c.customer_id
+       where cu.whatsapp = $1 and c.tenant_id = $2`,
+      ["11833332222", aiTenant.tenantId],
+    );
+
+    await db.as(aiTenant.ownerId).rpc("conversation_close", { p_conversation_id: conversation!.id });
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: aiTenant.tenantId,
+      p_whatsapp_number: "11833332222",
+      p_content: "Voltei também",
+      p_external_message_id: `wa-ai-2-${Date.now()}`,
+    });
+
+    const [row] = await db.admin.query<{ status: string }>("select status from public.conversations where id = $1", [
+      conversation!.id,
+    ]);
+    expect(row!.status).toBe("AI_ACTIVE");
+  });
+
+  it("never resets the status of a conversation that is not closed when a new message arrives", async () => {
+    const conversation = await seedConversation("11822221111");
+    await db.as(sellerId).rpc("conversation_pause", { p_conversation_id: conversation.id });
+
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11822221111",
+      p_content: "Mais uma enquanto pausada",
+      p_external_message_id: `wa-still-paused-${Date.now()}`,
+    });
+
+    const [row] = await db.admin.query<{ status: string }>("select status from public.conversations where id = $1", [
+      conversation.id,
+    ]);
+    expect(row!.status).toBe("PAUSED");
+  });
+
   it("RLS isolates conversations and messages between tenants", async () => {
     const other = await db.createTenantWithOwner("Outra Loja");
     const conversation = await seedConversation("11888887777");
