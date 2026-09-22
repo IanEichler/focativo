@@ -44,6 +44,37 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     expect(conversation!.last_message_preview).toBe("Oi, vocês têm whey de chocolate?");
   });
 
+  it("stores the raw WhatsApp chat id alongside the phone, and backfills it if missing on an existing customer", async () => {
+    const [row] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11999998888",
+      p_content: "Oi",
+      p_external_message_id: "wa-chatid-1",
+      p_whatsapp_chat_id: "123456789@lid",
+    });
+    void row;
+    const [customer] = await db.admin.query<{ id: string; whatsapp_chat_id: string | null }>(
+      "select id, whatsapp_chat_id from public.customers where tenant_id = $1 and whatsapp = $2",
+      [tenantId, "11999998888"],
+    );
+    expect(customer!.whatsapp_chat_id).toBe("123456789@lid");
+
+    // Um segundo webhook (ex.: reconexão da sessão) traz um chat id novo —
+    // backfill/atualização, nunca fica preso ao primeiro valor visto.
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11999998888",
+      p_content: "Oi de novo",
+      p_external_message_id: "wa-chatid-2",
+      p_whatsapp_chat_id: "987654321@lid",
+    });
+    const [updated] = await db.admin.query<{ whatsapp_chat_id: string | null }>(
+      "select whatsapp_chat_id from public.customers where id = $1",
+      [customer!.id],
+    );
+    expect(updated!.whatsapp_chat_id).toBe("987654321@lid");
+  });
+
   it("reuses the same conversation for a customer who writes again, accumulating unread count", async () => {
     const [first] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
       p_tenant_id: tenantId,

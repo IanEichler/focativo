@@ -158,17 +158,18 @@ export async function sendMessageAction(
 
   const { data: conversation } = await supabase
     .from("conversations")
-    .select("customer:customers(whatsapp)")
+    .select("customer:customers(whatsapp, whatsapp_chat_id)")
     .eq("id", conversationId)
     .single();
   const to = conversation?.customer?.whatsapp;
+  const chatId = conversation?.customer?.whatsapp_chat_id;
 
   if (!to) {
     await supabase.rpc("message_mark_failed", { p_message_id: messageId, p_reason: "Cliente sem WhatsApp cadastrado" });
   } else {
     try {
       const provider = getWhatsAppProvider();
-      const sent = await provider.sendText(context.tenant.id, to, content);
+      const sent = await provider.sendText(context.tenant.id, to, content, chatId);
       await supabase.rpc("message_mark_sent", {
         p_message_id: messageId,
         p_external_message_id: sent.externalMessageId,

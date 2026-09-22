@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/feedback/access-denied";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { SearchInput } from "@/components/data/filter-controls";
+import { resolveTab, TabNav } from "@/components/layout/tab-nav";
 import { Button } from "@/components/ui/button";
 import { listOpportunitiesByCustomer } from "@/domains/crm/queries";
 import { getCustomerDetail } from "@/domains/customers/queries";
@@ -14,7 +15,9 @@ import { getConversationDetail, listConversations, listMessages } from "@/domain
 import { ChatPanel } from "@/domains/whatsapp/components/chat-panel";
 import { ConversationList } from "@/domains/whatsapp/components/conversation-list";
 import { CustomerPanel } from "@/domains/whatsapp/components/customer-panel";
-import { firstParam } from "@/lib/url";
+import { buildHref, firstParam } from "@/lib/url";
+
+const FOLDERS = ["abertas", "finalizadas"] as const;
 
 export const metadata: Metadata = { title: "Atendimento" };
 
@@ -36,8 +39,9 @@ export default async function AtendimentoPage({ searchParams }: PageProps<"/app/
   const conversationId = firstParam(params.conversa);
   const validId = conversationId && UUID_RE.test(conversationId) ? conversationId : undefined;
   const canWrite = context.can("whatsapp.write");
+  const folder = resolveTab(firstParam(params.pasta), FOLDERS, "abertas");
 
-  const conversations = await listConversations(context, { query });
+  const conversations = await listConversations(context, { query, closed: folder === "finalizadas" });
   const conversation = validId ? await getConversationDetail(context, validId) : null;
 
   const [messages, customer, opportunities, reservations, sales] = conversation
@@ -63,10 +67,25 @@ export default async function AtendimentoPage({ searchParams }: PageProps<"/app/
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[320px_1fr_320px]">
         <div className="flex min-h-0 flex-col border-b border-border lg:border-r lg:border-b-0">
-          <div className="border-b border-border p-3">
+          <div className="flex flex-col gap-3 border-b border-border p-3">
             <SearchInput param="busca" placeholder="Buscar conversa…" label="Buscar conversas" />
+            <TabNav
+              label="Pasta"
+              active={folder}
+              items={FOLDERS.map((value) => ({
+                id: value,
+                label: value === "abertas" ? "Conversas" : "Finalizados",
+                href: buildHref("/app/atendimento", params, {
+                  pasta: value === "abertas" ? undefined : value,
+                  conversa: undefined,
+                }),
+              }))}
+            />
           </div>
-          <ConversationList conversations={conversations} />
+          <ConversationList
+            conversations={conversations}
+            emptyMessage={folder === "finalizadas" ? "Nenhum atendimento finalizado ainda." : "Nenhuma conversa ainda."}
+          />
         </div>
 
         <div className="flex min-h-[50vh] flex-col lg:min-h-0">

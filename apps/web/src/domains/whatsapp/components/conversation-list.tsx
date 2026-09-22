@@ -7,15 +7,22 @@ import { StatusBadge } from "@/components/data/status-badge";
 import { CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_TONES } from "../labels";
 import type { ConversationListItem } from "../queries";
 import { initials, formatRelative } from "@/lib/format";
+import { buildHref } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
-export function ConversationList({ conversations }: { conversations: ConversationListItem[] }) {
+export function ConversationList({
+  conversations,
+  emptyMessage = "Nenhuma conversa ainda.",
+}: {
+  conversations: ConversationListItem[];
+  emptyMessage?: string;
+}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const activeId = searchParams.get("conversa");
 
   if (conversations.length === 0) {
-    return <p className="p-4 text-center text-small text-muted-foreground">Nenhuma conversa ainda.</p>;
+    return <p className="p-4 text-center text-small text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
@@ -25,7 +32,7 @@ export function ConversationList({ conversations }: { conversations: Conversatio
         return (
           <li key={conversation.id}>
             <Link
-              href={`${pathname}?conversa=${conversation.id}`}
+              href={buildHref(pathname, searchParams, { conversa: conversation.id })}
               className={cn(
                 "flex items-start gap-3 px-3 py-3 transition-colors hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none",
                 active && "bg-secondary",

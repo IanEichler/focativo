@@ -43,19 +43,43 @@ export class ServiceWhatsAppProvider implements WhatsAppProvider {
     return this.call(`/sessions/${tenantId}/status`, {});
   }
 
-  async sendText(tenantId: string, to: string, text: string): Promise<SendResult> {
-    return this.call(`/sessions/${tenantId}/send`, { to, type: "text", text });
+  async sendText(tenantId: string, to: string, text: string, chatId?: string | null): Promise<SendResult> {
+    return this.call(`/sessions/${tenantId}/send`, { to, type: "text", text, chatId: chatId ?? undefined });
   }
 
-  async sendImage(tenantId: string, to: string, mediaUrl: string, caption?: string): Promise<SendResult> {
-    return this.call(`/sessions/${tenantId}/send`, { to, type: "image", mediaUrl, caption });
+  async sendImage(
+    tenantId: string,
+    to: string,
+    mediaUrl: string,
+    caption?: string,
+    chatId?: string | null,
+  ): Promise<SendResult> {
+    return this.call(`/sessions/${tenantId}/send`, {
+      to,
+      type: "image",
+      mediaUrl,
+      caption,
+      chatId: chatId ?? undefined,
+    });
   }
 
-  async sendDocument(tenantId: string, to: string, mediaUrl: string, filename: string): Promise<SendResult> {
-    return this.call(`/sessions/${tenantId}/send`, { to, type: "document", mediaUrl, filename });
+  async sendDocument(
+    tenantId: string,
+    to: string,
+    mediaUrl: string,
+    filename: string,
+    chatId?: string | null,
+  ): Promise<SendResult> {
+    return this.call(`/sessions/${tenantId}/send`, {
+      to,
+      type: "document",
+      mediaUrl,
+      filename,
+      chatId: chatId ?? undefined,
+    });
   }
 
-  async getContact(tenantId: string, phone: string): Promise<ContactInfo | null> {
-    return this.call(`/sessions/${tenantId}/contact`, { phone });
+  async getContact(tenantId: string, phone: string, chatId?: string | null): Promise<ContactInfo | null> {
+    return this.call(`/sessions/${tenantId}/contact`, { phone, chatId: chatId ?? undefined });
   }
 }

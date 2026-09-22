@@ -693,6 +693,7 @@ export type Database = {
           tenant_id: string
           updated_at: string
           whatsapp: string | null
+          whatsapp_chat_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -711,6 +712,7 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           whatsapp?: string | null
+          whatsapp_chat_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -729,6 +731,7 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           whatsapp?: string | null
+          whatsapp_chat_id?: string | null
         }
         Relationships: [
           {
@@ -3643,6 +3646,7 @@ export type Database = {
           p_sender_name?: string
           p_media_path?: string
           p_media_type?: string
+          p_whatsapp_chat_id?: string
         }
         Returns: string
       }

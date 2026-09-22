@@ -29,8 +29,25 @@ export interface WhatsAppProvider {
   requestConnection(tenantId: string): Promise<void>;
   disconnect(tenantId: string): Promise<void>;
   getConnectionStatus(tenantId: string): Promise<ConnectionInfo>;
-  sendText(tenantId: string, to: string, text: string): Promise<SendResult>;
-  sendImage(tenantId: string, to: string, mediaUrl: string, caption?: string): Promise<SendResult>;
-  sendDocument(tenantId: string, to: string, mediaUrl: string, filename: string): Promise<SendResult>;
-  getContact(tenantId: string, phone: string): Promise<ContactInfo | null>;
+  /**
+   * `chatId`: ID de chat bruto capturado no recebimento (message.from), quando
+   * disponível — usado em vez de reconstruir o endereço a partir do telefone,
+   * que falha silenciosamente para contatos migrados para "@lid".
+   */
+  sendText(tenantId: string, to: string, text: string, chatId?: string | null): Promise<SendResult>;
+  sendImage(
+    tenantId: string,
+    to: string,
+    mediaUrl: string,
+    caption?: string,
+    chatId?: string | null,
+  ): Promise<SendResult>;
+  sendDocument(
+    tenantId: string,
+    to: string,
+    mediaUrl: string,
+    filename: string,
+    chatId?: string | null,
+  ): Promise<SendResult>;
+  getContact(tenantId: string, phone: string, chatId?: string | null): Promise<ContactInfo | null>;
 }

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import QRCode from "qrcode";
 import pkg, { type Message } from "whatsapp-web.js";
 import { config } from "./config";
-import { fromChatId, toChatId } from "./phone";
+import { ensureCountryCode, fromChatId, toChatId } from "./phone";
 import { postToApp } from "./webhook";
 
 const { Client, LocalAuth } = pkg;
@@ -86,11 +86,17 @@ export async function connectSession(tenantId: string): Promise<void> {
       // para IDs "@lid" (privacidade), message.from pode ser um pseudo-ID sem
       // relação com o telefone — extrair dígitos dele produz lixo. contact.number
       // é a mesma pessoa resolvida via API do WhatsApp para o telefone real.
-      const whatsappNumber = contact?.number || fromChatId(message.from);
+      const whatsappNumber = ensureCountryCode(contact?.number || fromChatId(message.from));
       await postToApp({
         event: "message",
         tenantId,
         whatsappNumber,
+        // Guardado à parte do telefone e reusado para responder: reconstruir
+        // um endereço a partir só do telefone (toChatId/getNumberId) falha
+        // silenciosamente ("No LID for user") para contatos migrados para
+        // "@lid" — o único ID que sempre funciona é o que o WhatsApp manda
+        // aqui, no recebimento.
+        whatsappChatId: message.from,
         content: message.body || undefined,
         externalMessageId: message.id._serialized,
         senderName: contact?.pushname || contact?.name || undefined,
@@ -154,19 +160,11 @@ async function resolveChatId(client: WWebClient, phone: string): Promise<string>
   return contactId?._serialized ?? toChatId(phone);
 }
 
-export async function sendText(tenantId: string, to: string, text: string): Promise<string> {
+export async function sendText(tenantId: string, to: string, text: string, chatId?: string): Promise<string> {
   const client = requireConnectedClient(tenantId);
-  const chatId = await resolveChatId(client, to);
-  // DIAGNÓSTICO TEMPORÁRIO (remover depois de confirmar a causa do "No LID
-  // for user"): registra o id resolvido e o erro completo, não só a mensagem.
-  console.log(`[whatsapp-service] sendText: to=${to} resolvedChatId=${chatId}`);
-  try {
-    const sent = await client.sendMessage(chatId, text);
-    return sent.id._serialized;
-  } catch (error) {
-    console.error(`[whatsapp-service] sendText falhou (to=${to} chatId=${chatId}):`, error);
-    throw error;
-  }
+  const target = chatId || (await resolveChatId(client, to));
+  const sent = await client.sendMessage(target, text);
+  return sent.id._serialized;
 }
 
 export async function sendMedia(
@@ -174,22 +172,24 @@ export async function sendMedia(
   to: string,
   mediaUrl: string,
   options: { caption?: string; filename?: string },
+  chatId?: string,
 ): Promise<string> {
   const client = requireConnectedClient(tenantId);
-  const chatId = await resolveChatId(client, to);
+  const target = chatId || (await resolveChatId(client, to));
   const { MessageMedia } = pkg;
   const media = await MessageMedia.fromUrl(mediaUrl, { filename: options.filename, unsafeMime: true });
-  const sent = await client.sendMessage(chatId, media, { caption: options.caption });
+  const sent = await client.sendMessage(target, media, { caption: options.caption });
   return sent.id._serialized;
 }
 
 export async function getContactInfo(
   tenantId: string,
   phone: string,
+  chatId?: string,
 ): Promise<{ name?: string; profilePicUrl?: string } | null> {
   const client = requireConnectedClient(tenantId);
-  const chatId = await resolveChatId(client, phone);
-  const contact = await client.getContactById(chatId).catch(() => null);
+  const target = chatId || (await resolveChatId(client, phone));
+  const contact = await client.getContactById(target).catch(() => null);
   if (!contact) return null;
   const profilePicUrl = await contact.getProfilePicUrl().catch(() => undefined);
   return { name: contact.pushname || contact.name || undefined, profilePicUrl };

@@ -49,19 +49,20 @@ router.post("/sessions/:tenantId/status", (req, res) => {
 });
 
 router.post("/sessions/:tenantId/send", async (req, res) => {
-  const { to, type, text, mediaUrl, caption, filename } = req.body ?? {};
+  const { to, type, text, mediaUrl, caption, filename, chatId } = req.body ?? {};
   if (typeof to !== "string" || typeof type !== "string") {
     res.status(400).json({ error: "invalid_payload" });
     return;
   }
+  const targetChatId = typeof chatId === "string" ? chatId : undefined;
   try {
     let externalMessageId: string;
     if (type === "text") {
       if (typeof text !== "string") throw new Error("invalid_payload");
-      externalMessageId = await sendText(req.params.tenantId, to, text);
+      externalMessageId = await sendText(req.params.tenantId, to, text, targetChatId);
     } else if (type === "image" || type === "document") {
       if (typeof mediaUrl !== "string") throw new Error("invalid_payload");
-      externalMessageId = await sendMedia(req.params.tenantId, to, mediaUrl, { caption, filename });
+      externalMessageId = await sendMedia(req.params.tenantId, to, mediaUrl, { caption, filename }, targetChatId);
     } else {
       throw new Error("invalid_payload");
     }
@@ -72,13 +73,13 @@ router.post("/sessions/:tenantId/send", async (req, res) => {
 });
 
 router.post("/sessions/:tenantId/contact", async (req, res) => {
-  const { phone } = req.body ?? {};
+  const { phone, chatId } = req.body ?? {};
   if (typeof phone !== "string") {
     res.status(400).json({ error: "invalid_payload" });
     return;
   }
   try {
-    const contact = await getContactInfo(req.params.tenantId, phone);
+    const contact = await getContactInfo(req.params.tenantId, phone, typeof chatId === "string" ? chatId : undefined);
     res.json(contact ?? {});
   } catch (error) {
     res.status(422).json({ error: String(error) });

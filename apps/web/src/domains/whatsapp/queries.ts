@@ -55,7 +55,7 @@ export interface ConversationListItem {
 
 export async function listConversations(
   context: TenantContext,
-  params: { query?: string; unreadOnly?: boolean } = {},
+  params: { query?: string; unreadOnly?: boolean; closed?: boolean } = {},
 ): Promise<ConversationListItem[]> {
   const supabase = await createClient();
   let query = supabase
@@ -65,6 +65,7 @@ export async function listConversations(
     )
     .eq("tenant_id", context.tenant.id);
 
+  query = params.closed ? query.eq("status", "CLOSED") : query.neq("status", "CLOSED");
   if (params.unreadOnly) query = query.gt("unread_count", 0);
   if (params.query) query = query.ilike("customer.name", `%${params.query}%`);
 

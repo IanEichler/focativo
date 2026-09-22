@@ -24,6 +24,7 @@ interface WhatsAppWebhookPayload {
   phoneNumber?: string;
   reason?: string;
   whatsappNumber?: string;
+  whatsappChatId?: string;
   content?: string;
   externalMessageId?: string;
   senderName?: string;
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
       p_sender_name: payload.senderName ?? undefined,
       p_media_path: payload.mediaPath ?? undefined,
       p_media_type: payload.mediaType ?? undefined,
+      p_whatsapp_chat_id: payload.whatsappChatId ?? undefined,
     });
     if (error) {
       logger.warn({ event: "webhook.whatsapp", status: "error", code: error.message, tenant_id: tenantId });
