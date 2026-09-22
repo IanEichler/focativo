@@ -81,10 +81,15 @@ export async function connectSession(tenantId: string): Promise<void> {
     void (async () => {
       if (message.fromMe) return;
       const contact = await message.getContact().catch(() => null);
+      // Prioriza o número real resolvido pela lib: desde a migração do WhatsApp
+      // para IDs "@lid" (privacidade), message.from pode ser um pseudo-ID sem
+      // relação com o telefone — extrair dígitos dele produz lixo. contact.number
+      // é a mesma pessoa resolvida via API do WhatsApp para o telefone real.
+      const whatsappNumber = contact?.number || fromChatId(message.from);
       await postToApp({
         event: "message",
         tenantId,
-        whatsappNumber: fromChatId(message.from),
+        whatsappNumber,
         content: message.body || undefined,
         externalMessageId: message.id._serialized,
         senderName: contact?.pushname || contact?.name || undefined,
