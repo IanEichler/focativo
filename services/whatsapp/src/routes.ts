@@ -1,6 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import { config } from "./config";
-import { connectSession, disconnectSession, getContactInfo, getSessionState, sendMedia, sendText } from "./sessions";
+import {
+  connectSession,
+  debugLidLookup,
+  disconnectSession,
+  getContactInfo,
+  getSessionState,
+  sendMedia,
+  sendText,
+} from "./sessions";
 import { verifySignature } from "./signature";
 
 export const router: Router = Router();
@@ -67,6 +75,19 @@ router.post("/sessions/:tenantId/send", async (req, res) => {
       throw new Error("invalid_payload");
     }
     res.json({ externalMessageId });
+  } catch (error) {
+    res.status(422).json({ error: String(error) });
+  }
+});
+
+router.post("/sessions/:tenantId/lid-lookup", async (req, res) => {
+  const { chatId } = req.body ?? {};
+  if (typeof chatId !== "string") {
+    res.status(400).json({ error: "invalid_payload" });
+    return;
+  }
+  try {
+    res.json({ result: await debugLidLookup(req.params.tenantId, chatId) });
   } catch (error) {
     res.status(422).json({ error: String(error) });
   }

@@ -200,6 +200,12 @@ export async function sendMedia(
   return externalIdOf(sent);
 }
 
+/** Diagnóstico: resolve telefone a partir de um @lid via a API dedicada da lib. */
+export async function debugLidLookup(tenantId: string, lidChatId: string): Promise<unknown> {
+  const client = requireConnectedClient(tenantId);
+  return client.getContactLidAndPhone([lidChatId]);
+}
+
 export async function getContactInfo(
   tenantId: string,
   phone: string,
