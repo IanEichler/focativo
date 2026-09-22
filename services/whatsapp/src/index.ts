@@ -1,6 +1,7 @@
 import express, { type Request } from "express";
 import { config } from "./config";
 import { router } from "./routes";
+import { resumeSavedSessions } from "./sessions";
 
 const app = express();
 
@@ -17,4 +18,5 @@ app.use(router);
 
 app.listen(config.port, () => {
   console.log(`[whatsapp-service] ouvindo na porta ${config.port} (app: ${config.mainAppUrl})`);
+  void resumeSavedSessions();
 });

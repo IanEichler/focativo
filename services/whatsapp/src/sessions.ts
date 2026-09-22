@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import QRCode from "qrcode";
 import pkg, { type Message } from "whatsapp-web.js";
 import { config } from "./config";
@@ -99,6 +100,31 @@ export async function connectSession(tenantId: string): Promise<void> {
   });
 
   await client.initialize();
+}
+
+/**
+ * Reconecta sozinho, no boot do processo, qualquer sessão salva em disco —
+ * o LocalAuth grava uma pasta "session-<tenantId>" por conexão já feita.
+ * Sem isso, todo restart (deploy, crash, reboot) deixa o WhatsApp mudo até
+ * alguém notar e clicar em "conectar" de novo na tela (client.logout(), que
+ * disconnectSession chama, apaga a pasta — então uma desconexão intencional
+ * nunca é retomada por engano aqui).
+ */
+export async function resumeSavedSessions(): Promise<void> {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(config.sessionsPath);
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const tenantId = /^session-(.+)$/.exec(entry)?.[1];
+    if (!tenantId) continue;
+    connectSession(tenantId).catch((error: unknown) => {
+      console.error(`[whatsapp-service] falha ao retomar sessão salva (tenant ${tenantId}):`, error);
+    });
+  }
 }
 
 export async function disconnectSession(tenantId: string): Promise<void> {
