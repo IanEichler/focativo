@@ -6,6 +6,7 @@ import { PageContainer, PageHeader } from "@/components/layout/page";
 import { resolveTab, TabNav } from "@/components/layout/tab-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ArchiveCustomerButton } from "@/domains/customers/components/archive-customer-button";
 import { CustomerFormSheet } from "@/domains/customers/components/customer-form";
 import { DeleteCustomerDialog } from "@/domains/customers/components/delete-customer-dialog";
 import { originLabel } from "@/domains/customers/labels";
@@ -86,6 +87,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
                   </Button>
                 }
               />
+              <ArchiveCustomerButton customerId={customer.id} archived={Boolean(customer.archivedAt)} />
               <DeleteCustomerDialog customerId={customer.id} customerName={customer.name} />
             </>
           ) : undefined

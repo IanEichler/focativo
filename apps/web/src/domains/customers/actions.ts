@@ -95,6 +95,37 @@ export async function archiveCustomerAction(customerId: string, archived: boolea
   return { status: "success", message: archived ? "Cliente arquivado." : "Cliente reativado." };
 }
 
+/**
+ * Exclusão de verdade — nunca arquivamento disfarçado (ação separada, cada
+ * uma faz só o que o nome diz). Hoje SEMPRE falha, para qualquer cliente:
+ * todo cliente nasce com um evento append-only na timeline
+ * (customer.created), e uma exclusão de verdade sempre cascateia numa
+ * tentativa de apagar esse registro de auditoria, que o banco recusa sempre
+ * — decisão deliberada, não um bug. O erro chega honesto na tela; a UI
+ * oferece arquivar como alternativa, sem fingir que é a mesma coisa.
+ */
+export async function deleteCustomerAction(customerId: string): Promise<ActionState> {
+  const context = await requireTenantContext();
+  if (!context.can("customers.write") || !z.uuid().safeParse(customerId).success) return forbidden();
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("customers").delete().eq("id", customerId).eq("tenant_id", context.tenant.id);
+
+  if (error) {
+    logger.warn({ event: "customer.delete", status: "error", tenant_id: context.tenant.id, code: error.code });
+    const blocked = error.code === "42501" || error.code === "23503";
+    return {
+      status: "error",
+      message: blocked
+        ? "Não é possível excluir: este cliente tem histórico (mensagens, compras, reservas, pagamentos ou agenda) que nunca pode ser apagado. Arquive em vez de excluir."
+        : toUserMessage(error),
+    };
+  }
+  logger.info({ event: "customer.delete", status: "ok", tenant_id: context.tenant.id, user_id: context.user.id });
+  revalidatePath(CUSTOMERS_PATH);
+  return { status: "success", message: "Cliente excluído." };
+}
+
 export async function searchCustomersAction(query: string) {
   const context = await requireTenantContext();
   if (!context.can("customers.read")) return [];
