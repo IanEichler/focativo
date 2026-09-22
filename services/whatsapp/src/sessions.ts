@@ -160,11 +160,22 @@ async function resolveChatId(client: WWebClient, phone: string): Promise<string>
   return contactId?._serialized ?? toChatId(phone);
 }
 
+/**
+ * O suporte a "@lid" na lib ainda é parcial: confirmado ao vivo que o envio
+ * chega de verdade no destinatário mesmo quando o objeto de retorno vem
+ * incompleto (undefined ou sem .id) — não é falha de envio, só falta de
+ * confirmação. Gera um id local nesse caso em vez de derrubar a chamada
+ * (o que fazia a mensagem aparecer como "Falhou" mesmo tendo sido entregue).
+ */
+function externalIdOf(sent: { id?: { _serialized?: string } } | undefined): string {
+  return sent?.id?._serialized ?? `local-${Date.now()}`;
+}
+
 export async function sendText(tenantId: string, to: string, text: string, chatId?: string): Promise<string> {
   const client = requireConnectedClient(tenantId);
   const target = chatId || (await resolveChatId(client, to));
   const sent = await client.sendMessage(target, text);
-  return sent.id._serialized;
+  return externalIdOf(sent);
 }
 
 export async function sendMedia(
@@ -179,7 +190,7 @@ export async function sendMedia(
   const { MessageMedia } = pkg;
   const media = await MessageMedia.fromUrl(mediaUrl, { filename: options.filename, unsafeMime: true });
   const sent = await client.sendMessage(target, media, { caption: options.caption });
-  return sent.id._serialized;
+  return externalIdOf(sent);
 }
 
 export async function getContactInfo(
