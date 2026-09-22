@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { getPublicEnv } from "@/lib/env";
 import { GENERIC_ERROR_MESSAGE, toUserMessage, type ActionState } from "@/lib/errors";
@@ -9,12 +10,15 @@ import { ROUTES } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, safeFormValues, validationError } from "@/lib/validation";
-import { listAssignableRoles } from "./queries";
+import { listAssignableRoles, listMemberPermissions, type MemberPermissionDTO } from "./queries";
 import {
   changeRoleSchema,
+  createUserSchema,
   inviteUserSchema,
   membershipIdSchema,
   setActiveSchema,
+  setMemberPermissionsSchema,
+  type CreateUserField,
   type InviteUserField,
 } from "./schemas";
 
@@ -100,6 +104,138 @@ export async function inviteUserAction(
       ? "Convite enviado por e-mail."
       : "Convite registrado. A pessoa verá o convite ao entrar na plataforma.",
   };
+}
+
+/**
+ * Criação direta: diferente do convite (que só manda e-mail e espera a
+ * pessoa definir a própria senha), aqui a conta já nasce com a senha que o
+ * gestor escolheu — pensado pra dar acesso na hora, sem depender do e-mail
+ * chegar. Só cobre os dois perfis mais comuns (Admin/Funcionário); os demais
+ * papéis continuam pelo convite. Se o e-mail já tem conta, não reaproveitamos
+ * (sobrescrever a senha de outra pessoa seria perigoso) — pedimos convite.
+ */
+export async function createTenantUserAction(
+  _prev: ActionState<CreateUserField>,
+  formData: FormData,
+): Promise<ActionState<CreateUserField>> {
+  const context = await requireTenantContext();
+  const input = formDataToObject(formData);
+  const parsed = createUserSchema.safeParse(input);
+  if (!parsed.success) return validationError(parsed.error, input);
+
+  if (!context.can("users.invite")) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
+
+  const admin = createAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    email_confirm: true,
+    user_metadata: { full_name: parsed.data.fullName },
+  });
+
+  if (createError) {
+    const message =
+      createError.code === "email_exists"
+        ? 'Já existe uma conta com este e-mail. Use "Convidar usuário" para adicioná-la à empresa.'
+        : GENERIC_ERROR_MESSAGE;
+    logger.warn({
+      event: "tenant_user.create",
+      status: "error",
+      stage: "auth_create",
+      tenant_id: context.tenant.id,
+      user_id: context.user.id,
+      code: createError.code,
+    });
+    return { status: "error", message, values: safeFormValues(input) };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("invite_tenant_user", {
+    p_tenant_id: context.tenant.id,
+    p_email: parsed.data.email,
+    p_role_code: parsed.data.roleCode,
+    p_active: true,
+  });
+
+  if (error) {
+    // A conta já foi criada no Auth; sem a associação ela fica órfã, mas
+    // segura (sem senha exposta em log) — o gestor pode convidar em seguida.
+    logger.warn({
+      event: "tenant_user.create",
+      status: "error",
+      stage: "membership",
+      tenant_id: context.tenant.id,
+      user_id: context.user.id,
+      target_user_id: created.user.id,
+      code: error.message,
+    });
+    return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
+  }
+
+  logger.info({
+    event: "tenant_user.create",
+    status: "ok",
+    tenant_id: context.tenant.id,
+    user_id: context.user.id,
+    target_user_id: created.user.id,
+  });
+  revalidatePath(USERS_PATH);
+  return { status: "success", message: "Usuário criado. Repasse a senha por um canal seguro." };
+}
+
+/** Leitura sob demanda pro sheet de permissões (abre no cliente, sem os dados do server component). */
+export async function getMemberPermissionsAction(
+  membershipId: string,
+): Promise<{ status: "success"; permissions: MemberPermissionDTO[] } | { status: "error"; message: string }> {
+  const context = await requireTenantContext();
+  if (!z.uuid().safeParse(membershipId).success || !context.can("users.read")) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
+  try {
+    return { status: "success", permissions: await listMemberPermissions(membershipId) };
+  } catch {
+    return { status: "error", message: GENERIC_ERROR_MESSAGE };
+  }
+}
+
+export async function setMemberPermissionsAction(input: {
+  membershipId: string;
+  overrides: { code: string; granted: boolean }[];
+}): Promise<{ status: "success" | "error"; message?: string }> {
+  const context = await requireTenantContext();
+  const parsed = setMemberPermissionsSchema.safeParse(input);
+  if (!parsed.success) return { status: "error", message: "Dados inválidos." };
+  if (!context.can("users.manage")) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_tenant_user_permissions", {
+    p_membership_id: parsed.data.membershipId,
+    p_overrides: parsed.data.overrides,
+  });
+  if (error) {
+    logger.warn({
+      event: "tenant_user.permissions",
+      status: "error",
+      tenant_id: context.tenant.id,
+      user_id: context.user.id,
+      code: error.message,
+    });
+    return { status: "error", message: toUserMessage(error) };
+  }
+
+  logger.info({
+    event: "tenant_user.permissions",
+    status: "ok",
+    tenant_id: context.tenant.id,
+    user_id: context.user.id,
+    membership_id: parsed.data.membershipId,
+  });
+  revalidatePath(USERS_PATH);
+  return { status: "success", message: "Permissões atualizadas." };
 }
 
 async function runMemberMutation(

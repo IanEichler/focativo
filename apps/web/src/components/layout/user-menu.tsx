@@ -2,7 +2,7 @@
 
 import { Building2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { useTransition } from "react";
 import { signOutAction } from "@/domains/auth/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -77,7 +77,12 @@ export function UserMenu({ name, email, isSuperAdmin, area }: UserMenuProps) {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>Tema</DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+              <DropdownMenuRadioGroup
+                value={theme ?? "system"}
+                onValueChange={(value) => {
+                  if (value === "light" || value === "dark" || value === "system") setTheme(value);
+                }}
+              >
                 <DropdownMenuRadioItem value="system">Sistema</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="light">Claro</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="dark">Escuro</DropdownMenuRadioItem>

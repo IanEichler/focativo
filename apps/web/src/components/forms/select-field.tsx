@@ -43,7 +43,13 @@ export function SelectField({
           </span>
         )}
       </Label>
-      <Select name={name} defaultValue={defaultValue} disabled={disabled} required={required} onValueChange={onValueChange}>
+      <Select
+        name={name}
+        defaultValue={defaultValue}
+        disabled={disabled}
+        required={required}
+        onValueChange={onValueChange}
+      >
         <SelectTrigger
           id={id}
           className="w-full"

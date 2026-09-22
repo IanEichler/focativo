@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { requireUser } from "@/domains/auth/session";
+import { isSuperAdmin, requireUser } from "@/domains/auth/session";
 import { acceptInvitationAction, declineInvitationAction } from "@/domains/tenants/actions";
 import { CreateTenantForm } from "@/domains/tenants/components/create-tenant-form";
 import { OnboardingSteps } from "@/domains/tenants/components/onboarding-steps";
@@ -26,6 +26,10 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
 
   const [context, invitations] = await Promise.all([getTenantContext(), listMyInvitations()]);
   if (context && !creatingAnother && invitations.length === 0) redirect(ROUTES.appHome);
+  // Admin master sem empresa nem convite pendente: a conta existe pra
+  // administrar a plataforma, não é um cliente — vai pro painel, não pro
+  // onboarding de "crie sua empresa" (a menos que peça explicitamente).
+  if (!context && !creatingAnother && invitations.length === 0 && (await isSuperAdmin())) redirect(ROUTES.admin);
 
   const firstName = user.fullName.split(" ")[0];
 

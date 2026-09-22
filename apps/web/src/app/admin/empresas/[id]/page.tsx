@@ -5,10 +5,14 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminMemberActions } from "@/domains/admin/components/admin-member-actions";
+import { CreateTenantUserDialog } from "@/domains/admin/components/create-tenant-user-dialog";
+import { ModuleFlagsCard } from "@/domains/admin/components/module-flags-card";
+import { ResetPasswordDialog } from "@/domains/admin/components/reset-password-dialog";
 import { TenantStatusDialog } from "@/domains/admin/components/tenant-status-dialog";
 import { PLATFORM_ACTION_LABEL, TENANT_STATUS_LABEL } from "@/domains/admin/labels";
-import { getAdminTenantDetail } from "@/domains/admin/queries";
+import { getAdminTenantDetail, getDisabledModules } from "@/domains/admin/queries";
 import { TENANT_SEGMENTS } from "@/domains/tenants/schemas";
 import { formatCpfCnpj } from "@/lib/br-documents";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -25,7 +29,7 @@ function describeChange(before: unknown, after: unknown): string | null {
 
 export default async function AdminTenantDetailPage({ params }: PageProps<"/admin/empresas/[id]">) {
   const { id } = await params;
-  const detail = await getAdminTenantDetail(id);
+  const [detail, disabledModules] = await Promise.all([getAdminTenantDetail(id), getDisabledModules(id)]);
   if (!detail) notFound();
 
   const { tenant, members, platformEvents } = detail;
@@ -77,26 +81,42 @@ export default async function AdminTenantDetailPage({ params }: PageProps<"/admi
           </CardContent>
         </Card>
 
+        <ModuleFlagsCard tenantId={tenant.id} disabledModules={[...disabledModules]} />
+
         <Card>
           <CardHeader>
             <CardTitle>Usuários</CardTitle>
             <CardDescription>{members.length} vínculo(s)</CardDescription>
+            <CardAction>
+              <CreateTenantUserDialog tenantId={tenant.id} />
+            </CardAction>
           </CardHeader>
           <CardContent>
             <ul className="flex flex-col divide-y divide-border">
               {members.map((member) => (
-                <li key={member.userId} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                <li
+                  key={member.membershipId}
+                  className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate font-medium">{member.name}</span>
                     <span className="truncate text-small text-muted-foreground">{member.email}</span>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="text-small">{member.roleName}</span>
-                    {member.status !== "ACTIVE" && (
-                      <StatusBadge tone={member.status === "INVITED" ? "info" : "neutral"} dot={false}>
-                        {member.status === "INVITED" ? "Convite" : "Desativado"}
-                      </StatusBadge>
-                    )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-small">{member.roleName}</span>
+                      {member.status !== "ACTIVE" && (
+                        <StatusBadge tone={member.status === "INVITED" ? "info" : "neutral"} dot={false}>
+                          {member.status === "INVITED" ? "Convite" : "Desativado"}
+                        </StatusBadge>
+                      )}
+                    </div>
+                    <ResetPasswordDialog userId={member.userId} userName={member.name} tenantId={tenant.id} />
+                    <AdminMemberActions
+                      membershipId={member.membershipId}
+                      tenantId={tenant.id}
+                      memberName={member.name}
+                    />
                   </div>
                 </li>
               ))}

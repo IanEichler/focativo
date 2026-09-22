@@ -58,12 +58,16 @@ describe("catalog taxonomy", () => {
   });
 
   it("enforces unique names per tenant (case-insensitive) but not across tenants", async () => {
-    await db.as(a.ownerId).query("insert into public.brands (tenant_id, name) values ($1, 'Max Titanium')", [a.tenantId]);
+    await db
+      .as(a.ownerId)
+      .query("insert into public.brands (tenant_id, name) values ($1, 'Max Titanium')", [a.tenantId]);
     await expectDbError(
       db.as(a.ownerId).query("insert into public.brands (tenant_id, name) values ($1, ' max titanium ')", [a.tenantId]),
       /brands_name_unique/,
     );
-    await db.as(b.ownerId).query("insert into public.brands (tenant_id, name) values ($1, 'Max Titanium')", [b.tenantId]);
+    await db
+      .as(b.ownerId)
+      .query("insert into public.brands (tenant_id, name) values ($1, 'Max Titanium')", [b.tenantId]);
   });
 
   it("never lets tenant_id be moved through the API", async () => {
@@ -98,9 +102,10 @@ describe("catalog taxonomy", () => {
       const tenantId = supplements[0]!.create_tenant;
       const codes = await db
         .as(a.ownerId)
-        .query<{ code: string }>("select code from public.product_attributes where tenant_id = $1 order by sort_order", [
-          tenantId,
-        ]);
+        .query<{ code: string }>(
+          "select code from public.product_attributes where tenant_id = $1 order by sort_order",
+          [tenantId],
+        );
       expect(codes.map((row) => row.code)).toEqual([
         "flavor",
         "net_weight",
@@ -130,16 +135,18 @@ describe("catalog taxonomy", () => {
           [a.tenantId],
         );
       await expectDbError(
-        db.as(a.ownerId).query("update public.product_attributes set data_type = 'NUMBER' where id = $1", [attribute!.id]),
+        db
+          .as(a.ownerId)
+          .query("update public.product_attributes set data_type = 'NUMBER' where id = $1", [attribute!.id]),
         /permission denied/,
       );
       await expectDbError(
         db
           .as(a.ownerId)
-          .query("insert into public.product_attribute_options (tenant_id, attribute_id, code, label) values ($1, $2, 'p', 'P')", [
-            a.tenantId,
-            attribute!.id,
-          ]),
+          .query(
+            "insert into public.product_attribute_options (tenant_id, attribute_id, code, label) values ($1, $2, 'p', 'P')",
+            [a.tenantId, attribute!.id],
+          ),
         "invalid_attribute_value",
       );
     });

@@ -24,16 +24,19 @@ describe("products and variants", () => {
       barcode: "7890000000011",
     });
 
-    const [variant] = await db.as(sellerA).query<{ name: string; sku: string; is_default: boolean }>(
-      "select name, sku, is_default from public.product_variants where product_id = $1",
-      [productId],
-    );
+    const [variant] = await db
+      .as(sellerA)
+      .query<{ name: string; sku: string; is_default: boolean }>(
+        "select name, sku, is_default from public.product_variants where product_id = $1",
+        [productId],
+      );
     expect(variant).toEqual({ name: "Padrão", sku: "WHY-ISO-900", is_default: true });
     expect(await stockOf(db, variantId)).toEqual({ physical: 0, reserved: 0, available: 0 });
 
-    const audit = await db.admin.query("select id from public.audit_logs where action = 'product.created' and entity_id = $1", [
-      productId,
-    ]);
+    const audit = await db.admin.query(
+      "select id from public.audit_logs where action = 'product.created' and entity_id = $1",
+      [productId],
+    );
     expect(audit).toHaveLength(1);
   });
 
@@ -47,7 +50,9 @@ describe("products and variants", () => {
   it("rejects references to another tenant's taxonomy", async () => {
     const [foreignCategory] = await db
       .as(b.ownerId)
-      .query<{ id: string }>("insert into public.categories (tenant_id, name) values ($1, 'B') returning id", [b.tenantId]);
+      .query<{ id: string }>("insert into public.categories (tenant_id, name) values ($1, 'B') returning id", [
+        b.tenantId,
+      ]);
     await expectDbError(
       createProduct(db, a.ownerId, a.tenantId, { categoryId: foreignCategory!.id }),
       "invalid_reference",
@@ -63,7 +68,9 @@ describe("products and variants", () => {
 
     expect(await db.as(sellerA).query("select id from public.products where id = $1", [productId])).toHaveLength(1);
     expect(
-      await db.as(sellerA).query("select cost_price from public.product_variant_costs where variant_id = $1", [variantId]),
+      await db
+        .as(sellerA)
+        .query("select cost_price from public.product_variant_costs where variant_id = $1", [variantId]),
     ).toHaveLength(0);
     const [managerCost] = await db
       .as(managerA)
@@ -129,14 +136,19 @@ describe("products and variants", () => {
       }),
       "product_has_stock",
     );
-    await expectDbError(db.as(a.ownerId).rpc("catalog_archive_product", { p_product_id: productId }), "product_has_stock");
+    await expectDbError(
+      db.as(a.ownerId).rpc("catalog_archive_product", { p_product_id: productId }),
+      "product_has_stock",
+    );
   });
 
   it("archives products without stock and hides them from views", async () => {
     const { productId } = await createProduct(db, a.ownerId, a.tenantId, { sku: "ARCH-1" });
     await db.as(a.ownerId).rpc("catalog_archive_product", { p_product_id: productId });
     expect(
-      await db.as(a.ownerId).query("select variant_id from public.product_variant_details where product_id = $1", [productId]),
+      await db
+        .as(a.ownerId)
+        .query("select variant_id from public.product_variant_details where product_id = $1", [productId]),
     ).toHaveLength(0);
     // SKU liberado após arquivamento
     await createProduct(db, a.ownerId, a.tenantId, { sku: "ARCH-1" });
@@ -167,13 +179,16 @@ describe("products and variants", () => {
         p_sale_price: 180,
       });
 
-      const rows = await db
-        .as(sellerA)
-        .query<{ name: string; effective_sale_price: string; effective_promo_price: string | null; current_price: string }>(
-          `select name, effective_sale_price, effective_promo_price, current_price
+      const rows = await db.as(sellerA).query<{
+        name: string;
+        effective_sale_price: string;
+        effective_promo_price: string | null;
+        current_price: string;
+      }>(
+        `select name, effective_sale_price, effective_promo_price, current_price
            from public.product_variant_details where product_id = $1 order by name`,
-          [productId],
-        );
+        [productId],
+      );
       const byName = Object.fromEntries(rows.map((row) => [row.name, row]));
       expect(Number(byName.Chocolate!.current_price)).toBe(139.9);
       expect(byName.Premium!.effective_promo_price).toBeNull();
@@ -190,7 +205,9 @@ describe("products and variants", () => {
     });
 
     it("archiving the default variant promotes another one", async () => {
-      const { productId, variantId } = await createProduct(db, a.ownerId, a.tenantId);
+      // SKU customizado impede o arquivamento automático (ver bloco abaixo),
+      // isolando aqui o comportamento manual de catalog_archive_variant.
+      const { productId, variantId } = await createProduct(db, a.ownerId, a.tenantId, { sku: "ORIGINAL-SKU" });
       const [row] = await db.as(a.ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
         p_product_id: productId,
         p_name: "Baunilha",
@@ -203,9 +220,58 @@ describe("products and variants", () => {
       expect(promoted!.is_default).toBe(true);
     });
 
+    describe("automatic archiving of the untouched default variant", () => {
+      it("archives it when the first named variant is created", async () => {
+        const { productId, variantId } = await createProduct(db, a.ownerId, a.tenantId);
+        const [row] = await db.as(a.ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
+          p_product_id: productId,
+          p_name: "Chocolate",
+        });
+        const variants = await db.admin.query<{ id: string; is_default: boolean; archived_at: string | null }>(
+          "select id, is_default, archived_at from public.product_variants where product_id = $1",
+          [productId],
+        );
+        const original = variants.find((variant) => variant.id === variantId)!;
+        const promoted = variants.find((variant) => variant.id === row!.catalog_upsert_variant)!;
+        expect(original.archived_at).not.toBeNull();
+        expect(original.is_default).toBe(false);
+        expect(promoted.is_default).toBe(true);
+        expect(promoted.archived_at).toBeNull();
+      });
+
+      it("keeps it when it already has stock", async () => {
+        const { productId, variantId } = await createProduct(db, a.ownerId, a.tenantId);
+        await db.as(a.ownerId).rpc("inventory_register_entry", {
+          p_variant_id: variantId,
+          p_quantity: 1,
+          p_idempotency_key: key(),
+        });
+        await db.as(a.ownerId).rpc("catalog_upsert_variant", { p_product_id: productId, p_name: "Chocolate" });
+        const [original] = await db.admin.query<{ is_default: boolean; archived_at: string | null }>(
+          "select is_default, archived_at from public.product_variants where id = $1",
+          [variantId],
+        );
+        expect(original!.archived_at).toBeNull();
+        expect(original!.is_default).toBe(true);
+      });
+
+      it("keeps it when it was already given a SKU", async () => {
+        const { productId, variantId } = await createProduct(db, a.ownerId, a.tenantId, { sku: "CUSTOM-1" });
+        await db.as(a.ownerId).rpc("catalog_upsert_variant", { p_product_id: productId, p_name: "Chocolate" });
+        const [original] = await db.admin.query<{ is_default: boolean; archived_at: string | null }>(
+          "select is_default, archived_at from public.product_variants where id = $1",
+          [variantId],
+        );
+        expect(original!.archived_at).toBeNull();
+        expect(original!.is_default).toBe(true);
+      });
+    });
+
     it("blocks price updates that would invalidate inherited variant promotions", async () => {
       const { productId } = await createProduct(db, a.ownerId, a.tenantId, { salePrice: 100 });
-      await db.as(a.ownerId).rpc("catalog_upsert_variant", { p_product_id: productId, p_name: "Promo", p_promo_price: 90 });
+      await db
+        .as(a.ownerId)
+        .rpc("catalog_upsert_variant", { p_product_id: productId, p_name: "Promo", p_promo_price: 90 });
       await expectDbError(
         db.as(a.ownerId).rpc("catalog_update_product", { p_product_id: productId, p_name: "P", p_sale_price: 80 }),
         "invalid_input",
@@ -221,9 +287,10 @@ describe("products and variants", () => {
       shop = await db.createTenantWithOwner("Loja Busca");
       const [root] = await db
         .as(shop.ownerId)
-        .query<{ id: string }>("insert into public.categories (tenant_id, name) values ($1, 'Suplementos') returning id", [
-          shop.tenantId,
-        ]);
+        .query<{ id: string }>(
+          "insert into public.categories (tenant_id, name) values ($1, 'Suplementos') returning id",
+          [shop.tenantId],
+        );
       const [child] = await db
         .as(shop.ownerId)
         .query<{ id: string }>(
@@ -250,7 +317,11 @@ describe("products and variants", () => {
         p_quantity: 3,
         p_idempotency_key: key(),
       });
-      await createProduct(db, shop.ownerId, shop.tenantId, { name: "Creatina", salePrice: 90, barcode: "7891112223334" });
+      await createProduct(db, shop.ownerId, shop.tenantId, {
+        name: "Creatina",
+        salePrice: 90,
+        barcode: "7891112223334",
+      });
     });
 
     async function search(params: Record<string, unknown>) {
@@ -280,9 +351,10 @@ describe("products and variants", () => {
     });
 
     it("ranks exact barcode first in variant lookup", async () => {
-      const rows = await db
-        .as(shop.ownerId)
-        .rpc<{ product_name: string }>("catalog_lookup_variants", { p_tenant_id: shop.tenantId, p_query: "7891112223334" });
+      const rows = await db.as(shop.ownerId).rpc<{ product_name: string }>("catalog_lookup_variants", {
+        p_tenant_id: shop.tenantId,
+        p_query: "7891112223334",
+      });
       expect(rows[0]!.product_name).toBe("Creatina");
     });
   });

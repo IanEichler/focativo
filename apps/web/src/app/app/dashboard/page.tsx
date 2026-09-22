@@ -1,31 +1,63 @@
-import { CalendarClock, CalendarX2, ChartNoAxesColumn, PackageMinus, PackageX, UserPlus } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarX2,
+  ChartNoAxesColumn,
+  CircleDollarSign,
+  PackageMinus,
+  PackageX,
+  Receipt,
+  ShoppingBag,
+  UserPlus,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MetricCard } from "@/components/data/metric-card";
+import { MoneyValue } from "@/components/data/money-value";
 import { StatusBadge } from "@/components/data/status-badge";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTodayAgendaSummary } from "@/domains/agenda/queries";
 import { getInventorySummary } from "@/domains/inventory/queries";
+import { getSalesByDay, getTopProducts } from "@/domains/reports/queries";
 import { OnboardingSteps } from "@/domains/tenants/components/onboarding-steps";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { completedSteps } from "@/domains/tenants/onboarding";
 import { getSetupProgress, getTeamSummary, getTenantDetails } from "@/domains/tenants/queries";
 import { TENANT_SEGMENTS } from "@/domains/tenants/schemas";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
+const DASHBOARD_PERIOD_DAYS = 30;
+
+function sinceDaysAgo(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
 export default async function DashboardPage() {
   const context = await requireTenantContext();
-  const canSeeInventory = context.can("inventory.read");
-  const [details, team, progress, inventory] = await Promise.all([
+  const canSeeInventory = context.can("inventory.read") && context.hasModule("inventory");
+  const canSeeCommercial = context.can("financial.read") && context.hasModule("sales");
+  const canSeeAgenda = context.can("agenda.read") && context.hasModule("agenda");
+  const since = sinceDaysAgo(DASHBOARD_PERIOD_DAYS);
+
+  const [details, team, progress, inventory, salesByDay, topProducts, todayAgenda] = await Promise.all([
     getTenantDetails(context),
     getTeamSummary(context),
     getSetupProgress(context),
     canSeeInventory ? getInventorySummary(context) : Promise.resolve(null),
+    canSeeCommercial ? getSalesByDay(context, since) : Promise.resolve([]),
+    canSeeCommercial ? getTopProducts(context, since, 5) : Promise.resolve([]),
+    canSeeAgenda ? getTodayAgendaSummary(context) : Promise.resolve(null),
   ]);
+
+  const revenue = salesByDay.reduce((sum, row) => sum + row.revenue, 0);
+  const salesCount = salesByDay.reduce((sum, row) => sum + row.salesCount, 0);
+  const avgTicket = salesCount > 0 ? revenue / salesCount : 0;
 
   const firstName = context.user.fullName.split(" ")[0];
   const completed = completedSteps({
@@ -58,8 +90,18 @@ export default async function DashboardPage() {
           />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { label: "Estoque baixo", value: inventory.lowStock, icon: <PackageMinus />, href: "/app/estoque?status=LOW" },
-              { label: "Sem estoque", value: inventory.outOfStock, icon: <PackageX />, href: "/app/estoque?status=OUT" },
+              {
+                label: "Estoque baixo",
+                value: inventory.lowStock,
+                icon: <PackageMinus />,
+                href: "/app/estoque?status=LOW",
+              },
+              {
+                label: "Sem estoque",
+                value: inventory.outOfStock,
+                icon: <PackageX />,
+                href: "/app/estoque?status=OUT",
+              },
               {
                 label: "Lotes vencendo",
                 value: inventory.expiringLots,
@@ -100,10 +142,7 @@ export default async function DashboardPage() {
             <CardDescription>Conclua a configuração para começar a vender com atendimento assistido.</CardDescription>
           </CardHeader>
           <CardContent>
-            <OnboardingSteps
-              completed={completed}
-              current={nextStep}
-            />
+            <OnboardingSteps completed={completed} current={nextStep} />
           </CardContent>
         </Card>
 
@@ -162,11 +201,70 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <EmptyState
-        icon={<ChartNoAxesColumn />}
-        title="Indicadores comerciais"
-        description="Faturamento, vendas, ticket médio, reservas e produtos mais vendidos aparecerão aqui quando o módulo de vendas estiver ativo."
-      />
+      {canSeeCommercial && (
+        <section className="flex flex-col gap-4">
+          <SectionHeader
+            title="Indicadores comerciais"
+            description={`Últimos ${DASHBOARD_PERIOD_DAYS} dias`}
+            actions={
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/app/relatorios">Ver relatórios</Link>
+              </Button>
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <MetricCard label="Faturamento" value={<MoneyValue value={revenue} />} icon={<CircleDollarSign />} />
+            <MetricCard label="Vendas" value={formatNumber(salesCount)} icon={<Receipt />} />
+            <MetricCard label="Ticket médio" value={<MoneyValue value={avgTicket} />} icon={<ShoppingBag />} />
+          </div>
+
+          {topProducts.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Produtos mais vendidos</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col divide-y divide-border">
+                {topProducts.map((row) => (
+                  <div key={row.variantId} className="flex items-center justify-between gap-4 py-2.5 text-body">
+                    <span className="truncate">{row.productName}</span>
+                    <span className="flex shrink-0 items-center gap-4 text-muted-foreground tabular">
+                      {formatNumber(row.quantitySold)} un. <MoneyValue value={row.revenue} />
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      )}
+
+      {canSeeAgenda && todayAgenda && (
+        <section className="flex flex-col gap-4">
+          <SectionHeader
+            title="Agenda de hoje"
+            actions={
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/app/agenda">Ver agenda</Link>
+              </Button>
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricCard label="Compromissos hoje" value={formatNumber(todayAgenda.count)} icon={<CalendarClock />} />
+            <MetricCard
+              label="Próximo horário"
+              value={todayAgenda.nextStartsAt ? formatDateTime(todayAgenda.nextStartsAt) : "—"}
+            />
+          </div>
+        </section>
+      )}
+
+      {!canSeeCommercial && !canSeeAgenda && (
+        <EmptyState
+          icon={<ChartNoAxesColumn />}
+          title="Indicadores comerciais"
+          description="Faturamento, vendas, ticket médio e produtos mais vendidos aparecerão aqui quando você tiver acesso ao financeiro."
+        />
+      )}
     </PageContainer>
   );
 }

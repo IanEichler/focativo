@@ -3,7 +3,12 @@
 import { ClipboardCheck, MinusCircle, MoreHorizontal, PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { VariantOption } from "../queries";
 import type { StockOperation } from "../schemas";
 import { StockOperationSheet } from "./stock-operation";

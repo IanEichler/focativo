@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, ChevronDown, Info, Moon, Plus, Search, Sun, Trash2, Upload } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Suspense } from "react";
 import { toast } from "sonner";
 import { useIsClient } from "@/hooks/use-is-client";

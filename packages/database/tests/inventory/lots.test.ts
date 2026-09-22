@@ -92,10 +92,10 @@ describe("lots, expiration and FEFO", () => {
     await entryLot(variantId, 2, "NEW", isoDate(100));
     await backdateLot(variantId, "OLD", isoDate(-5));
 
-    await db.admin.query(
-      "select private.apply_stock_movement($1, $2, 'SALE', 2, 'SALE', p_skip_expired => true)",
-      [tenantId, variantId],
-    );
+    await db.admin.query("select private.apply_stock_movement($1, $2, 'SALE', 2, 'SALE', p_skip_expired => true)", [
+      tenantId,
+      variantId,
+    ]);
     expect(await lotsOf(db, variantId)).toEqual([
       { code: "OLD", quantity: 2, expiresOn: isoDate(-5) },
       { code: "NEW", quantity: 0, expiresOn: isoDate(100) },

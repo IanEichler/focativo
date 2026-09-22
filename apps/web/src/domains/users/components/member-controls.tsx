@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, UserCheck, UserMinus, UserX } from "lucide-react";
+import { MoreHorizontal, ShieldCheck, UserCheck, UserMinus, UserX } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -26,6 +26,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { ActionState } from "@/lib/errors";
 import { changeMemberRoleAction, removeMemberAction, setMemberActiveAction } from "../actions";
 import type { RoleOption } from "./invite-user-dialog";
+import { MemberPermissionsSheet } from "./member-permissions-sheet";
 
 function notify(result: ActionState) {
   if (result.status === "success") toast.success(result.message ?? "Alteração salva.");
@@ -96,6 +97,7 @@ export function MemberActions({
 }) {
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<PendingConfirmation>(null);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
 
   const run = (action: () => Promise<ActionState>) =>
     startTransition(async () => {
@@ -125,12 +127,22 @@ export function MemberActions({
               <UserX /> Desativar acesso
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onSelect={() => setPermissionsOpen(true)}>
+            <ShieldCheck /> Personalizar permissões
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirm("remove")}>
             <UserMinus /> Remover da empresa
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MemberPermissionsSheet
+        membershipId={membershipId}
+        memberName={memberName}
+        open={permissionsOpen}
+        onOpenChange={setPermissionsOpen}
+      />
 
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && !pending && setConfirm(null)}>
         <AlertDialogContent>

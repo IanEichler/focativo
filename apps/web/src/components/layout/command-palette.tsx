@@ -2,7 +2,7 @@
 
 import { Laptop, Moon, Search, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {

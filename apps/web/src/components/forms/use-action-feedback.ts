@@ -10,7 +10,10 @@ import type { ActionState } from "@/lib/errors";
  */
 export function useActionFeedback<Field extends string>(
   state: ActionState<Field>,
-  options: { onSuccess?: (state: Extract<ActionState<Field>, { status: "success" }>) => void; toastOnError?: boolean } = {},
+  options: {
+    onSuccess?: (state: Extract<ActionState<Field>, { status: "success" }>) => void;
+    toastOnError?: boolean;
+  } = {},
 ) {
   const handled = useRef<ActionState<Field> | null>(null);
   const onSuccessRef = useRef(options.onSuccess);

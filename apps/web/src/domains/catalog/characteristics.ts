@@ -101,7 +101,13 @@ export function attributeChips(attributes: EffectiveAttribute[]): Characteristic
       case "NUMBER":
         return attribute.valueNumber === null
           ? []
-          : [{ key, label: `${attribute.name}: ${formatAmount(attribute.valueNumber, attribute.unit)}`, tone: "neutral" }];
+          : [
+              {
+                key,
+                label: `${attribute.name}: ${formatAmount(attribute.valueNumber, attribute.unit)}`,
+                tone: "neutral",
+              },
+            ];
       case "TEXT":
         return attribute.valueText ? [{ key, label: attribute.valueText, tone: "neutral" }] : [];
     }

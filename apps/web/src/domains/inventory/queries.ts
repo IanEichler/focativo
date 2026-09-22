@@ -272,9 +272,7 @@ export async function listMovements(
   if (params.productId) query = query.eq("product_id", params.productId);
 
   const from = (params.page - 1) * pageSize;
-  const { data, count, error } = await query
-    .order("created_at", { ascending: false })
-    .range(from, from + pageSize - 1);
+  const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, from + pageSize - 1);
   if (error) throw new Error(`listMovements failed: ${error.code}`);
 
   const actorIds = [...new Set((data ?? []).map((row) => row.actor_user_id).filter((id): id is string => Boolean(id)))];

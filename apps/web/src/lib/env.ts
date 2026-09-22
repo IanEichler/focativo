@@ -9,7 +9,7 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url({ message: "NEXT_PUBLIC_SUPABASE_URL inválida" }),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ausente"),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
-  NEXT_PUBLIC_APP_NAME: z.string().min(1).default("Estoque IA"),
+  NEXT_PUBLIC_APP_NAME: z.string().min(1).default("Focativo"),
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;
@@ -34,4 +34,4 @@ export function getPublicEnv(): PublicEnv {
   return cachedPublicEnv;
 }
 
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Estoque IA";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Focativo";

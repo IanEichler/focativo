@@ -27,24 +27,25 @@ export async function CharacteristicsTab({
 
   const scopeNav = product.hasVariants ? (
     <nav aria-label="Escopo das características" className="flex flex-wrap gap-1.5">
-      {[{ id: null, label: "Produto (todas as variações)" }, ...product.variants.map((item) => ({ id: item.id, label: item.name }))].map(
-        (item) => (
-          <Link
-            key={item.id ?? "product"}
-            href={item.id ? `${base}&escopo=${item.id}` : base}
-            scroll={false}
-            aria-current={variantId === item.id ? "page" : undefined}
-            className={cn(
-              "rounded-full border px-3 py-1 text-small font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-              variantId === item.id
-                ? "border-primary bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200"
-                : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {item.label}
-          </Link>
-        ),
-      )}
+      {[
+        { id: null, label: "Produto (todas as variações)" },
+        ...product.variants.map((item) => ({ id: item.id, label: item.name })),
+      ].map((item) => (
+        <Link
+          key={item.id ?? "product"}
+          href={item.id ? `${base}&escopo=${item.id}` : base}
+          scroll={false}
+          aria-current={variantId === item.id ? "page" : undefined}
+          className={cn(
+            "rounded-full border px-3 py-1 text-small font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            variantId === item.id
+              ? "border-primary bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200"
+              : "border-border text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {item.label}
+        </Link>
+      ))}
     </nav>
   ) : null;
 
@@ -58,7 +59,9 @@ export async function CharacteristicsTab({
   }
 
   const data = await getCharacteristicsScope(context, product.id, variantId);
-  const scopeLabel = variant ? `Variação ${variant.name}: valores preenchidos substituem os do produto.` : "Valores do produto, herdados por todas as variações.";
+  const scopeLabel = variant
+    ? `Variação ${variant.name}: valores preenchidos substituem os do produto.`
+    : "Valores do produto, herdados por todas as variações.";
 
   return (
     <div className="flex flex-col gap-4">
@@ -160,7 +163,9 @@ async function ReadOnlyCharacteristics({ variantId }: { variantId: string }) {
                   return (
                     <TableRow key={code}>
                       <TableCell>{nutrient?.name ?? code}</TableCell>
-                      <TableCell className="text-right tabular">{formatAmount(amount, nutrient?.unit ?? null)}</TableCell>
+                      <TableCell className="text-right tabular">
+                        {formatAmount(amount, nutrient?.unit ?? null)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

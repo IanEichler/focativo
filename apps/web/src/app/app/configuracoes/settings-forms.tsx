@@ -1,7 +1,7 @@
 "use client";
 
 import { Laptop, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { useActionState } from "react";
 import { useIsClient } from "@/hooks/use-is-client";
 import { fieldError, FormMessage, SubmitButton } from "@/components/forms/form-feedback";

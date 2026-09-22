@@ -18,7 +18,9 @@ describe("product characteristics", () => {
     sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
     const attributeRows = await db
       .as(ownerId)
-      .query<{ id: string; code: string }>("select id, code from public.product_attributes where tenant_id = $1", [tenantId]);
+      .query<{ id: string; code: string }>("select id, code from public.product_attributes where tenant_id = $1", [
+        tenantId,
+      ]);
     attributes = Object.fromEntries(attributeRows.map((attribute) => [attribute.code, attribute.id]));
   });
 
@@ -46,7 +48,15 @@ describe("product characteristics", () => {
     });
 
     it("stores explicit presence, traces and source; variant overrides product", async () => {
-      const { productId, variantId } = await createProduct(db, ownerId, tenantId, { name: "Whey" });
+      const { productId } = await createProduct(db, ownerId, tenantId, { name: "Whey" });
+      // A "Padrão" original é arquivada ao nascer a primeira variação nomeada
+      // (zero estoque, nunca customizada) — por isso usamos duas variações
+      // nomeadas: uma sem override (herda do produto) e outra com override.
+      const [baseRow] = await db.as(ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
+        p_product_id: productId,
+        p_name: "Natural",
+      });
+      const variantId = baseRow!.catalog_upsert_variant;
       const [second] = await db.as(ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
         p_product_id: productId,
         p_name: "Cookies",
@@ -158,7 +168,9 @@ describe("product characteristics", () => {
       });
       await db.as(ownerId).rpc("catalog_set_nutrition", { p_product_id: productId, p_nutrition: null });
       expect(
-        await db.as(sellerId).query("select * from public.effective_variant_nutrition where variant_id = $1", [variantId]),
+        await db
+          .as(sellerId)
+          .query("select * from public.effective_variant_nutrition where variant_id = $1", [variantId]),
       ).toHaveLength(0);
     });
   });
@@ -183,7 +195,15 @@ describe("product characteristics", () => {
     });
 
     it("resolves effective values with variant overrides", async () => {
-      const { productId, variantId } = await createProduct(db, ownerId, tenantId, { name: "Whey Max" });
+      const { productId } = await createProduct(db, ownerId, tenantId, { name: "Whey Max" });
+      // A variante "Padrão" original é arquivada automaticamente ao nascer a
+      // primeira variação nomeada (zero estoque, nunca customizada) — por isso
+      // usamos duas variações nomeadas: uma sem override (herda do produto) e
+      // outra com override, em vez de reaproveitar o id da variante inicial.
+      const [chocolate] = await db.as(ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
+        p_product_id: productId,
+        p_name: "Chocolate",
+      });
       const [second] = await db.as(ownerId).rpc<{ catalog_upsert_variant: string }>("catalog_upsert_variant", {
         p_product_id: productId,
         p_name: "Morango",
@@ -206,17 +226,19 @@ describe("product characteristics", () => {
       const values = async (id: string) =>
         Object.fromEntries(
           (
-            await db
-              .as(sellerId)
-              .query<{ attribute_code: string; option_code: string | null; value_number: string | null; value_boolean: boolean | null; defined_at: string }>(
-                "select attribute_code, option_code, value_number, value_boolean, defined_at from public.effective_variant_attributes where variant_id = $1",
-                [id],
-              )
+            await db.as(sellerId).query<{
+              attribute_code: string;
+              option_code: string | null;
+              value_number: string | null;
+              value_boolean: boolean | null;
+              defined_at: string;
+            }>("select attribute_code, option_code, value_number, value_boolean, defined_at from public.effective_variant_attributes where variant_id = $1", [id])
           ).map((row) => [row.attribute_code, row]),
         );
 
-      const base = await values(variantId);
+      const base = await values(chocolate!.catalog_upsert_variant);
       expect(base.flavor!.option_code).toBe("chocolate");
+      expect(base.flavor!.defined_at).toBe("PRODUCT");
       expect(Number(base.net_weight!.value_number)).toBe(900);
       expect(base.sugar_free_claim!.value_boolean).toBe(false);
       expect(base.vegan).toBeUndefined();

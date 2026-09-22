@@ -4,7 +4,15 @@ import { useActionState, useId } from "react";
 import { fieldError, FormMessage, SubmitButton } from "@/components/forms/form-feedback";
 import { TextField } from "@/components/forms/text-field";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { createTenantAction } from "../actions";
 import { TENANT_SEGMENTS, type CreateTenantField } from "../schemas";
@@ -42,11 +50,22 @@ export function CreateTenantForm() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {TENANT_SEGMENTS.map((segment) => (
-              <SelectItem key={segment.value} value={segment.value}>
-                {segment.label}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              <SelectLabel>Varejo (com estoque)</SelectLabel>
+              {TENANT_SEGMENTS.filter((s) => s.businessType === "RETAIL").map((segment) => (
+                <SelectItem key={segment.value} value={segment.value}>
+                  {segment.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Prestação de serviço (com agenda)</SelectLabel>
+              {TENANT_SEGMENTS.filter((s) => s.businessType === "SERVICES").map((segment) => (
+                <SelectItem key={segment.value} value={segment.value}>
+                  {segment.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
         {segmentError ? (
@@ -55,7 +74,7 @@ export function CreateTenantForm() {
           </p>
         ) : (
           <p id={`${segmentId}-hint`} className="text-small text-muted-foreground">
-            Ajuda a sugerir configurações. Pode ser alterado depois.
+            Varejo libera catálogo, estoque, reservas e vendas; serviços libera a Agenda. Dá pra ajustar depois.
           </p>
         )}
       </div>

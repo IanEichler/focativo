@@ -167,7 +167,12 @@ export async function uploadProductImageAction(_prev: ActionState, formData: For
     .from(PRODUCT_IMAGES_BUCKET)
     .upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
   if (uploadError) {
-    logger.warn({ event: "product.image_upload", status: "error", tenant_id: context.tenant.id, reason: uploadError.name });
+    logger.warn({
+      event: "product.image_upload",
+      status: "error",
+      tenant_id: context.tenant.id,
+      reason: uploadError.name,
+    });
     return { status: "error", message: GENERIC_ERROR_MESSAGE };
   }
 

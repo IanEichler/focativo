@@ -102,6 +102,7 @@ export interface AdminTenantDetail {
     createdAt: string;
   };
   members: {
+    membershipId: string;
     userId: string;
     name: string;
     email: string | null;
@@ -132,7 +133,7 @@ export async function getAdminTenantDetail(tenantId: string): Promise<AdminTenan
     supabase
       .from("tenant_users")
       .select(
-        "user_id, status, role:roles!inner(name, rank), profile:profiles!tenant_users_user_id_fkey(full_name, email)",
+        "id, user_id, status, role:roles!inner(name, rank), profile:profiles!tenant_users_user_id_fkey(full_name, email)",
       )
       .eq("tenant_id", tenantId),
     supabase
@@ -163,6 +164,7 @@ export async function getAdminTenantDetail(tenantId: string): Promise<AdminTenan
     members: (membersResult.data ?? [])
       .sort((a, b) => b.role.rank - a.role.rank)
       .map((member) => ({
+        membershipId: member.id,
         userId: member.user_id,
         name: member.profile?.full_name || member.profile?.email || "Usuário",
         email: member.profile?.email ?? null,
@@ -178,4 +180,13 @@ export async function getAdminTenantDetail(tenantId: string): Promise<AdminTenan
       createdAt: event.created_at,
     })),
   };
+}
+
+/** Módulos desligados para o tenant (ausência = habilitado — ver a migration). */
+export async function getDisabledModules(tenantId: string): Promise<Set<string>> {
+  await requireSuperAdmin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_module_flags", { p_tenant_id: tenantId });
+  if (error) throw new Error(`admin_list_module_flags failed: ${error.message}`);
+  return new Set((data ?? []).filter((row) => !row.enabled).map((row) => row.module_code));
 }

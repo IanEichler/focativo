@@ -7,13 +7,19 @@ import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 import { Topbar } from "@/components/layout/topbar";
 import { UserMenu } from "@/components/layout/user-menu";
 import { isSuperAdmin } from "@/domains/auth/session";
+import { NotificationsBell } from "@/domains/notifications/components/notifications-bell";
+import { getNotifications } from "@/domains/notifications/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
 
 export default async function TenantAppLayout({ children }: LayoutProps<"/app">) {
   const context = await requireTenantContext();
-  const [superAdmin, cookieStore] = await Promise.all([isSuperAdmin(), cookies()]);
+  const [superAdmin, cookieStore, notifications] = await Promise.all([
+    isSuperAdmin(),
+    cookies(),
+    getNotifications(context),
+  ]);
 
-  const sections = filterNav(APP_NAV, context.permissions);
+  const sections = filterNav(APP_NAV, context.permissions, context.hasModule);
   const current = { id: context.tenant.id, name: context.tenant.name, roleName: context.tenant.roleName };
 
   return (
@@ -31,7 +37,10 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
         <Topbar
           commands={navCommands(sections, "Navegação")}
           end={
-            <UserMenu name={context.user.fullName} email={context.user.email} isSuperAdmin={superAdmin} area="app" />
+            <>
+              <NotificationsBell items={notifications} />
+              <UserMenu name={context.user.fullName} email={context.user.email} isSuperAdmin={superAdmin} area="app" />
+            </>
           }
         />
       }

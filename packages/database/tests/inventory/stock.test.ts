@@ -227,7 +227,9 @@ describe("stock movements", () => {
     const intruder = await db.createTenantWithOwner("Loja Intrusa");
     await expectDbError(entry(intruder.ownerId, variantId, 1), "forbidden");
     expect(
-      await db.as(intruder.ownerId).query("select variant_id from public.stock_levels where variant_id = $1", [variantId]),
+      await db
+        .as(intruder.ownerId)
+        .query("select variant_id from public.stock_levels where variant_id = $1", [variantId]),
     ).toHaveLength(0);
 
     // vendedor vê disponibilidade, mas não o histórico (que contém custos)

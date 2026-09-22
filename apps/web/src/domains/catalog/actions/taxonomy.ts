@@ -46,8 +46,16 @@ async function persist<Field extends string>(
 ): Promise<ActionState<Field>> {
   const supabase = await createClient();
   const query = id
-    ? supabase.from(entity).update(values as never).eq("id", id).eq("tenant_id", tenantId).select("id")
-    : supabase.from(entity).insert({ ...values, tenant_id: tenantId } as never).select("id");
+    ? supabase
+        .from(entity)
+        .update(values as never)
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .select("id")
+    : supabase
+        .from(entity)
+        .insert({ ...values, tenant_id: tenantId } as never)
+        .select("id");
 
   const { data, error } = await query;
   if (error || !data?.length) {
@@ -72,7 +80,14 @@ export async function saveCategoryAction(_prev: ActionState, formData: FormData)
     return { status: "error", message: toUserMessage({ message: "category_cycle" }) };
   }
   const values = { name, parent_id: parentId, description, is_active: isActive };
-  return persist("categories", id, values, input, context.tenant.id, id ? "Categoria atualizada." : "Categoria criada.");
+  return persist(
+    "categories",
+    id,
+    values,
+    input,
+    context.tenant.id,
+    id ? "Categoria atualizada." : "Categoria criada.",
+  );
 }
 
 export async function saveBrandAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -82,7 +97,14 @@ export async function saveBrandAction(_prev: ActionState, formData: FormData): P
   const parsed = brandSchema.safeParse(input);
   if (!parsed.success) return validationError(parsed.error, input);
   const { id, name, isActive } = parsed.data;
-  return persist("brands", id, { name, is_active: isActive }, input, context.tenant.id, id ? "Marca atualizada." : "Marca criada.");
+  return persist(
+    "brands",
+    id,
+    { name, is_active: isActive },
+    input,
+    context.tenant.id,
+    id ? "Marca atualizada." : "Marca criada.",
+  );
 }
 
 export async function saveSupplierAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -102,7 +124,14 @@ export async function saveSupplierAction(_prev: ActionState, formData: FormData)
     notes,
     is_active: isActive,
   };
-  return persist("suppliers", id, values, input, context.tenant.id, id ? "Fornecedor atualizado." : "Fornecedor criado.");
+  return persist(
+    "suppliers",
+    id,
+    values,
+    input,
+    context.tenant.id,
+    id ? "Fornecedor atualizado." : "Fornecedor criado.",
+  );
 }
 
 export async function saveAttributeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -173,7 +202,14 @@ export async function saveAttributeOptionAction(_prev: ActionState, formData: Fo
   const { id, attributeId, label, isActive } = parsed.data;
 
   if (id) {
-    return persist("product_attribute_options", id, { label, is_active: isActive }, input, context.tenant.id, "Opção atualizada.");
+    return persist(
+      "product_attribute_options",
+      id,
+      { label, is_active: isActive },
+      input,
+      context.tenant.id,
+      "Opção atualizada.",
+    );
   }
 
   const code = parsed.data.code || toCode(label);

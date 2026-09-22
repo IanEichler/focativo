@@ -56,7 +56,10 @@ export function VariantsTab({ context, product }: { context: TenantContext; prod
       align: "right",
       cell: (variant) => (
         <span className="flex flex-col items-end">
-          <MoneyValue value={variant.currentPrice} className={variant.promoPrice !== null ? "text-success" : undefined} />
+          <MoneyValue
+            value={variant.currentPrice}
+            className={variant.promoPrice !== null ? "text-success" : undefined}
+          />
           {variant.ownSalePrice === null && <span className="text-caption text-muted-foreground">do produto</span>}
         </span>
       ),
@@ -78,7 +81,12 @@ export function VariantsTab({ context, product }: { context: TenantContext; prod
       align: "right",
       cell: (variant) => formatQuantity(variant.available, product.unit),
     },
-    { id: "status", header: "Estoque", hideBelow: "sm", cell: (variant) => <StockStatusBadge status={variant.stockStatus} /> },
+    {
+      id: "status",
+      header: "Estoque",
+      hideBelow: "sm",
+      cell: (variant) => <StockStatusBadge status={variant.stockStatus} />,
+    },
     ...(canWrite
       ? ([
           {
@@ -112,7 +120,12 @@ export function VariantsTab({ context, product }: { context: TenantContext; prod
   return (
     <div className="flex flex-col gap-3">
       {addButton && <div className="flex justify-end">{addButton}</div>}
-      <DataTable caption="Variações do produto" columns={columns} rows={product.variants} getRowKey={(variant) => variant.id} />
+      <DataTable
+        caption="Variações do produto"
+        columns={columns}
+        rows={product.variants}
+        getRowKey={(variant) => variant.id}
+      />
     </div>
   );
 }

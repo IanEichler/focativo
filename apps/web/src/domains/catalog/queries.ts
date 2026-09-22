@@ -26,10 +26,7 @@ export interface CatalogOptions {
 export async function getCatalogOptions(context: TenantContext): Promise<CatalogOptions> {
   const supabase = await createClient();
   const [categories, brands, suppliers] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id, name, parent_id, is_active, sort_order")
-      .eq("tenant_id", context.tenant.id),
+    supabase.from("categories").select("id, name, parent_id, is_active, sort_order").eq("tenant_id", context.tenant.id),
     supabase.from("brands").select("id, name, is_active").eq("tenant_id", context.tenant.id).order("name"),
     supabase.from("suppliers").select("id, name, is_active").eq("tenant_id", context.tenant.id).order("name"),
   ]);
@@ -440,7 +437,9 @@ export async function getEffectiveCharacteristics(variantId: string): Promise<Ef
       .order("sort_order"),
     supabase
       .from("effective_variant_attributes")
-      .select("attribute_code, attribute_name, data_type, unit, value_boolean, value_number, value_text, option_label, sort_order")
+      .select(
+        "attribute_code, attribute_name, data_type, unit, value_boolean, value_number, value_text, option_label, sort_order",
+      )
       .eq("variant_id", variantId)
       .order("sort_order"),
     supabase

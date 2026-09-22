@@ -83,7 +83,12 @@ export async function saveAttributeValuesAction(_prev: ActionState, formData: Fo
   }
 
   if (Object.keys(fieldErrors).length) {
-    return { status: "error", message: "Revise os campos destacados.", fieldErrors, values: input as Record<string, string> };
+    return {
+      status: "error",
+      message: "Revise os campos destacados.",
+      fieldErrors,
+      values: input as Record<string, string>,
+    };
   }
 
   const { error } = await supabase.rpc("catalog_set_attribute_values", {
@@ -170,7 +175,12 @@ export async function saveNutritionAction(_prev: ActionState, formData: FormData
     if (amount.data !== null) values[code] = amount.data;
   }
   if (Object.keys(fieldErrors).length) {
-    return { status: "error", message: "Revise os valores nutricionais.", fieldErrors, values: input as Record<string, string> };
+    return {
+      status: "error",
+      message: "Revise os valores nutricionais.",
+      fieldErrors,
+      values: input as Record<string, string>,
+    };
   }
 
   const supabase = await createClient();

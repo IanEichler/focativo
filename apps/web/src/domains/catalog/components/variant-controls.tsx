@@ -44,7 +44,15 @@ interface VariantSheetProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function VariantSheet({ productId, productPrice, canEditCost, variant, trigger, open, onOpenChange }: VariantSheetProps) {
+export function VariantSheet({
+  productId,
+  productPrice,
+  canEditCost,
+  variant,
+  trigger,
+  open,
+  onOpenChange,
+}: VariantSheetProps) {
   return (
     <FormSheet
       trigger={trigger}
@@ -158,7 +166,10 @@ function VariantForm({
             label="Estoque mínimo"
             name="minStock"
             placeholder="Herda do produto"
-            defaultValue={pick("minStock", variant?.ownMinStock === null ? undefined : toDecimalInput(variant?.ownMinStock, 3))}
+            defaultValue={pick(
+              "minStock",
+              variant?.ownMinStock === null ? undefined : toDecimalInput(variant?.ownMinStock, 3),
+            )}
             error={fieldError(state, "minStock")}
           />
         </div>

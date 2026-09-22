@@ -28,7 +28,9 @@ export function TabNav({ items, active, label }: { items: TabItem[]; active: str
           >
             {item.label}
             {item.count !== undefined && (
-              <span className="rounded-full bg-secondary px-1.5 text-caption text-muted-foreground tabular">{item.count}</span>
+              <span className="rounded-full bg-secondary px-1.5 text-caption text-muted-foreground tabular">
+                {item.count}
+              </span>
             )}
           </Link>
         ))}

@@ -34,7 +34,13 @@ async function main() {
   console.log(`SUPER_ADMIN concedido a ${email}.`);
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
+// Encerra explicitamente: com o cliente HTTP do supabase-js, conexões
+// keep-alive do undici às vezes seguem "abertas" o bastante para o Node
+// travar no encerramento natural do event loop no Windows (falha nativa do
+// libuv em src/win/async.c) mesmo com o trabalho já concluído com sucesso.
+main()
+  .then(() => process.exit(0))
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });

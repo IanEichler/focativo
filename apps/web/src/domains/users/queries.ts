@@ -63,3 +63,22 @@ export async function listAssignableRoles(context: TenantContext): Promise<Assig
     description: role.description,
   }));
 }
+
+export interface MemberPermissionDTO {
+  code: string;
+  granted: boolean;
+  isOverride: boolean;
+  roleDefault: boolean;
+}
+
+export async function listMemberPermissions(membershipId: string): Promise<MemberPermissionDTO[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_tenant_user_permissions", { p_membership_id: membershipId });
+  if (error) throw new Error(`listMemberPermissions failed: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    code: row.permission_code,
+    granted: row.granted,
+    isOverride: row.is_override,
+    roleDefault: row.role_default,
+  }));
+}

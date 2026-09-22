@@ -5,6 +5,7 @@ import { AccessDenied } from "@/components/feedback/access-denied";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { requireTenantContext } from "@/domains/tenants/context";
+import { CreateUserDialog } from "@/domains/users/components/create-user-dialog";
 import { InviteUserDialog } from "@/domains/users/components/invite-user-dialog";
 import { MemberActions, MemberRoleSelect } from "@/domains/users/components/member-controls";
 import { listAssignableRoles, listTenantMembers, type TenantMemberDTO } from "@/domains/users/queries";
@@ -114,7 +115,14 @@ export default async function UsersPage() {
       <PageHeader
         title="Usuários"
         description="Gerencie quem acessa a empresa e o que cada pessoa pode fazer."
-        actions={context.can("users.invite") ? <InviteUserDialog roles={assignableRoles} /> : undefined}
+        actions={
+          context.can("users.invite") ? (
+            <div className="flex flex-wrap gap-2">
+              <CreateUserDialog />
+              <InviteUserDialog roles={assignableRoles} />
+            </div>
+          ) : undefined
+        }
       />
       <DataTable
         caption="Usuários da empresa"

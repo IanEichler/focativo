@@ -82,7 +82,9 @@ describe("inventory schemas", () => {
   });
 
   it("loss requires reason; adjustment accepts counting zero", () => {
-    expect(lossSchema.safeParse({ variantId: uuid, idempotencyKey: key, quantity: "1", reason: "" }).success).toBe(false);
+    expect(lossSchema.safeParse({ variantId: uuid, idempotencyKey: key, quantity: "1", reason: "" }).success).toBe(
+      false,
+    );
     const adjusted = adjustSchema.parse({
       variantId: uuid,
       idempotencyKey: key,

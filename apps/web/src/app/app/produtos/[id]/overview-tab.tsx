@@ -2,12 +2,7 @@ import Link from "next/link";
 import { MoneyValue } from "@/components/data/money-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  allergenChips,
-  attributeChips,
-  nutritionChips,
-  unknownHighlights,
-} from "@/domains/catalog/characteristics";
+import { allergenChips, attributeChips, nutritionChips, unknownHighlights } from "@/domains/catalog/characteristics";
 import { ProductImageEditor } from "@/domains/catalog/components/product-controls";
 import { CharacteristicChips, StockStatusBadge } from "@/domains/catalog/components/product-visuals";
 import { PRODUCT_UNITS } from "@/domains/catalog/labels";
@@ -53,7 +48,12 @@ export async function OverviewTab({ context, product }: { context: TenantContext
       ),
     ],
     ...(product.canSeeCosts && simple
-      ? ([["Custo", product.defaultVariant.costPrice !== null ? <MoneyValue value={product.defaultVariant.costPrice} /> : "—"]] as [string, React.ReactNode][])
+      ? ([
+          [
+            "Custo",
+            product.defaultVariant.costPrice !== null ? <MoneyValue value={product.defaultVariant.costPrice} /> : "—",
+          ],
+        ] as [string, React.ReactNode][])
       : []),
     ...(simple
       ? ([
@@ -80,7 +80,9 @@ export async function OverviewTab({ context, product }: { context: TenantContext
       <Card>
         <CardHeader>
           <CardTitle>Informações</CardTitle>
-          {product.description && <CardDescription className="whitespace-pre-line">{product.description}</CardDescription>}
+          {product.description && (
+            <CardDescription className="whitespace-pre-line">{product.description}</CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -100,14 +102,17 @@ export async function OverviewTab({ context, product }: { context: TenantContext
             <CardTitle>Estoque</CardTitle>
             <CardAction>
               <StockStatusBadge
-                status={totals.available <= 0 ? "OUT" : product.variants.some((v) => v.stockStatus === "LOW") ? "LOW" : "OK"}
+                status={
+                  totals.available <= 0 ? "OUT" : product.variants.some((v) => v.stockStatus === "LOW") ? "LOW" : "OK"
+                }
               />
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <p className="text-metric tabular">{formatQuantity(totals.available, product.unit)}</p>
             <p className="text-small text-muted-foreground">
-              disponíveis · {formatQuantity(totals.physical, product.unit)} físico · {formatQuantity(totals.reserved, product.unit)} reservado
+              disponíveis · {formatQuantity(totals.physical, product.unit)} físico ·{" "}
+              {formatQuantity(totals.reserved, product.unit)} reservado
             </p>
             {context.can("inventory.read") && (
               <Button variant="outline" size="sm" asChild className="self-start">

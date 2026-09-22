@@ -78,7 +78,12 @@ describe("schema guards", () => {
         'tenant_users', 'platform_admins', 'audit_logs', 'platform_audit_logs', 'roles', 'permissions',
         'role_permissions', 'allergens', 'nutrients', 'products', 'product_variants', 'product_variant_costs',
         'product_attribute_values', 'product_allergens', 'product_nutrition', 'product_nutrition_values',
-        'stock_levels', 'stock_lots', 'stock_movements', 'stock_movement_lots'
+        'stock_levels', 'stock_lots', 'stock_movements', 'stock_movement_lots',
+        'crm_opportunities', 'crm_opportunity_products', 'timeline_events',
+        'reservations', 'reservation_items', 'sales', 'sale_items', 'payments',
+        'whatsapp_accounts', 'conversations', 'messages',
+        'tenant_ai_settings', 'ai_conversation_states', 'ai_usage_events',
+        'tenant_module_flags', 'tenant_user_permission_overrides'
       ]) as t(table_name)
       cross join unnest(array['INSERT', 'UPDATE', 'DELETE']) as priv(privilege)
       where has_table_privilege('authenticated', ('public.' || t.table_name)::regclass, priv.privilege)

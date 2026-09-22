@@ -6,6 +6,7 @@ import { FilterBar, FilterSelect, SearchInput } from "@/components/data/filter-c
 import { StatusBadge } from "@/components/data/status-badge";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader } from "@/components/layout/page";
+import { CreateTenantDialog } from "@/domains/admin/components/create-tenant-dialog";
 import { TENANT_STATUS_LABEL } from "@/domains/admin/labels";
 import { listAdminTenants, tenantStatusSchema, type AdminTenantRow } from "@/domains/admin/queries";
 import { TENANT_SEGMENTS } from "@/domains/tenants/schemas";
@@ -81,7 +82,7 @@ export default async function AdminTenantsPage({ searchParams }: PageProps<"/adm
 
   return (
     <PageContainer>
-      <PageHeader title="Empresas" description="Todas as empresas da plataforma." />
+      <PageHeader title="Empresas" description="Todas as empresas da plataforma." actions={<CreateTenantDialog />} />
       <DataTable
         caption="Empresas da plataforma"
         columns={columns}

@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, safeFormValues, validationError } from "@/lib/validation";
 import { ACTIVE_TENANT_COOKIE, ACTIVE_TENANT_COOKIE_OPTIONS, requireTenantContext } from "./context";
 import {
+  businessTypeForSegment,
   createTenantSchema,
   tenantIdSchema,
   updateTenantSchema,
@@ -31,6 +32,7 @@ export async function createTenantAction(
   const { data: tenantId, error } = await supabase.rpc("create_tenant", {
     p_name: parsed.data.name,
     p_segment: parsed.data.segment,
+    p_business_type: businessTypeForSegment(parsed.data.segment),
   });
 
   if (error || !tenantId) {

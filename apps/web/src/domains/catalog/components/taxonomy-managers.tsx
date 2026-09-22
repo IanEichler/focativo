@@ -165,7 +165,10 @@ function CategoryForm({
         <SelectField
           label="Categoria pai"
           name="parentId"
-          options={[{ value: NONE, label: "Nenhuma (categoria principal)" }, ...parents.map((item) => ({ value: item.id, label: item.path }))]}
+          options={[
+            { value: NONE, label: "Nenhuma (categoria principal)" },
+            ...parents.map((item) => ({ value: item.id, label: item.path })),
+          ]}
           defaultValue={values?.parentId ?? category?.parentId ?? NONE}
           error={fieldError(state, "parentId")}
         />
@@ -175,7 +178,11 @@ function CategoryForm({
           maxLength={500}
           defaultValue={values?.description ?? category?.description ?? undefined}
         />
-        <SwitchField label="Ativa" name="isActive" defaultChecked={checkedValue(values, "isActive", category?.isActive ?? true)} />
+        <SwitchField
+          label="Ativa"
+          name="isActive"
+          defaultChecked={checkedValue(values, "isActive", category?.isActive ?? true)}
+        />
       </SheetFormLayout>
     </form>
   );
@@ -186,13 +193,23 @@ export function CategoryManager({ categories, canWrite }: { categories: Category
     <div className="flex flex-col gap-3">
       {canWrite && (
         <div className="flex justify-end">
-          <FormSheet title="Nova categoria" trigger={<Button><Plus /> Nova categoria</Button>}>
+          <FormSheet
+            title="Nova categoria"
+            trigger={
+              <Button>
+                <Plus /> Nova categoria
+              </Button>
+            }
+          >
             {(close) => <CategoryForm categories={categories} onDone={close} />}
           </FormSheet>
         </div>
       )}
       {categories.length === 0 ? (
-        <EmptyState title="Nenhuma categoria" description="Organize o catálogo em até 3 níveis (ex.: Suplementos › Proteínas)." />
+        <EmptyState
+          title="Nenhuma categoria"
+          description="Organize o catálogo em até 3 níveis (ex.: Suplementos › Proteínas)."
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <Table>
@@ -201,7 +218,11 @@ export function CategoryManager({ categories, canWrite }: { categories: Category
                 <TableHead>Categoria</TableHead>
                 <TableHead className="text-right">Produtos</TableHead>
                 <TableHead>Status</TableHead>
-                {canWrite && <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>}
+                {canWrite && (
+                  <TableHead className="w-12">
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -214,7 +235,9 @@ export function CategoryManager({ categories, canWrite }: { categories: Category
                     </span>
                   </TableCell>
                   <TableCell className="text-right tabular">{category.productCount}</TableCell>
-                  <TableCell><ActiveBadge active={category.isActive} /></TableCell>
+                  <TableCell>
+                    <ActiveBadge active={category.isActive} />
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <RowActions
@@ -253,8 +276,19 @@ function BrandForm({ brand, onDone }: { brand?: Brand; onDone: () => void }) {
       {brand && <input type="hidden" name="id" value={brand.id} />}
       <SheetFormLayout footer={<SheetFooter onCancel={onDone} label="Salvar" />}>
         <FormMessage state={state.status === "error" ? state : IDLE} />
-        <TextField label="Nome" name="name" required autoFocus defaultValue={values?.name ?? brand?.name} error={fieldError(state, "name")} />
-        <SwitchField label="Ativa" name="isActive" defaultChecked={checkedValue(values, "isActive", brand?.isActive ?? true)} />
+        <TextField
+          label="Nome"
+          name="name"
+          required
+          autoFocus
+          defaultValue={values?.name ?? brand?.name}
+          error={fieldError(state, "name")}
+        />
+        <SwitchField
+          label="Ativa"
+          name="isActive"
+          defaultChecked={checkedValue(values, "isActive", brand?.isActive ?? true)}
+        />
       </SheetFormLayout>
     </form>
   );
@@ -265,7 +299,14 @@ export function BrandManager({ brands, canWrite }: { brands: Brand[]; canWrite: 
     <div className="flex flex-col gap-3">
       {canWrite && (
         <div className="flex justify-end">
-          <FormSheet title="Nova marca" trigger={<Button><Plus /> Nova marca</Button>}>
+          <FormSheet
+            title="Nova marca"
+            trigger={
+              <Button>
+                <Plus /> Nova marca
+              </Button>
+            }
+          >
             {(close) => <BrandForm onDone={close} />}
           </FormSheet>
         </div>
@@ -280,7 +321,11 @@ export function BrandManager({ brands, canWrite }: { brands: Brand[]; canWrite: 
                 <TableHead>Marca</TableHead>
                 <TableHead className="text-right">Produtos</TableHead>
                 <TableHead>Status</TableHead>
-                {canWrite && <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>}
+                {canWrite && (
+                  <TableHead className="w-12">
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -288,7 +333,9 @@ export function BrandManager({ brands, canWrite }: { brands: Brand[]; canWrite: 
                 <TableRow key={brand.id}>
                   <TableCell className="font-medium">{brand.name}</TableCell>
                   <TableCell className="text-right tabular">{brand.productCount}</TableCell>
-                  <TableCell><ActiveBadge active={brand.isActive} /></TableCell>
+                  <TableCell>
+                    <ActiveBadge active={brand.isActive} />
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <RowActions
@@ -322,15 +369,28 @@ type Supplier = TaxonomyData["suppliers"][number];
 
 function SupplierForm({ supplier, onDone }: { supplier?: Supplier; onDone: () => void }) {
   const { state, formAction, values } = useSheetForm(saveSupplierAction, onDone);
-  const pick = (field: keyof Supplier & string, fallback: string | null | undefined) => values?.[field] ?? fallback ?? undefined;
+  const pick = (field: keyof Supplier & string, fallback: string | null | undefined) =>
+    values?.[field] ?? fallback ?? undefined;
   return (
     <form action={formAction} className="flex min-h-0 flex-1 flex-col" noValidate>
       {supplier && <input type="hidden" name="id" value={supplier.id} />}
       <SheetFormLayout footer={<SheetFooter onCancel={onDone} label="Salvar" />}>
         <FormMessage state={state.status === "error" ? state : IDLE} />
-        <TextField label="Nome" name="name" required autoFocus defaultValue={pick("name", supplier?.name)} error={fieldError(state, "name")} />
+        <TextField
+          label="Nome"
+          name="name"
+          required
+          autoFocus
+          defaultValue={pick("name", supplier?.name)}
+          error={fieldError(state, "name")}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label="Razão social" name="legalName" defaultValue={pick("legalName", supplier?.legalName)} error={fieldError(state, "legalName")} />
+          <TextField
+            label="Razão social"
+            name="legalName"
+            defaultValue={pick("legalName", supplier?.legalName)}
+            error={fieldError(state, "legalName")}
+          />
           <TextField
             label="CPF ou CNPJ"
             name="document"
@@ -338,12 +398,41 @@ function SupplierForm({ supplier, onDone }: { supplier?: Supplier; onDone: () =>
             defaultValue={pick("document", supplier?.document ? formatCpfCnpj(supplier.document) : null)}
             error={fieldError(state, "document")}
           />
-          <TextField label="Contato" name="contactName" defaultValue={pick("contactName", supplier?.contactName)} error={fieldError(state, "contactName")} />
-          <TextField label="Telefone" name="phone" type="tel" inputMode="tel" defaultValue={pick("phone", supplier?.phone)} error={fieldError(state, "phone")} />
-          <TextField label="E-mail" name="email" type="email" inputMode="email" defaultValue={pick("email", supplier?.email)} error={fieldError(state, "email")} containerClassName="sm:col-span-2" />
+          <TextField
+            label="Contato"
+            name="contactName"
+            defaultValue={pick("contactName", supplier?.contactName)}
+            error={fieldError(state, "contactName")}
+          />
+          <TextField
+            label="Telefone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            defaultValue={pick("phone", supplier?.phone)}
+            error={fieldError(state, "phone")}
+          />
+          <TextField
+            label="E-mail"
+            name="email"
+            type="email"
+            inputMode="email"
+            defaultValue={pick("email", supplier?.email)}
+            error={fieldError(state, "email")}
+            containerClassName="sm:col-span-2"
+          />
         </div>
-        <TextareaField label="Observações" name="notes" maxLength={1000} defaultValue={pick("notes", supplier?.notes)} />
-        <SwitchField label="Ativo" name="isActive" defaultChecked={checkedValue(values, "isActive", supplier?.isActive ?? true)} />
+        <TextareaField
+          label="Observações"
+          name="notes"
+          maxLength={1000}
+          defaultValue={pick("notes", supplier?.notes)}
+        />
+        <SwitchField
+          label="Ativo"
+          name="isActive"
+          defaultChecked={checkedValue(values, "isActive", supplier?.isActive ?? true)}
+        />
       </SheetFormLayout>
     </form>
   );
@@ -354,13 +443,23 @@ export function SupplierManager({ suppliers, canWrite }: { suppliers: Supplier[]
     <div className="flex flex-col gap-3">
       {canWrite && (
         <div className="flex justify-end">
-          <FormSheet title="Novo fornecedor" trigger={<Button><Plus /> Novo fornecedor</Button>}>
+          <FormSheet
+            title="Novo fornecedor"
+            trigger={
+              <Button>
+                <Plus /> Novo fornecedor
+              </Button>
+            }
+          >
             {(close) => <SupplierForm onDone={close} />}
           </FormSheet>
         </div>
       )}
       {suppliers.length === 0 ? (
-        <EmptyState title="Nenhum fornecedor" description="Fornecedores são vinculados a produtos e aos lotes recebidos." />
+        <EmptyState
+          title="Nenhum fornecedor"
+          description="Fornecedores são vinculados a produtos e aos lotes recebidos."
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <Table>
@@ -370,7 +469,11 @@ export function SupplierManager({ suppliers, canWrite }: { suppliers: Supplier[]
                 <TableHead className="hidden md:table-cell">Contato</TableHead>
                 <TableHead className="text-right">Produtos</TableHead>
                 <TableHead>Status</TableHead>
-                {canWrite && <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>}
+                {canWrite && (
+                  <TableHead className="w-12">
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -379,7 +482,11 @@ export function SupplierManager({ suppliers, canWrite }: { suppliers: Supplier[]
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium">{supplier.name}</span>
-                      {supplier.document && <span className="text-small text-muted-foreground tabular">{formatCpfCnpj(supplier.document)}</span>}
+                      {supplier.document && (
+                        <span className="text-small text-muted-foreground tabular">
+                          {formatCpfCnpj(supplier.document)}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
@@ -389,7 +496,9 @@ export function SupplierManager({ suppliers, canWrite }: { suppliers: Supplier[]
                     </div>
                   </TableCell>
                   <TableCell className="text-right tabular">{supplier.productCount}</TableCell>
-                  <TableCell><ActiveBadge active={supplier.isActive} /></TableCell>
+                  <TableCell>
+                    <ActiveBadge active={supplier.isActive} />
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <RowActions
@@ -469,7 +578,10 @@ function AttributeForm({ attribute, onDone }: { attribute?: Attribute; onDone: (
             label="Tipo de valor"
             name="dataType"
             required
-            options={ATTRIBUTE_TYPES.map((item) => ({ value: item.value, label: `${item.label} — ${item.description}` }))}
+            options={ATTRIBUTE_TYPES.map((item) => ({
+              value: item.value,
+              label: `${item.label} — ${item.description}`,
+            }))}
             defaultValue={dataType}
             onValueChange={setDataType}
             error={fieldError(state, "dataType")}
@@ -499,8 +611,18 @@ function AttributeForm({ attribute, onDone }: { attribute?: Attribute; onDone: (
           defaultValue={values?.description ?? attribute?.description ?? undefined}
         />
         <div className="grid gap-2">
-          <SwitchField label="Pesquisável" name="isSearchable" defaultChecked={checkedValue(values, "isSearchable", attribute?.isSearchable ?? true)} description="Considerada na busca de produtos." />
-          <SwitchField label="Filtrável" name="isFilterable" defaultChecked={checkedValue(values, "isFilterable", attribute?.isFilterable ?? false)} description="Pode ser usada como filtro." />
+          <SwitchField
+            label="Pesquisável"
+            name="isSearchable"
+            defaultChecked={checkedValue(values, "isSearchable", attribute?.isSearchable ?? true)}
+            description="Considerada na busca de produtos."
+          />
+          <SwitchField
+            label="Filtrável"
+            name="isFilterable"
+            defaultChecked={checkedValue(values, "isFilterable", attribute?.isFilterable ?? false)}
+            description="Pode ser usada como filtro."
+          />
           <SwitchField
             label="Usada na compatibilidade"
             name="isCompatibilityEnabled"
@@ -515,7 +637,11 @@ function AttributeForm({ attribute, onDone }: { attribute?: Attribute; onDone: (
               description="Ex.: sabor, tamanho."
             />
           )}
-          <SwitchField label="Ativa" name="isActive" defaultChecked={checkedValue(values, "isActive", attribute?.isActive ?? true)} />
+          <SwitchField
+            label="Ativa"
+            name="isActive"
+            defaultChecked={checkedValue(values, "isActive", attribute?.isActive ?? true)}
+          />
         </div>
       </SheetFormLayout>
     </form>
@@ -545,7 +671,13 @@ function OptionsEditor({ attribute, onDone }: { attribute: Attribute; onDone: ()
     >
       <form key={formKey} action={formAction} className="flex items-end gap-2" noValidate>
         <input type="hidden" name="attributeId" value={attribute.id} />
-        <TextField label="Nova opção" name="label" placeholder="Ex.: Chocolate" containerClassName="flex-1" error={fieldError(state, "label")} />
+        <TextField
+          label="Nova opção"
+          name="label"
+          placeholder="Ex.: Chocolate"
+          containerClassName="flex-1"
+          error={fieldError(state, "label")}
+        />
         <SubmitButton pendingLabel="…">Adicionar</SubmitButton>
       </form>
       <FormMessage state={state.status === "error" ? state : IDLE} />
@@ -587,13 +719,23 @@ export function AttributeManager({ attributes, canWrite }: { attributes: Attribu
       </p>
       {canWrite && (
         <div className="flex justify-end">
-          <FormSheet title="Nova característica" trigger={<Button><Plus /> Nova característica</Button>}>
+          <FormSheet
+            title="Nova característica"
+            trigger={
+              <Button>
+                <Plus /> Nova característica
+              </Button>
+            }
+          >
             {(close) => <AttributeForm onDone={close} />}
           </FormSheet>
         </div>
       )}
       {attributes.length === 0 ? (
-        <EmptyState title="Nenhuma característica" description="Ex.: sabor (lista), peso líquido (número), vegano (sim/não)." />
+        <EmptyState
+          title="Nenhuma característica"
+          description="Ex.: sabor (lista), peso líquido (número), vegano (sim/não)."
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <Table>
@@ -604,7 +746,11 @@ export function AttributeManager({ attributes, canWrite }: { attributes: Attribu
                 <TableHead className="hidden lg:table-cell">Uso</TableHead>
                 <TableHead className="text-right">Produtos</TableHead>
                 <TableHead>Status</TableHead>
-                {canWrite && <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>}
+                {canWrite && (
+                  <TableHead className="w-12">
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -631,7 +777,9 @@ export function AttributeManager({ attributes, canWrite }: { attributes: Attribu
                     </div>
                   </TableCell>
                   <TableCell className="text-right tabular">{attribute.usageCount}</TableCell>
-                  <TableCell><ActiveBadge active={attribute.isActive} /></TableCell>
+                  <TableCell>
+                    <ActiveBadge active={attribute.isActive} />
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <RowActions
@@ -667,7 +815,10 @@ export function AttributeManager({ attributes, canWrite }: { attributes: Attribu
       >
         {(close) =>
           optionsFor ? (
-            <OptionsEditor attribute={attributes.find((item) => item.id === optionsFor.id) ?? optionsFor} onDone={close} />
+            <OptionsEditor
+              attribute={attributes.find((item) => item.id === optionsFor.id) ?? optionsFor}
+              onDone={close}
+            />
           ) : null
         }
       </FormSheet>

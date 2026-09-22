@@ -110,7 +110,13 @@ export function MovementsTable({
       cell: (movement) => <span className="text-small tabular">{formatDateTime(movement.createdAt)}</span>,
     },
     ...(showProduct
-      ? ([{ id: "product", header: "Produto", cell: (movement) => <span className="font-medium">{productLabel(movement)}</span> }] as DataTableColumn<MovementRow>[])
+      ? ([
+          {
+            id: "product",
+            header: "Produto",
+            cell: (movement) => <span className="font-medium">{productLabel(movement)}</span>,
+          },
+        ] as DataTableColumn<MovementRow>[])
       : []),
     {
       id: "type",
@@ -158,7 +164,10 @@ export function MovementsTable({
           {movement.reason && <span>{movement.reason}</span>}
           {movement.lots.length > 0 && (
             <span className="text-muted-foreground">
-              Lotes: {movement.lots.map((lot) => `${lot.code} (${lot.delta > 0 ? "+" : ""}${formatQuantity(lot.delta)})`).join(", ")}
+              Lotes:{" "}
+              {movement.lots
+                .map((lot) => `${lot.code} (${lot.delta > 0 ? "+" : ""}${formatQuantity(lot.delta)})`)
+                .join(", ")}
             </span>
           )}
           {showCosts && movement.unitCost !== null && (
@@ -175,7 +184,8 @@ export function MovementsTable({
       hideBelow: "md",
       cell: (movement) => (
         <span className="text-small text-muted-foreground">
-          {movement.actorName ?? (movement.actorType === "SYSTEM" ? "Sistema" : movement.actorType === "AI" ? "IA" : "—")}
+          {movement.actorName ??
+            (movement.actorType === "SYSTEM" ? "Sistema" : movement.actorType === "AI" ? "IA" : "—")}
         </span>
       ),
     },

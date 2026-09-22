@@ -37,6 +37,15 @@ const PALETTE = {
 
 const BRAND = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
 
+const NEUTRALS = [
+  { name: "Black", token: "neutral-black", hex: "#000000" },
+  { name: "Graphite", token: "neutral-graphite", hex: "#282828" },
+  { name: "Slate", token: "neutral-slate", hex: "#666666" },
+  { name: "Silver", token: "neutral-silver", hex: "#ADADAD" },
+  { name: "Mist", token: "neutral-mist", hex: "#E0E0E0" },
+  { name: "White", token: "neutral-white", hex: "#FFFFFF" },
+];
+
 const TYPE_SCALE = [
   { className: "text-title", label: "Page title", spec: "28 / 600" },
   { className: "text-section", label: "Section", spec: "20 / 600" },
@@ -149,7 +158,31 @@ export default async function DesignSystemPage() {
             </div>
           ))}
           <div className="flex flex-col gap-2">
-            <h3 className="text-small font-medium text-muted-foreground">Marca</h3>
+            <h3 className="text-small font-medium text-muted-foreground">Neutros</h3>
+            <p className="text-caption text-muted-foreground">
+              Paleta oficial da marca — monocromática, sem matiz. Toda a UI (superfícies, texto, bordas e a cor
+              primária) deriva destes 6 tons, estendidos com as cores funcionais de feedback abaixo.
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {NEUTRALS.map((neutral, index) => (
+                <div
+                  key={neutral.token}
+                  className="flex h-28 flex-col justify-end rounded-xl border border-border p-3"
+                  style={{ background: `var(--color-${neutral.token})` }}
+                >
+                  <span className={`font-medium ${index < 3 ? "text-white" : "text-neutral-black"}`}>
+                    {neutral.name}
+                  </span>
+                  <span className={`font-mono text-caption ${index < 3 ? "text-white/60" : "text-neutral-black/55"}`}>
+                    {neutral.hex}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-small font-medium text-muted-foreground">Marca (rampa)</h3>
             <div className="grid grid-cols-5 overflow-hidden rounded-xl border border-border sm:grid-cols-10">
               {BRAND.map((step) => (
                 <div
@@ -157,7 +190,7 @@ export default async function DesignSystemPage() {
                   className="flex h-16 items-end p-2"
                   style={{ background: `var(--color-brand-${step})` }}
                 >
-                  <span className={`font-mono text-caption ${Number(step) >= 500 ? "text-white" : "text-brand-900"}`}>
+                  <span className={`font-mono text-caption ${Number(step) >= 600 ? "text-white" : "text-brand-900"}`}>
                     {step}
                   </span>
                 </div>

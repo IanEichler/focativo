@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
+
+/** Cabeçalho com logo + card centralizada — usado pelas telas de auth simples (cadastro, recuperação/redefinição de senha). O login tem layout próprio (split-screen). */
+export function AuthPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="flex h-16 items-center px-6">
+        <Link href="/login" className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Logo />
+        </Link>
+      </header>
+      <main className="flex flex-1 items-start justify-center px-4 pt-8 pb-16 sm:items-center sm:pt-0">
+        <div className="w-full max-w-[400px]">{children}</div>
+      </main>
+    </div>
+  );
+}

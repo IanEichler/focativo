@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/domains/auth/session";
 import { AuthCard } from "@/domains/auth/components/auth-card";
+import { AuthPageShell } from "@/domains/auth/components/auth-page-shell";
 import { ResetPasswordForm } from "@/domains/auth/components/auth-forms";
 import { ROUTES } from "@/lib/routes";
 
@@ -10,11 +11,13 @@ export default async function ResetPasswordPage() {
   const user = await requireUser(ROUTES.resetPassword);
 
   return (
-    <AuthCard
-      title="Definir nova senha"
-      description={user.email ? `Conta: ${user.email}` : "Escolha uma senha segura para sua conta."}
-    >
-      <ResetPasswordForm />
-    </AuthCard>
+    <AuthPageShell>
+      <AuthCard
+        title="Definir nova senha"
+        description={user.email ? `Conta: ${user.email}` : "Escolha uma senha segura para sua conta."}
+      >
+        <ResetPasswordForm />
+      </AuthCard>
+    </AuthPageShell>
   );
 }

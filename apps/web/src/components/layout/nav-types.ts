@@ -1,3 +1,4 @@
+import type { ModuleCode } from "@/lib/modules";
 import type { Permission } from "@/lib/permissions";
 
 export type NavIconName =
@@ -8,6 +9,7 @@ export type NavIconName =
   | "package"
   | "boxes"
   | "calendar-clock"
+  | "calendar-days"
   | "receipt"
   | "wallet"
   | "chart"
@@ -29,6 +31,8 @@ export interface NavItem {
   icon: NavIconName;
   /** Permissão exigida para exibir o item (a página revalida no servidor). */
   permission?: Permission;
+  /** Recurso opcional de plano que o admin master pode desligar por tenant (a página revalida no servidor). */
+  module?: ModuleCode;
   /** Módulos ainda não implementados aparecem desabilitados — nunca como link morto. */
   availability?: "available" | "soon";
 }

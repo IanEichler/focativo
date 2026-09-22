@@ -2,7 +2,13 @@ import { z } from "zod";
 import { optionalUuid, optionalDecimal, requiredDecimal } from "@/lib/decimal";
 
 const idempotencyKey = z.string().min(8, "Operação inválida. Recarregue a página.").max(128);
-const quantity = requiredDecimal({ label: "Quantidade", min: 0, exclusiveMin: true, max: 99_999_999_999.999, scale: 3 });
+const quantity = requiredDecimal({
+  label: "Quantidade",
+  min: 0,
+  exclusiveMin: true,
+  max: 99_999_999_999.999,
+  scale: 3,
+});
 const reason = z.string().trim().min(3, "Descreva o motivo (mín. 3 caracteres).").max(500, "Motivo muito longo.");
 const optionalReason = z
   .string()

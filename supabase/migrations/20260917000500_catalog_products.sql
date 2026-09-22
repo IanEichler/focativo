@@ -601,6 +601,7 @@ declare
   v_variant_id uuid;
   v_effective_price numeric := coalesce(p_sale_price, 0);
   v_constraint text;
+  v_old_default_id uuid;
 begin
   v_product := private.load_product_for_write(p_product_id);
   if v_product.archived_at is not null then
@@ -625,6 +626,28 @@ begin
 
       if not v_product.has_variants then
         update public.products set has_variants = true where id = v_product.id;
+
+        -- Transição produto simples → com variações: a variante "Padrão" gerada
+        -- automaticamente perde o sentido se nunca foi customizada nem vendida.
+        -- Arquiva só nesse caso estreito (nome/SKU/barcode intocados e sem
+        -- estoque); se o lojista já a configurou ou já tem estoque nela, a
+        -- decisão de arquivar continua manual (catalog_archive_variant).
+        select v.id into v_old_default_id
+        from public.product_variants v
+        join public.stock_levels s on s.variant_id = v.id
+        where v.product_id = v_product.id
+          and v.is_default
+          and v.id <> v_variant_id
+          and v.archived_at is null
+          and v.name = 'Padrão'
+          and v.sku is null
+          and v.barcode is null
+          and s.physical_quantity = 0
+          and s.reserved_quantity = 0;
+
+        if v_old_default_id is not null then
+          perform public.catalog_archive_variant(v_old_default_id);
+        end if;
       end if;
 
       perform private.log_audit(v_product.tenant_id, 'product_variant.created', 'product_variant', v_variant_id::text,

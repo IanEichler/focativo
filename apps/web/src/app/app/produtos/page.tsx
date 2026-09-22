@@ -33,7 +33,12 @@ const SORT_OPTIONS: { value: ProductSort; label: string }[] = [
 ];
 
 function PriceCell({ product }: { product: ProductListItem }) {
-  if (product.hasVariants && product.minPrice !== null && product.maxPrice !== null && product.minPrice !== product.maxPrice) {
+  if (
+    product.hasVariants &&
+    product.minPrice !== null &&
+    product.maxPrice !== null &&
+    product.minPrice !== product.maxPrice
+  ) {
     return (
       <span>
         <MoneyValue value={product.minPrice} /> – <MoneyValue value={product.maxPrice} />
@@ -53,7 +58,7 @@ function PriceCell({ product }: { product: ProductListItem }) {
 
 export default async function ProductsPage({ searchParams }: PageProps<"/app/produtos">) {
   const context = await requireTenantContext();
-  if (!context.can("catalog.read")) {
+  if (!context.can("catalog.read") || !context.hasModule("catalog")) {
     return (
       <PageContainer>
         <PageHeader title="Produtos" />

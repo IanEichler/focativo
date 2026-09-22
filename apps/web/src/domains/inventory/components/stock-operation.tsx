@@ -16,7 +16,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { adjustStockAction, registerEntryAction, registerLossAction, searchVariantsAction, variantLotsAction } from "../actions";
+import {
+  adjustStockAction,
+  registerEntryAction,
+  registerLossAction,
+  searchVariantsAction,
+  variantLotsAction,
+} from "../actions";
 import { formatQuantity } from "@/lib/format";
 import { EXPIRY_STATUS } from "../labels";
 import type { VariantOption } from "../queries";
@@ -29,8 +35,16 @@ type Lot = Awaited<ReturnType<typeof variantLotsAction>>[number];
 
 const TITLES: Record<StockOperation, { title: string; description: string; submit: string }> = {
   entry: { title: "Registrar entrada", description: "Recebimento de mercadoria.", submit: "Registrar entrada" },
-  loss: { title: "Registrar perda", description: "Avaria, vencimento, furto ou consumo interno.", submit: "Registrar perda" },
-  adjust: { title: "Ajustar estoque", description: "Informe a quantidade contada fisicamente.", submit: "Registrar ajuste" },
+  loss: {
+    title: "Registrar perda",
+    description: "Avaria, vencimento, furto ou consumo interno.",
+    submit: "Registrar perda",
+  },
+  adjust: {
+    title: "Ajustar estoque",
+    description: "Informe a quantidade contada fisicamente.",
+    submit: "Registrar ajuste",
+  },
 };
 
 // -----------------------------------------------------------------------------
@@ -62,7 +76,10 @@ export function VariantPicker({
   return (
     <div className="flex flex-col gap-1.5">
       <Label className="text-body font-medium">
-        Produto<span aria-hidden="true" className="text-danger">*</span>
+        Produto
+        <span aria-hidden="true" className="text-danger">
+          *
+        </span>
       </Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -107,7 +124,9 @@ export function VariantPicker({
                       setOpen(false);
                     }}
                   >
-                    <Check className={cn("size-4", value?.variantId === option.variantId ? "opacity-100" : "opacity-0")} />
+                    <Check
+                      className={cn("size-4", value?.variantId === option.variantId ? "opacity-100" : "opacity-0")}
+                    />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate">{option.label}</span>
                       <span className="text-caption text-muted-foreground">
@@ -140,7 +159,15 @@ interface StockOperationSheetProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function StockOperationSheet({ mode, variant, suppliers = [], canSeeCosts, trigger, open, onOpenChange }: StockOperationSheetProps) {
+export function StockOperationSheet({
+  mode,
+  variant,
+  suppliers = [],
+  canSeeCosts,
+  trigger,
+  open,
+  onOpenChange,
+}: StockOperationSheetProps) {
   return (
     <FormSheet
       trigger={trigger}
@@ -150,7 +177,13 @@ export function StockOperationSheet({ mode, variant, suppliers = [], canSeeCosts
       description={variant ? variant.label : TITLES[mode].description}
     >
       {(close) => (
-        <StockOperationForm mode={mode} initialVariant={variant} suppliers={suppliers} canSeeCosts={canSeeCosts} onDone={close} />
+        <StockOperationForm
+          mode={mode}
+          initialVariant={variant}
+          suppliers={suppliers}
+          canSeeCosts={canSeeCosts}
+          onDone={close}
+        />
       )}
     </FormSheet>
   );
@@ -201,7 +234,9 @@ function StockOperationForm({
   const selectedLot = lots.find((lot) => lot.lotId === lotChoice);
   const lotLabel = (lot: Lot) =>
     `${lot.lotCode} · ${formatQuantity(lot.quantity, variant?.unit)}${lot.expiresOn ? ` · vence ${formatDate(lot.expiresOn)}` : ""}${
-      lot.expiryStatus === "EXPIRED" || lot.expiryStatus === "EXPIRING" ? ` (${EXPIRY_STATUS[lot.expiryStatus].label.toLowerCase()})` : ""
+      lot.expiryStatus === "EXPIRED" || lot.expiryStatus === "EXPIRING"
+        ? ` (${EXPIRY_STATUS[lot.expiryStatus].label.toLowerCase()})`
+        : ""
     }`;
 
   return (
@@ -224,7 +259,8 @@ function StockOperationForm({
 
         {initialVariant ? (
           <div className="rounded-lg bg-secondary px-3 py-2.5 text-body">
-            Disponível agora: <strong className="tabular">{formatQuantity(initialVariant.available, initialVariant.unit)}</strong>
+            Disponível agora:{" "}
+            <strong className="tabular">{formatQuantity(initialVariant.available, initialVariant.unit)}</strong>
           </div>
         ) : (
           <VariantPicker value={variant} onChange={setVariant} error={error("variantId")} />
@@ -233,9 +269,23 @@ function StockOperationForm({
         {mode === "entry" && (
           <>
             <div className="grid gap-4 sm:grid-cols-2">
-              <DecimalField label="Quantidade" name="quantity" required placeholder="0" defaultValue={values?.quantity} error={error("quantity")} />
+              <DecimalField
+                label="Quantidade"
+                name="quantity"
+                required
+                placeholder="0"
+                defaultValue={values?.quantity}
+                error={error("quantity")}
+              />
               {canSeeCosts && (
-                <DecimalField label="Custo unitário" name="unitCost" prefix="R$" description="Opcional" defaultValue={values?.unitCost} error={error("unitCost")} />
+                <DecimalField
+                  label="Custo unitário"
+                  name="unitCost"
+                  prefix="R$"
+                  description="Opcional"
+                  defaultValue={values?.unitCost}
+                  error={error("unitCost")}
+                />
               )}
             </div>
             {variant?.trackLots && (
@@ -256,29 +306,61 @@ function StockOperationForm({
                       <option key={lot.lotId} value={lot.lotCode} />
                     ))}
                   </datalist>
-                  <TextField label="Validade" name="expiresOn" type="date" defaultValue={values?.expiresOn} error={error("expiresOn")} />
-                  <TextField label="Fabricação" name="manufacturedOn" type="date" defaultValue={values?.manufacturedOn} error={error("manufacturedOn")} />
+                  <TextField
+                    label="Validade"
+                    name="expiresOn"
+                    type="date"
+                    defaultValue={values?.expiresOn}
+                    error={error("expiresOn")}
+                  />
+                  <TextField
+                    label="Fabricação"
+                    name="manufacturedOn"
+                    type="date"
+                    defaultValue={values?.manufacturedOn}
+                    error={error("manufacturedOn")}
+                  />
                   <SelectField
                     label="Fornecedor"
                     name="supplierId"
-                    options={[{ value: NONE, label: "Não informado" }, ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name }))]}
+                    options={[
+                      { value: NONE, label: "Não informado" },
+                      ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
+                    ]}
                     defaultValue={values?.supplierId ?? NONE}
                   />
                 </div>
               </fieldset>
             )}
-            <TextareaField label="Observação" name="reason" rows={2} maxLength={500} placeholder="Ex.: NF 12345" defaultValue={values?.reason} />
+            <TextareaField
+              label="Observação"
+              name="reason"
+              rows={2}
+              maxLength={500}
+              placeholder="Ex.: NF 12345"
+              defaultValue={values?.reason}
+            />
           </>
         )}
 
         {mode === "loss" && (
           <>
-            <DecimalField label="Quantidade perdida" name="quantity" required placeholder="0" defaultValue={values?.quantity} error={error("quantity")} />
+            <DecimalField
+              label="Quantidade perdida"
+              name="quantity"
+              required
+              placeholder="0"
+              defaultValue={values?.quantity}
+              error={error("quantity")}
+            />
             {variant?.trackLots && (
               <SelectField
                 label="Lote"
                 name="lotId"
-                options={[{ value: NONE, label: "Automático (vence primeiro, sai primeiro)" }, ...lots.filter((lot) => lot.quantity > 0).map((lot) => ({ value: lot.lotId, label: lotLabel(lot) }))]}
+                options={[
+                  { value: NONE, label: "Automático (vence primeiro, sai primeiro)" },
+                  ...lots.filter((lot) => lot.quantity > 0).map((lot) => ({ value: lot.lotId, label: lotLabel(lot) })),
+                ]}
                 defaultValue={values?.lotId ?? NONE}
                 description={lotsLoading ? "Carregando lotes…" : undefined}
               />
@@ -309,15 +391,30 @@ function StockOperationForm({
                     key={lots.map((lot) => lot.lotId).join()}
                     label="Lote contado"
                     name="lotId"
-                    options={[...lots.map((lot) => ({ value: lot.lotId, label: lotLabel(lot) })), { value: NEW_LOT, label: "Lote não cadastrado (novo)" }]}
+                    options={[
+                      ...lots.map((lot) => ({ value: lot.lotId, label: lotLabel(lot) })),
+                      { value: NEW_LOT, label: "Lote não cadastrado (novo)" },
+                    ]}
                     defaultValue={lotChoice}
                     onValueChange={setLotChoice}
                   />
                 )}
                 {lotChoice === NEW_LOT && (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField label="Código do lote" name="lotCode" required defaultValue={values?.lotCode} error={error("lotCode")} />
-                    <TextField label="Validade" name="expiresOn" type="date" defaultValue={values?.expiresOn} error={error("expiresOn")} />
+                    <TextField
+                      label="Código do lote"
+                      name="lotCode"
+                      required
+                      defaultValue={values?.lotCode}
+                      error={error("lotCode")}
+                    />
+                    <TextField
+                      label="Validade"
+                      name="expiresOn"
+                      type="date"
+                      defaultValue={values?.expiresOn}
+                      error={error("expiresOn")}
+                    />
                   </div>
                 )}
               </div>

@@ -1,3 +1,4 @@
+import type { ModuleCode } from "@/lib/modules";
 import type { NavSection } from "./nav-types";
 
 export const APP_NAV: NavSection[] = [
@@ -5,31 +6,57 @@ export const APP_NAV: NavSection[] = [
   {
     title: "Operação",
     items: [
-      { title: "Atendimento", href: "/app/atendimento", icon: "inbox", availability: "soon" },
-      { title: "CRM", href: "/app/crm", icon: "kanban", availability: "soon" },
-      { title: "Clientes", href: "/app/clientes", icon: "users-round", availability: "soon" },
+      {
+        title: "Atendimento",
+        href: "/app/atendimento",
+        icon: "inbox",
+        permission: "whatsapp.read",
+        module: "whatsapp",
+      },
+      { title: "CRM", href: "/app/crm", icon: "kanban", permission: "crm.read", module: "crm" },
+      { title: "Clientes", href: "/app/clientes", icon: "users-round", permission: "customers.read" },
+      { title: "Agenda", href: "/app/agenda", icon: "calendar-days", permission: "agenda.read", module: "agenda" },
     ],
   },
   {
     title: "Comercial",
     items: [
-      { title: "Produtos", href: "/app/produtos", icon: "package", permission: "catalog.read" },
-      { title: "Estoque", href: "/app/estoque", icon: "boxes", permission: "inventory.read" },
-      { title: "Reservas", href: "/app/reservas", icon: "calendar-clock", availability: "soon" },
-      { title: "Vendas", href: "/app/vendas", icon: "receipt", availability: "soon" },
+      { title: "Produtos", href: "/app/produtos", icon: "package", permission: "catalog.read", module: "catalog" },
+      { title: "Estoque", href: "/app/estoque", icon: "boxes", permission: "inventory.read", module: "inventory" },
+      {
+        title: "Reservas",
+        href: "/app/reservas",
+        icon: "calendar-clock",
+        permission: "reservations.read",
+        module: "reservations",
+      },
+      { title: "Vendas", href: "/app/vendas", icon: "receipt", permission: "sales.read", module: "sales" },
     ],
   },
   {
     title: "Gestão",
     items: [
-      { title: "Financeiro", href: "/app/financeiro", icon: "wallet", availability: "soon" },
-      { title: "Relatórios", href: "/app/relatorios", icon: "chart", availability: "soon" },
+      {
+        title: "Financeiro",
+        href: "/app/financeiro",
+        icon: "wallet",
+        permission: "financial.read",
+        module: "financial",
+      },
+      {
+        title: "Relatórios",
+        href: "/app/relatorios",
+        icon: "chart",
+        permission: "financial.read",
+        module: "financial",
+      },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { title: "WhatsApp", href: "/app/whatsapp", icon: "message", availability: "soon" },
+      { title: "WhatsApp", href: "/app/whatsapp", icon: "message", permission: "tenant.update", module: "whatsapp" },
+      { title: "Assistente de IA", href: "/app/ia", icon: "bot", permission: "tenant.update", module: "ai" },
       { title: "Usuários", href: "/app/usuarios", icon: "users", permission: "users.read" },
       { title: "Configurações", href: "/app/configuracoes", icon: "settings" },
     ],
@@ -55,12 +82,18 @@ export const ADMIN_NAV: NavSection[] = [
   },
 ];
 
-/** Remove itens sem permissão e seções vazias (executado no servidor). */
-export function filterNav(sections: NavSection[], permissions: ReadonlySet<string>): NavSection[] {
+/** Remove itens sem permissão, com módulo desligado pelo admin master, e seções vazias (executado no servidor). */
+export function filterNav(
+  sections: NavSection[],
+  permissions: ReadonlySet<string>,
+  hasModule: (module: ModuleCode) => boolean = () => true,
+): NavSection[] {
   return sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => !item.permission || permissions.has(item.permission)),
+      items: section.items.filter(
+        (item) => (!item.permission || permissions.has(item.permission)) && (!item.module || hasModule(item.module)),
+      ),
     }))
     .filter((section) => section.items.length > 0);
 }

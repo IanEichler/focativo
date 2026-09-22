@@ -1,18 +1,33 @@
 import { z } from "zod";
 import { isValidCpfOrCnpj, onlyDigits } from "@/lib/br-documents";
 
+/**
+ * businessType decide o padrão inicial dos módulos (varejo desliga a Agenda;
+ * serviços desliga catálogo/estoque/reservas/vendas — ver a migration do
+ * módulo Agenda). Continua ajustável depois pelo admin master.
+ */
 export const TENANT_SEGMENTS = [
-  { value: "supplements", label: "Suplementos e nutrição" },
-  { value: "cosmetics", label: "Cosméticos e beleza" },
-  { value: "pharmacy", label: "Farmácia e saúde" },
-  { value: "food", label: "Alimentos e bebidas" },
-  { value: "apparel", label: "Moda e vestuário" },
-  { value: "pet", label: "Pet shop" },
-  { value: "electronics", label: "Eletrônicos" },
-  { value: "general", label: "Varejo em geral" },
+  { value: "supplements", label: "Suplementos e nutrição", businessType: "RETAIL" },
+  { value: "cosmetics", label: "Cosméticos e beleza", businessType: "RETAIL" },
+  { value: "pharmacy", label: "Farmácia e saúde", businessType: "RETAIL" },
+  { value: "food", label: "Alimentos e bebidas", businessType: "RETAIL" },
+  { value: "apparel", label: "Moda e vestuário", businessType: "RETAIL" },
+  { value: "pet", label: "Pet shop", businessType: "RETAIL" },
+  { value: "electronics", label: "Eletrônicos", businessType: "RETAIL" },
+  { value: "general", label: "Varejo em geral", businessType: "RETAIL" },
+  { value: "legal", label: "Advocacia", businessType: "SERVICES" },
+  { value: "healthcare", label: "Saúde e clínicas", businessType: "SERVICES" },
+  { value: "beauty_services", label: "Salão e estética", businessType: "SERVICES" },
+  { value: "consulting", label: "Consultoria", businessType: "SERVICES" },
+  { value: "education", label: "Aulas e cursos", businessType: "SERVICES" },
+  { value: "general_services", label: "Serviços em geral", businessType: "SERVICES" },
 ] as const;
 
 const segmentValues = TENANT_SEGMENTS.map((segment) => segment.value) as [string, ...string[]];
+
+export function businessTypeForSegment(segment: string): "RETAIL" | "SERVICES" {
+  return TENANT_SEGMENTS.find((s) => s.value === segment)?.businessType ?? "RETAIL";
+}
 
 export const TIMEZONES = [
   "America/Sao_Paulo",

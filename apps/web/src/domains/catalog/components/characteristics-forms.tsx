@@ -182,7 +182,9 @@ export function AllergensForm({ productId, variantId, data }: ScopeProps) {
   const defaultSource = data.own.allergens[0]?.source ?? "LABEL";
 
   const [presence, setPresence] = useState<Record<string, string>>(() =>
-    Object.fromEntries(data.allergens.map((allergen) => [allergen.code, own.get(allergen.code)?.presence ?? "UNKNOWN"])),
+    Object.fromEntries(
+      data.allergens.map((allergen) => [allergen.code, own.get(allergen.code)?.presence ?? "UNKNOWN"]),
+    ),
   );
 
   const unknownLabel = variantId ? "Herdar" : "Não informado";
@@ -331,7 +333,9 @@ function NutritionEditor({
   const extrasId = useId();
 
   const extras = data.nutrients.filter((nutrient) => !nutrient.isCore);
-  const [showExtras, setShowExtras] = useState(() => extras.some((nutrient) => initial?.values[nutrient.code] !== undefined));
+  const [showExtras, setShowExtras] = useState(() =>
+    extras.some((nutrient) => initial?.values[nutrient.code] !== undefined),
+  );
 
   const nutrientField = (nutrient: (typeof data.nutrients)[number]) => {
     const key = `nutrient:${nutrient.code}`;
@@ -394,7 +398,9 @@ function NutritionEditor({
         <p className="text-small text-muted-foreground">
           Deixe vazio o que não consta na fonte — vazio significa não informado, nunca zero.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{data.nutrients.filter((n) => n.isCore).map(nutrientField)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {data.nutrients.filter((n) => n.isCore).map(nutrientField)}
+        </div>
         <Button
           type="button"
           variant="ghost"

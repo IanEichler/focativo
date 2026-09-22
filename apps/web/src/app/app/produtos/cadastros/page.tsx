@@ -44,7 +44,10 @@ export default async function CatalogTaxonomyPage({ searchParams }: PageProps<"/
           </Link>
         </Button>
       </div>
-      <PageHeader title="Cadastros do catálogo" description="Categorias, marcas, fornecedores e características dos produtos." />
+      <PageHeader
+        title="Cadastros do catálogo"
+        description="Categorias, marcas, fornecedores e características dos produtos."
+      />
 
       <TabNav
         label="Cadastros"
@@ -52,8 +55,18 @@ export default async function CatalogTaxonomyPage({ searchParams }: PageProps<"/
         items={[
           { id: "categorias", label: "Categorias", href: base, count: taxonomy.categories.length },
           { id: "marcas", label: "Marcas", href: `${base}?aba=marcas`, count: taxonomy.brands.length },
-          { id: "fornecedores", label: "Fornecedores", href: `${base}?aba=fornecedores`, count: taxonomy.suppliers.length },
-          { id: "caracteristicas", label: "Características", href: `${base}?aba=caracteristicas`, count: taxonomy.attributes.length },
+          {
+            id: "fornecedores",
+            label: "Fornecedores",
+            href: `${base}?aba=fornecedores`,
+            count: taxonomy.suppliers.length,
+          },
+          {
+            id: "caracteristicas",
+            label: "Características",
+            href: `${base}?aba=caracteristicas`,
+            count: taxonomy.attributes.length,
+          },
         ]}
       />
 

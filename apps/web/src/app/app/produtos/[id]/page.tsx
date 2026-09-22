@@ -48,7 +48,9 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
         title={product.name}
         description={
           <span className="inline-flex flex-wrap items-center gap-2">
-            <StatusBadge tone={product.isActive ? "success" : "neutral"}>{product.isActive ? "Ativo" : "Inativo"}</StatusBadge>
+            <StatusBadge tone={product.isActive ? "success" : "neutral"}>
+              {product.isActive ? "Ativo" : "Inativo"}
+            </StatusBadge>
             {product.categoryName && <span>{product.categoryName}</span>}
             {product.brandName && <span>· {product.brandName}</span>}
           </span>

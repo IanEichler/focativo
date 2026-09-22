@@ -40,7 +40,7 @@ const MOVEMENT_TYPES = Object.keys(MOVEMENT_TYPE) as Enums<"stock_movement_type"
 
 export default async function InventoryPage({ searchParams }: PageProps<"/app/estoque">) {
   const context = await requireTenantContext();
-  if (!context.can("inventory.read")) {
+  if (!context.can("inventory.read") || !context.hasModule("inventory")) {
     return (
       <PageContainer>
         <PageHeader title="Estoque" />
@@ -77,16 +77,28 @@ export default async function InventoryPage({ searchParams }: PageProps<"/app/es
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Link href={tabHref("posicao")} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <Link
+          href={tabHref("posicao")}
+          className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
           <MetricCard label="Itens ativos" value={formatNumber(summary.activeVariants)} icon={<Boxes />} />
         </Link>
-        <Link href={tabHref("posicao", { status: "LOW" })} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <Link
+          href={tabHref("posicao", { status: "LOW" })}
+          className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
           <MetricCard label="Estoque baixo" value={formatNumber(summary.lowStock)} icon={<PackageMinus />} />
         </Link>
-        <Link href={tabHref("posicao", { status: "OUT" })} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <Link
+          href={tabHref("posicao", { status: "OUT" })}
+          className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
           <MetricCard label="Sem estoque" value={formatNumber(summary.outOfStock)} icon={<PackageX />} />
         </Link>
-        <Link href={tabHref("lotes", { status: "EXPIRING" })} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <Link
+          href={tabHref("lotes", { status: "EXPIRING" })}
+          className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
           <MetricCard
             label="Lotes vencendo"
             value={formatNumber(summary.expiringLots)}
@@ -94,8 +106,16 @@ export default async function InventoryPage({ searchParams }: PageProps<"/app/es
             hint={`próximos ${summary.expiryAlertDays} dias`}
           />
         </Link>
-        <Link href={tabHref("lotes", { status: "EXPIRED" })} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-          <MetricCard label="Lotes vencidos" value={formatNumber(summary.expiredLots)} icon={<CalendarX2 />} hint="com saldo" />
+        <Link
+          href={tabHref("lotes", { status: "EXPIRED" })}
+          className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <MetricCard
+            label="Lotes vencidos"
+            value={formatNumber(summary.expiredLots)}
+            icon={<CalendarX2 />}
+            hint="com saldo"
+          />
         </Link>
       </div>
 
@@ -146,7 +166,9 @@ async function PositionTab({
   suppliers: { id: string; name: string }[];
 }) {
   const status = firstParam(params.status);
-  const filter = (INVENTORY_FILTERS as readonly string[]).includes(status ?? "") ? (status as InventoryFilter) : undefined;
+  const filter = (INVENTORY_FILTERS as readonly string[]).includes(status ?? "")
+    ? (status as InventoryFilter)
+    : undefined;
   const list = await listInventory(context, { query, filter, page });
 
   const columns: DataTableColumn<InventoryRow>[] = [
@@ -174,15 +196,33 @@ async function PositionTab({
         </Link>
       ),
     },
-    { id: "physical", header: "Físico", align: "right", hideBelow: "md", cell: (row) => formatQuantity(row.physical, row.unit) },
-    { id: "reserved", header: "Reservado", align: "right", hideBelow: "lg", cell: (row) => formatQuantity(row.reserved, row.unit) },
+    {
+      id: "physical",
+      header: "Físico",
+      align: "right",
+      hideBelow: "md",
+      cell: (row) => formatQuantity(row.physical, row.unit),
+    },
+    {
+      id: "reserved",
+      header: "Reservado",
+      align: "right",
+      hideBelow: "lg",
+      cell: (row) => formatQuantity(row.reserved, row.unit),
+    },
     {
       id: "available",
       header: "Disponível",
       align: "right",
       cell: (row) => <span className="font-medium">{formatQuantity(row.available, row.unit)}</span>,
     },
-    { id: "min", header: "Mínimo", align: "right", hideBelow: "lg", cell: (row) => formatQuantity(row.minStock, row.unit) },
+    {
+      id: "min",
+      header: "Mínimo",
+      align: "right",
+      hideBelow: "lg",
+      cell: (row) => formatQuantity(row.minStock, row.unit),
+    },
     {
       id: "expiry",
       header: "Próx. validade",
@@ -191,7 +231,9 @@ async function PositionTab({
         row.trackLots ? (
           <span className="flex flex-col text-small">
             <span className="tabular">{formatDate(row.nextExpiration)}</span>
-            {row.expiredQuantity > 0 && <span className="text-danger">{formatQuantity(row.expiredQuantity, row.unit)} vencido</span>}
+            {row.expiredQuantity > 0 && (
+              <span className="text-danger">{formatQuantity(row.expiredQuantity, row.unit)} vencido</span>
+            )}
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -330,7 +372,13 @@ async function MovementsTab({ context, params, page, showCosts }: TabProps & { s
           )}
         </FilterBar>
       }
-      empty={<EmptyState className="border-0" title="Nenhuma movimentação" description="Entradas, ajustes, perdas, reservas e vendas aparecem aqui." />}
+      empty={
+        <EmptyState
+          className="border-0"
+          title="Nenhuma movimentação"
+          description="Entradas, ajustes, perdas, reservas e vendas aparecem aqui."
+        />
+      }
       pagination={{
         page,
         pageSize: MOVEMENT_PAGE_SIZE,

@@ -31,17 +31,35 @@ export async function StockTab({ context, product }: { context: TenantContext; p
 
   const columns: DataTableColumn<VariantDetail>[] = [
     ...(product.hasVariants
-      ? ([{ id: "name", header: "Variação", cell: (variant) => <span className="font-medium">{variant.name}</span> }] as DataTableColumn<VariantDetail>[])
+      ? ([
+          { id: "name", header: "Variação", cell: (variant) => <span className="font-medium">{variant.name}</span> },
+        ] as DataTableColumn<VariantDetail>[])
       : []),
-    { id: "physical", header: "Físico", align: "right", cell: (variant) => formatQuantity(variant.physical, product.unit) },
-    { id: "reserved", header: "Reservado", align: "right", cell: (variant) => formatQuantity(variant.reserved, product.unit) },
+    {
+      id: "physical",
+      header: "Físico",
+      align: "right",
+      cell: (variant) => formatQuantity(variant.physical, product.unit),
+    },
+    {
+      id: "reserved",
+      header: "Reservado",
+      align: "right",
+      cell: (variant) => formatQuantity(variant.reserved, product.unit),
+    },
     {
       id: "available",
       header: "Disponível",
       align: "right",
       cell: (variant) => <span className="font-medium">{formatQuantity(variant.available, product.unit)}</span>,
     },
-    { id: "min", header: "Mínimo", align: "right", hideBelow: "sm", cell: (variant) => formatQuantity(variant.minStock, product.unit) },
+    {
+      id: "min",
+      header: "Mínimo",
+      align: "right",
+      hideBelow: "sm",
+      cell: (variant) => formatQuantity(variant.minStock, product.unit),
+    },
     { id: "status", header: "Situação", cell: (variant) => <StockStatusBadge status={variant.stockStatus} /> },
     {
       id: "actions",
@@ -69,7 +87,12 @@ export async function StockTab({ context, product }: { context: TenantContext; p
 
   return (
     <div className="flex flex-col gap-6">
-      <DataTable caption="Estoque por variação" columns={columns} rows={product.variants} getRowKey={(variant) => variant.id} />
+      <DataTable
+        caption="Estoque por variação"
+        columns={columns}
+        rows={product.variants}
+        getRowKey={(variant) => variant.id}
+      />
 
       {product.trackLots && (
         <section className="flex flex-col gap-3">
@@ -78,7 +101,13 @@ export async function StockTab({ context, product }: { context: TenantContext; p
             rows={lots}
             unit={product.unit}
             showProduct={product.hasVariants}
-            empty={<EmptyState className="border-0" title="Nenhum lote" description="Os lotes são criados nas entradas de estoque." />}
+            empty={
+              <EmptyState
+                className="border-0"
+                title="Nenhum lote"
+                description="Os lotes são criados nas entradas de estoque."
+              />
+            }
           />
         </section>
       )}
@@ -98,7 +127,13 @@ export async function StockTab({ context, product }: { context: TenantContext; p
               rows={movements.rows}
               showProduct={false}
               showCosts={permissions.costs}
-              empty={<EmptyState className="border-0" title="Sem movimentações" description="Registre a primeira entrada deste produto." />}
+              empty={
+                <EmptyState
+                  className="border-0"
+                  title="Sem movimentações"
+                  description="Registre a primeira entrada deste produto."
+                />
+              }
             />
           </CardContent>
         </Card>

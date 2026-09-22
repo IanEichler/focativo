@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APP_NAV, filterNav, navCommands } from "./nav-config";
+import { ADMIN_NAV, APP_NAV, filterNav, navCommands } from "./nav-config";
 
 describe("navigation", () => {
   it("hides items without permission and drops empty sections", () => {
@@ -13,8 +13,10 @@ describe("navigation", () => {
   });
 
   it("never exposes unavailable modules in the command palette", () => {
-    const commands = navCommands(APP_NAV, "Navegação");
-    const soon = APP_NAV.flatMap((section) =>
+    // ADMIN_NAV ainda tem itens "soon" (Assinaturas, Planos...); APP_NAV não
+    // tem mais nenhum desde que Relatórios (Fase 8) ficou real.
+    const commands = navCommands(ADMIN_NAV, "Administração");
+    const soon = ADMIN_NAV.flatMap((section) =>
       section.items.filter((item) => item.availability === "soon").map((item) => item.href),
     );
     expect(soon.length).toBeGreaterThan(0);

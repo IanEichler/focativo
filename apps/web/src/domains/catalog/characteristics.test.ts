@@ -8,7 +8,11 @@ import {
   type EffectiveAttribute,
 } from "./characteristics";
 
-const allergen = (code: string, presence: EffectiveAllergen["presence"], mayContainTraces = false): EffectiveAllergen => ({
+const allergen = (
+  code: string,
+  presence: EffectiveAllergen["presence"],
+  mayContainTraces = false,
+): EffectiveAllergen => ({
   code,
   name: { lactose: "Lactose", gluten: "Glúten", soy: "Soja", milk: "Leite e derivados", egg: "Ovos" }[code] ?? code,
   presence,
@@ -17,7 +21,9 @@ const allergen = (code: string, presence: EffectiveAllergen["presence"], mayCont
 
 describe("allergen chips (safety rules)", () => {
   it("never claims absence for UNKNOWN", () => {
-    const labels = allergenChips([allergen("lactose", "UNKNOWN"), allergen("gluten", "UNKNOWN")]).map((chip) => chip.label);
+    const labels = allergenChips([allergen("lactose", "UNKNOWN"), allergen("gluten", "UNKNOWN")]).map(
+      (chip) => chip.label,
+    );
     expect(labels).toEqual([]);
     expect(labels.join(" ")).not.toMatch(/sem/i);
   });
@@ -33,7 +39,10 @@ describe("allergen chips (safety rules)", () => {
   });
 
   it("warns about contained allergens", () => {
-    expect(allergenChips([allergen("milk", "TRUE")])[0]).toMatchObject({ label: "Contém leite e derivados", tone: "warning" });
+    expect(allergenChips([allergen("milk", "TRUE")])[0]).toMatchObject({
+      label: "Contém leite e derivados",
+      tone: "warning",
+    });
   });
 
   it("does not highlight absence of non-highlighted allergens", () => {
@@ -41,9 +50,9 @@ describe("allergen chips (safety rules)", () => {
   });
 
   it("lists relevant unknowns for catalog completion", () => {
-    expect(unknownHighlights([allergen("lactose", "UNKNOWN"), allergen("egg", "UNKNOWN")]).map((chip) => chip.label)).toEqual([
-      "Lactose: não informado",
-    ]);
+    expect(
+      unknownHighlights([allergen("lactose", "UNKNOWN"), allergen("egg", "UNKNOWN")]).map((chip) => chip.label),
+    ).toEqual(["Lactose: não informado"]);
   });
 });
 
@@ -76,7 +85,10 @@ describe("attribute and nutrition chips", () => {
       { code: "carbohydrates", name: "Carboidratos", unit: "g" },
       { code: "total_sugars", name: "Açúcares totais", unit: "g" },
     ];
-    const chips = nutritionChips({ servingSize: 30, servingUnit: "g", values: { protein: 24, total_sugars: 0 } }, nutrients);
+    const chips = nutritionChips(
+      { servingSize: 30, servingUnit: "g", values: { protein: 24, total_sugars: 0 } },
+      nutrients,
+    );
     expect(chips.map((chip) => chip.label)).toEqual(["24 g proteínas", "0 g açúcares totais"]);
     expect(nutritionChips(null, nutrients)).toEqual([]);
   });

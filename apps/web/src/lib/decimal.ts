@@ -72,16 +72,14 @@ export function optionalDecimal(options: DecimalOptions) {
 
 /** Campo decimal obrigatório. */
 export function requiredDecimal(options: DecimalOptions) {
-  return z
-    .string({ message: `Informe ${options.label.toLowerCase()}.` })
-    .transform((input, ctx) => {
-      const value = parseDecimalBR(input);
-      if (value === null) {
-        ctx.addIssue({ code: "custom", message: `Informe ${options.label.toLowerCase()}.` });
-        return z.NEVER;
-      }
-      return checkDecimal(value, options, ctx) ? value : z.NEVER;
-    });
+  return z.string({ message: `Informe ${options.label.toLowerCase()}.` }).transform((input, ctx) => {
+    const value = parseDecimalBR(input);
+    if (value === null) {
+      ctx.addIssue({ code: "custom", message: `Informe ${options.label.toLowerCase()}.` });
+      return z.NEVER;
+    }
+    return checkDecimal(value, options, ctx) ? value : z.NEVER;
+  });
 }
 
 /** Formata número para campos de formulário no padrão brasileiro (sem separador de milhar). */

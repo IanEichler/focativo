@@ -40,10 +40,9 @@ export const ATTRIBUTE_TYPES: { value: Enums<"attribute_data_type">; label: stri
   { value: "ENUM", label: "Lista de opções", description: "Ex.: sabor" },
 ];
 
-export const ATTRIBUTE_TYPE_LABEL = Object.fromEntries(ATTRIBUTE_TYPES.map((item) => [item.value, item.label])) as Record<
-  Enums<"attribute_data_type">,
-  string
->;
+export const ATTRIBUTE_TYPE_LABEL = Object.fromEntries(
+  ATTRIBUTE_TYPES.map((item) => [item.value, item.label]),
+) as Record<Enums<"attribute_data_type">, string>;
 
 export type StockStatus = "OK" | "LOW" | "OUT";
 

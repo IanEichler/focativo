@@ -19,7 +19,10 @@ const sku = z
   .trim()
   .optional()
   .transform((value) => (value ? value.toUpperCase() : null))
-  .refine((value) => value === null || /^[A-Z0-9][A-Z0-9._/-]{0,63}$/.test(value), "SKU inválido: use letras, números, . _ / -");
+  .refine(
+    (value) => value === null || /^[A-Z0-9][A-Z0-9._/-]{0,63}$/.test(value),
+    "SKU inválido: use letras, números, . _ / -",
+  );
 
 const barcode = z
   .string()

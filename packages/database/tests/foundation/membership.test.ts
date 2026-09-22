@@ -85,6 +85,19 @@ describe("tenant creation, invitations and RBAC", () => {
       expect(await db.as(inviteeId).query("select id from public.tenants")).toHaveLength(1);
     });
 
+    it("p_active=true skips the pending step — used for accounts created directly with a password", async () => {
+      const directId = await db.createUser({ email: "direto@loja.test" });
+      await db.as(ownerId).rpc("invite_tenant_user", {
+        p_tenant_id: tenantId,
+        p_email: "direto@loja.test",
+        p_role_code: "VENDEDOR",
+        p_active: true,
+      });
+
+      expect(await membership(tenantId, directId)).toMatchObject({ status: "ACTIVE", role_code: "VENDEDOR" });
+      expect(await db.as(directId).query("select id from public.tenants")).toHaveLength(1);
+    });
+
     it("declining removes the invitation", async () => {
       const inviteeId = await db.createUser({ email: "recusa@loja.test" });
       await db
@@ -190,7 +203,22 @@ describe("tenant creation, invitations and RBAC", () => {
       const seller = await db
         .as(sellerId)
         .rpc<{ get_my_permissions: string }>("get_my_permissions", { p_tenant_id: tenantId });
-      expect(seller.map((r) => r.get_my_permissions)).toEqual(["catalog.read", "inventory.read"]);
+      expect(seller.map((r) => r.get_my_permissions)).toEqual([
+        "agenda.read",
+        "agenda.write",
+        "catalog.read",
+        "crm.read",
+        "crm.write",
+        "customers.read",
+        "customers.write",
+        "inventory.read",
+        "reservations.read",
+        "reservations.write",
+        "sales.read",
+        "sales.write",
+        "whatsapp.read",
+        "whatsapp.write",
+      ]);
     });
 
     it("changes roles respecting hierarchy and self-protection", async () => {
@@ -271,6 +299,151 @@ describe("tenant creation, invitations and RBAC", () => {
         );
         expect(owners).toHaveLength(1);
       }
+    });
+  });
+
+  describe("custom permission overrides", () => {
+    it("grants an extra permission beyond the role default", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 1");
+      const sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
+      const seller = (await membership(tenantId, sellerId))!;
+
+      const before = await db
+        .as(sellerId)
+        .rpc<{ get_my_permissions: string }>("get_my_permissions", { p_tenant_id: tenantId });
+      expect(before.map((r) => r.get_my_permissions)).not.toContain("financial.read");
+
+      await db.as(ownerId).rpc("set_tenant_user_permissions", {
+        p_membership_id: seller.id,
+        p_overrides: JSON.stringify([{ code: "financial.read", granted: true }]),
+      });
+
+      const after = await db
+        .as(sellerId)
+        .rpc<{ get_my_permissions: string }>("get_my_permissions", { p_tenant_id: tenantId });
+      expect(after.map((r) => r.get_my_permissions)).toContain("financial.read");
+    });
+
+    it("revokes a permission the role would otherwise grant", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 2");
+      const managerId = await db.addActiveMember(tenantId, "GERENTE");
+      const manager = (await membership(tenantId, managerId))!;
+
+      const before = await db
+        .as(managerId)
+        .rpc<{ get_my_permissions: string }>("get_my_permissions", { p_tenant_id: tenantId });
+      expect(before.map((r) => r.get_my_permissions)).toContain("catalog.write");
+
+      await db.as(ownerId).rpc("set_tenant_user_permissions", {
+        p_membership_id: manager.id,
+        p_overrides: JSON.stringify([{ code: "catalog.write", granted: false }]),
+      });
+
+      const after = await db
+        .as(managerId)
+        .rpc<{ get_my_permissions: string }>("get_my_permissions", { p_tenant_id: tenantId });
+      expect(after.map((r) => r.get_my_permissions)).not.toContain("catalog.write");
+      // RLS em todo o sistema usa o mesmo ponto de verdade — não só a lista cacheada.
+      const [check] = await db
+        .as(managerId)
+        .query<{ has: boolean }>("select private.has_tenant_permission($1, 'catalog.write') as has", [tenantId]);
+      expect(check!.has).toBe(false);
+    });
+
+    it("list_tenant_user_permissions reports effective value and override flag", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 3");
+      const sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
+      const seller = (await membership(tenantId, sellerId))!;
+
+      await db.as(ownerId).rpc("set_tenant_user_permissions", {
+        p_membership_id: seller.id,
+        p_overrides: JSON.stringify([{ code: "sales.discount", granted: true }]),
+      });
+
+      const rows = await db
+        .as(ownerId)
+        .rpc<{ permission_code: string; granted: boolean; is_override: boolean }>("list_tenant_user_permissions", {
+          p_membership_id: seller.id,
+        });
+      expect(rows).toContainEqual({
+        permission_code: "sales.discount",
+        granted: true,
+        is_override: true,
+        role_default: false,
+      });
+      expect(rows).toContainEqual({
+        permission_code: "sales.read",
+        granted: true,
+        is_override: false,
+        role_default: true,
+      });
+      expect(rows).toContainEqual({
+        permission_code: "tenant.update",
+        granted: false,
+        is_override: false,
+        role_default: false,
+      });
+    });
+
+    it("replacing the override set clears anything not resent", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 4");
+      const sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
+      const seller = (await membership(tenantId, sellerId))!;
+
+      await db.as(ownerId).rpc("set_tenant_user_permissions", {
+        p_membership_id: seller.id,
+        p_overrides: JSON.stringify([
+          { code: "financial.read", granted: true },
+          { code: "sales.discount", granted: true },
+        ]),
+      });
+      await db.as(ownerId).rpc("set_tenant_user_permissions", {
+        p_membership_id: seller.id,
+        p_overrides: JSON.stringify([{ code: "financial.read", granted: true }]),
+      });
+
+      const rows = await db.admin.query<{ permission_code: string }>(
+        "select permission_code from public.tenant_user_permission_overrides where tenant_user_id = $1",
+        [seller.id],
+      );
+      expect(rows.map((r) => r.permission_code)).toEqual(["financial.read"]);
+    });
+
+    it("respects role hierarchy — only users.manage holders can set overrides, never on themselves", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 5");
+      const sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
+      const seller = (await membership(tenantId, sellerId))!;
+      const owner = (await membership(tenantId, ownerId))!;
+
+      await expectDbError(
+        db.as(sellerId).rpc("set_tenant_user_permissions", { p_membership_id: owner.id, p_overrides: "[]" }),
+        "forbidden",
+      );
+      await expectDbError(
+        db.as(ownerId).rpc("set_tenant_user_permissions", { p_membership_id: owner.id, p_overrides: "[]" }),
+        "cannot_modify_self",
+      );
+    });
+
+    it("rejects unknown permission codes and malformed payloads", async () => {
+      const { tenantId, ownerId } = await db.createTenantWithOwner("Loja Overrides 6");
+      const sellerId = await db.addActiveMember(tenantId, "VENDEDOR");
+      const seller = (await membership(tenantId, sellerId))!;
+
+      await expectDbError(
+        db.as(ownerId).rpc("set_tenant_user_permissions", {
+          p_membership_id: seller.id,
+          p_overrides: JSON.stringify([{ code: "not.real", granted: true }]),
+        }),
+        "invalid_permission_code",
+      );
+      await expectDbError(
+        db.as(ownerId).rpc("set_tenant_user_permissions", {
+          p_membership_id: seller.id,
+          p_overrides: JSON.stringify({ foo: "bar" }),
+        }),
+        "invalid_overrides",
+      );
     });
   });
 });

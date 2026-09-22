@@ -42,6 +42,12 @@ export const DB_ERROR_MESSAGES = {
   below_reserved: "A quantidade contada é menor que a quantidade reservada. Cancele reservas antes de ajustar.",
   no_change: "A quantidade contada é igual à atual — nenhum ajuste necessário.",
   idempotency_conflict: "Esta operação já foi registrada com outros dados. Recarregue a página e tente novamente.",
+  // Agenda
+  slot_unavailable: "Esse horário já está ocupado para este profissional. Escolha outro horário.",
+  professional_not_eligible: "Este profissional não atende este serviço.",
+  // Permissões personalizadas
+  invalid_permission_code: "Uma das permissões enviadas não existe.",
+  invalid_overrides: "Não foi possível salvar as permissões. Tente novamente.",
 } as const;
 
 export type DbErrorCode = keyof typeof DB_ERROR_MESSAGES;

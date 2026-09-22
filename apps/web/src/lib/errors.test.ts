@@ -8,9 +8,17 @@ describe("toUserMessage", () => {
   });
 
   it("never leaks raw Postgres errors", () => {
-    const raw = { message: 'duplicate key value violates unique constraint "tenants_slug_key"', code: "23505" };
-    expect(toUserMessage(raw)).toBe(GENERIC_ERROR_MESSAGE);
-    expect(toUserMessage(raw)).not.toContain("constraint");
+    const unique = { message: 'duplicate key value violates unique constraint "tenants_slug_key"', code: "23505" };
+    expect(toUserMessage(unique)).toBe(DB_ERROR_MESSAGES.name_taken);
+    expect(toUserMessage(unique)).not.toContain("constraint");
+
+    const fk = { message: 'insert or update on table "products" violates foreign key constraint', code: "23503" };
+    expect(toUserMessage(fk)).toBe(DB_ERROR_MESSAGES.in_use);
+    expect(toUserMessage(fk)).not.toContain("constraint");
+
+    const unknown = { message: "syntax error at or near SELECT", code: "42601" };
+    expect(toUserMessage(unknown)).toBe(GENERIC_ERROR_MESSAGE);
+    expect(toUserMessage(unknown)).not.toContain("syntax error");
   });
 
   it("treats insufficient privilege as forbidden", () => {
