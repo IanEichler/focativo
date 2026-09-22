@@ -97,27 +97,27 @@ export async function archiveCustomerAction(customerId: string, archived: boolea
 
 /**
  * Exclusão de verdade — nunca arquivamento disfarçado (ação separada, cada
- * uma faz só o que o nome diz). Hoje SEMPRE falha, para qualquer cliente:
- * todo cliente nasce com um evento append-only na timeline
- * (customer.created), e uma exclusão de verdade sempre cascateia numa
- * tentativa de apagar esse registro de auditoria, que o banco recusa sempre
- * — decisão deliberada, não um bug. O erro chega honesto na tela; a UI
- * oferece arquivar como alternativa, sem fingir que é a mesma coisa.
+ * uma faz só o que o nome diz). Chama customer_purge, que abre uma exceção
+ * estreita só para mensagens/timeline (histórico de conversa, não registro
+ * de negócio) e deixa passar o DELETE. Reservas, pagamentos e agendamentos
+ * continuam com FK em RESTRICT — um cliente com venda/reserva/cobrança real
+ * ainda não pode ser excluído (só arquivado), de propósito: são registros
+ * de negócio, não só histórico de conversa.
  */
 export async function deleteCustomerAction(customerId: string): Promise<ActionState> {
   const context = await requireTenantContext();
   if (!context.can("customers.write") || !z.uuid().safeParse(customerId).success) return forbidden();
 
   const supabase = await createClient();
-  const { error } = await supabase.from("customers").delete().eq("id", customerId).eq("tenant_id", context.tenant.id);
+  const { error } = await supabase.rpc("customer_purge", { p_customer_id: customerId });
 
   if (error) {
     logger.warn({ event: "customer.delete", status: "error", tenant_id: context.tenant.id, code: error.code });
-    const blocked = error.code === "42501" || error.code === "23503";
+    const blocked = error.code === "23503";
     return {
       status: "error",
       message: blocked
-        ? "Não é possível excluir: este cliente tem histórico (mensagens, compras, reservas, pagamentos ou agenda) que nunca pode ser apagado. Arquive em vez de excluir."
+        ? "Não é possível excluir: este cliente tem reservas, pagamentos ou agendamentos reais. Arquive em vez de excluir."
         : toUserMessage(error),
     };
   }

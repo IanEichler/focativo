@@ -20,10 +20,10 @@ import { archiveCustomerAction, deleteCustomerAction } from "../actions";
 
 /**
  * Excluir é excluir, arquivar é arquivar — duas ações separadas, cada uma
- * faz só o que o nome diz (nada de um botão "Excluir" que na real arquiva).
- * Exclusão de verdade hoje SEMPRE falha (todo cliente nasce com um evento
- * append-only na timeline, que o banco nunca deixa apagar) — o erro chega
- * honesto na tela, com um atalho pra arquivar em vez de insistir.
+ * faz só o que o nome diz. Exclusão de verdade funciona (customer_purge
+ * abre uma exceção estreita só pra mensagens/timeline); reservas,
+ * pagamentos e agendamentos reais continuam bloqueando de propósito — o
+ * erro chega honesto na tela, com um atalho pra arquivar em vez de insistir.
  */
 export function DeleteCustomerDialog({ customerId, customerName }: { customerId: string; customerName: string }) {
   const [open, setOpen] = useState(false);
@@ -77,8 +77,8 @@ export function DeleteCustomerDialog({ customerId, customerName }: { customerId:
         <AlertDialogHeader>
           <AlertDialogTitle>Excluir {customerName}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Isso apaga o cliente de vez. Só funciona se ele não tiver nenhum histórico registrado (mensagens, compras,
-            reservas, pagamentos, agenda) — se tiver, o banco recusa.
+            Isso apaga o cliente de vez, junto com as conversas de WhatsApp. Só não funciona se ele tiver reservas,
+            pagamentos ou agendamentos reais — nesse caso, o banco recusa.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

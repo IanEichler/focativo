@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { useTestDatabase } from "../../src/harness/test-db";
+import { createProduct, key } from "../helpers/catalog";
 
 describe("customers", () => {
   const db = useTestDatabase();
@@ -170,6 +171,57 @@ describe("customers", () => {
 
     const stillThere = await db.admin.query("select id from public.customers where id = $1", [customer!.id]);
     expect(stillThere).toHaveLength(1);
+  });
+
+  it("customer_purge truly deletes a customer whose only history is WhatsApp messages/timeline", async () => {
+    const whatsappNumber = `1198866${String(Math.floor(1000 + Math.random() * 9000))}`;
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: whatsappNumber,
+      p_content: "Oi",
+      p_external_message_id: `wa-purge-ok-${randomUUID()}`,
+    });
+    const [customer] = await db.admin.query<{ id: string }>("select id from public.customers where whatsapp = $1", [
+      whatsappNumber,
+    ]);
+
+    await db.as(ownerId).rpc("customer_purge", { p_customer_id: customer!.id });
+
+    const rows = await db.admin.query("select id from public.customers where id = $1", [customer!.id]);
+    expect(rows).toHaveLength(0);
+    const messages = await db.admin.query(
+      `select m.id from public.messages m
+       join public.conversations c on c.id = m.conversation_id
+       where c.customer_id = $1`,
+      [customer!.id],
+    );
+    expect(messages).toHaveLength(0);
+  });
+
+  it("customer_purge still refuses a customer with a real reservation (FK restrict, never bypassed)", async () => {
+    const id = await createCustomer(ownerId, { name: "Cliente Com Reserva" });
+    const { variantId } = await createProduct(db, ownerId, tenantId, { name: "Produto Reserva Purge" });
+    await db
+      .as(ownerId)
+      .rpc("inventory_register_entry", { p_variant_id: variantId, p_quantity: 5, p_idempotency_key: key() });
+    await db.as(sellerId).rpc("reservation_create", {
+      p_tenant_id: tenantId,
+      p_customer_id: id,
+      p_items: JSON.stringify([{ variant_id: variantId, quantity: 1 }]),
+    });
+
+    await expect(db.as(ownerId).rpc("customer_purge", { p_customer_id: id })).rejects.toThrow();
+
+    const rows = await db.admin.query("select id from public.customers where id = $1", [id]);
+    expect(rows).toHaveLength(1);
+  });
+
+  it("customer_purge cannot be called for a customer belonging to another tenant (forbidden)", async () => {
+    const other = await db.createTenantWithOwner("Loja Vizinha Do Purge");
+    const id = await createCustomerFor(other.tenantId, other.ownerId);
+    await expect(db.as(ownerId).rpc("customer_purge", { p_customer_id: id })).rejects.toThrow("forbidden");
+    const rows = await db.admin.query("select id from public.customers where id = $1", [id]);
+    expect(rows).toHaveLength(1);
   });
 
   it("VENDEDOR without customers.read sees nothing", async () => {

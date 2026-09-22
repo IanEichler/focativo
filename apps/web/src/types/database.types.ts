@@ -3296,6 +3296,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      customer_purge: {
+        Args: {
+          p_customer_id: string
+        }
+        Returns: undefined
+      }
       decline_tenant_invitation: {
         Args: {
           p_tenant_id: string
