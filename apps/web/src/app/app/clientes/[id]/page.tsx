@@ -7,6 +7,7 @@ import { resolveTab, TabNav } from "@/components/layout/tab-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CustomerFormSheet } from "@/domains/customers/components/customer-form";
+import { DeleteCustomerDialog } from "@/domains/customers/components/delete-customer-dialog";
 import { originLabel } from "@/domains/customers/labels";
 import { getCustomerDetail, listCustomerTimeline } from "@/domains/customers/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
@@ -63,27 +64,30 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
         }
         actions={
           canWrite ? (
-            <CustomerFormSheet
-              responsibles={responsibles}
-              customer={{
-                id: customer.id,
-                name: customer.name,
-                phone: customer.phone,
-                whatsapp: customer.whatsapp,
-                email: customer.email,
-                document: customer.document,
-                birthday: customer.birthday,
-                notes: customer.notes,
-                tags: customer.tags,
-                origin: customer.origin,
-                responsibleUserId: customer.responsibleUserId,
-              }}
-              trigger={
-                <Button variant="outline">
-                  <Pencil /> Editar
-                </Button>
-              }
-            />
+            <>
+              <CustomerFormSheet
+                responsibles={responsibles}
+                customer={{
+                  id: customer.id,
+                  name: customer.name,
+                  phone: customer.phone,
+                  whatsapp: customer.whatsapp,
+                  email: customer.email,
+                  document: customer.document,
+                  birthday: customer.birthday,
+                  notes: customer.notes,
+                  tags: customer.tags,
+                  origin: customer.origin,
+                  responsibleUserId: customer.responsibleUserId,
+                }}
+                trigger={
+                  <Button variant="outline">
+                    <Pencil /> Editar
+                  </Button>
+                }
+              />
+              <DeleteCustomerDialog customerId={customer.id} customerName={customer.name} />
+            </>
           ) : undefined
         }
       />

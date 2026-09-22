@@ -227,3 +227,41 @@ export async function closeConversationAction(conversationId: string) {
 export async function markReadAction(conversationId: string) {
   return transition("conversation_mark_read", "whatsapp.read", conversationId);
 }
+
+/** Busca a foto de perfil no WhatsApp e guarda no cliente (só quando ainda não tem uma salva). */
+export async function refreshCustomerAvatarAction(customerId: string): Promise<SimpleResult> {
+  const context = await requireTenantContext();
+  if (!context.can("whatsapp.read") || !z.uuid().safeParse(customerId).success) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
+
+  const supabase = await createClient();
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("whatsapp, whatsapp_chat_id, avatar_url")
+    .eq("id", customerId)
+    .eq("tenant_id", context.tenant.id)
+    .maybeSingle();
+  if (!customer?.whatsapp || customer.avatar_url) return { status: "success" };
+
+  try {
+    const provider = getWhatsAppProvider();
+    const contact = await provider.getContact(context.tenant.id, customer.whatsapp, customer.whatsapp_chat_id);
+    if (!contact?.profilePicUrl) return { status: "success" };
+
+    await supabase
+      .from("customers")
+      .update({ avatar_url: contact.profilePicUrl })
+      .eq("id", customerId)
+      .eq("tenant_id", context.tenant.id);
+    revalidateInbox();
+  } catch (error) {
+    logger.warn({
+      event: "whatsapp.avatar_refresh",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: String(error),
+    });
+  }
+  return { status: "success" };
+}

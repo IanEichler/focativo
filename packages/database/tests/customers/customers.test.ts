@@ -143,6 +143,35 @@ describe("customers", () => {
     expect(stats!.average_ticket).toBeNull();
   });
 
+  it("never allows hard-deleting a customer, even one with no other activity — customer.created is itself an append-only timeline event", async () => {
+    const id = await createCustomer(ownerId, { name: "Cliente Vazio", whatsapp: null });
+    await expect(db.as(ownerId).query("delete from public.customers where id = $1", [id])).rejects.toThrow(
+      "append_only",
+    );
+    const rows = await db.admin.query("select id from public.customers where id = $1", [id]);
+    expect(rows).toHaveLength(1); // segue existindo — só arquivar (archived_at) é reversível de verdade
+  });
+
+  it("refuses to delete a customer with WhatsApp message history (append-only)", async () => {
+    const whatsappNumber = `1198877${String(Math.floor(1000 + Math.random() * 9000))}`;
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: whatsappNumber,
+      p_content: "Oi",
+      p_external_message_id: `wa-delete-guard-${randomUUID()}`,
+    });
+    const [customer] = await db.admin.query<{ id: string }>("select id from public.customers where whatsapp = $1", [
+      whatsappNumber,
+    ]);
+
+    await expect(db.as(ownerId).query("delete from public.customers where id = $1", [customer!.id])).rejects.toThrow(
+      "append_only",
+    );
+
+    const stillThere = await db.admin.query("select id from public.customers where id = $1", [customer!.id]);
+    expect(stillThere).toHaveLength(1);
+  });
+
   it("VENDEDOR without customers.read sees nothing", async () => {
     const restrictedTenant = await db.createTenantWithOwner("Loja Restrita");
     const restrictedId = await createCustomerFor(restrictedTenant.tenantId, restrictedTenant.ownerId);

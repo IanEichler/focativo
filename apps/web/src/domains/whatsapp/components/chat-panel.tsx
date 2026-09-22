@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useActionState } from "react";
 import { Bot, CircleCheck, Pause, User } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/data/status-badge";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useActionFeedback } from "@/components/forms/use-action-feedback";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { formatDateTime, initials } from "@/lib/format";
@@ -14,6 +15,7 @@ import {
   assumeConversationAction,
   closeConversationAction,
   pauseConversationAction,
+  refreshCustomerAvatarAction,
   returnToAiAction,
   sendMessageAction,
 } from "../actions";
@@ -32,6 +34,7 @@ export function ChatPanel({
 }) {
   const [state, action] = useActionState<ActionState<SendMessageField>, FormData>(sendMessageAction, IDLE);
   const [pending, startTransition] = useTransition();
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState("");
 
@@ -40,6 +43,10 @@ export function ChatPanel({
   }, [messages.length]);
 
   useActionFeedback(state, { onSuccess: () => setContent("") });
+
+  useEffect(() => {
+    if (!conversation.customerAvatarUrl) void refreshCustomerAvatarAction(conversation.customerId);
+  }, [conversation.customerId, conversation.customerAvatarUrl]);
 
   function runTransition(fn: (id: string) => Promise<unknown>) {
     startTransition(async () => {
@@ -52,6 +59,7 @@ export function ChatPanel({
       <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
           <Avatar>
+            {conversation.customerAvatarUrl && <AvatarImage src={conversation.customerAvatarUrl} alt="" />}
             <AvatarFallback>{initials(conversation.customerName)}</AvatarFallback>
           </Avatar>
           <div>
@@ -89,12 +97,21 @@ export function ChatPanel({
                 <Pause className="size-4" /> Pausar
               </Button>
             )}
-            <Button size="sm" variant="ghost" disabled={pending} onClick={() => runTransition(closeConversationAction)}>
+            <Button size="sm" variant="ghost" disabled={pending} onClick={() => setCloseDialogOpen(true)}>
               <CircleCheck className="size-4" /> Finalizar
             </Button>
           </div>
         )}
       </header>
+
+      <ConfirmDialog
+        open={closeDialogOpen}
+        onOpenChange={setCloseDialogOpen}
+        title="Finalizar atendimento?"
+        description={`A conversa com ${conversation.customerName} vai para "Finalizados". Se o cliente escrever de novo, o atendimento reabre automaticamente.`}
+        confirmLabel="Finalizar"
+        onConfirm={() => closeConversationAction(conversation.id)}
+      />
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
         <ol className="flex flex-col gap-3">

@@ -46,6 +46,7 @@ export interface ConversationListItem {
   id: string;
   customerId: string;
   customerName: string;
+  customerAvatarUrl: string | null;
   status: Enums<"conversation_status">;
   responsibleName: string | null;
   unreadCount: number;
@@ -61,7 +62,7 @@ export async function listConversations(
   let query = supabase
     .from("conversations")
     .select(
-      "id, customer_id, status, unread_count, last_message_at, last_message_preview, customer:customers(name), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
+      "id, customer_id, status, unread_count, last_message_at, last_message_preview, customer:customers(name, avatar_url), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
     )
     .eq("tenant_id", context.tenant.id);
 
@@ -76,6 +77,7 @@ export async function listConversations(
     id: row.id,
     customerId: row.customer_id,
     customerName: row.customer?.name ?? "Cliente",
+    customerAvatarUrl: row.customer?.avatar_url ?? null,
     status: row.status,
     responsibleName: row.responsible?.full_name ?? null,
     unreadCount: row.unread_count,
@@ -96,7 +98,7 @@ export async function getConversationDetail(
   const { data } = await supabase
     .from("conversations")
     .select(
-      "id, customer_id, status, responsible_user_id, unread_count, last_message_at, last_message_preview, customer:customers(name), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
+      "id, customer_id, status, responsible_user_id, unread_count, last_message_at, last_message_preview, customer:customers(name, avatar_url), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
     )
     .eq("tenant_id", context.tenant.id)
     .eq("id", conversationId)
@@ -107,6 +109,7 @@ export async function getConversationDetail(
     id: data.id,
     customerId: data.customer_id,
     customerName: data.customer?.name ?? "Cliente",
+    customerAvatarUrl: data.customer?.avatar_url ?? null,
     status: data.status,
     responsibleUserId: data.responsible_user_id,
     responsibleName: data.responsible?.full_name ?? null,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/data/status-badge";
 import { CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_TONES } from "../labels";
 import type { ConversationListItem } from "../queries";
@@ -39,6 +39,7 @@ export function ConversationList({
               )}
             >
               <Avatar>
+                {conversation.customerAvatarUrl && <AvatarImage src={conversation.customerAvatarUrl} alt="" />}
                 <AvatarFallback className="bg-brand-100 text-caption font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
                   {initials(conversation.customerName)}
                 </AvatarFallback>

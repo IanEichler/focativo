@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/data/status-badge";
 import type { CustomerDetail } from "@/domains/customers/queries";
 import type { OpportunityCard } from "@/domains/crm/queries";
 import type { ReservationListItem } from "@/domains/reservations/queries";
 import type { SaleListItem } from "@/domains/sales/queries";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, initials } from "@/lib/format";
 
 export function CustomerPanel({
   customer,
@@ -21,6 +22,10 @@ export function CustomerPanel({
   return (
     <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-4">
       <div>
+        <Avatar size="lg" className="mb-2">
+          {customer.avatarUrl && <AvatarImage src={customer.avatarUrl} alt="" />}
+          <AvatarFallback>{initials(customer.name)}</AvatarFallback>
+        </Avatar>
         <p className="text-body font-semibold">{customer.name}</p>
         <p className="text-small text-muted-foreground">{customer.phone ?? customer.whatsapp ?? "Sem telefone"}</p>
         {customer.email && <p className="text-small text-muted-foreground">{customer.email}</p>}

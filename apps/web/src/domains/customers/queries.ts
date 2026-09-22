@@ -19,6 +19,7 @@ export interface CustomerListItem {
   tags: string[];
   origin: string | null;
   responsibleName: string | null;
+  avatarUrl: string | null;
   archivedAt: string | null;
   createdAt: string;
 }
@@ -31,7 +32,7 @@ export async function listCustomers(
   let query = supabase
     .from("customers")
     .select(
-      "id, name, phone, whatsapp, email, tags, origin, archived_at, created_at, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
+      "id, name, phone, whatsapp, email, tags, origin, avatar_url, archived_at, created_at, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
       { count: "exact" },
     )
     .eq("tenant_id", context.tenant.id);
@@ -63,6 +64,7 @@ export async function listCustomers(
       tags: row.tags ?? [],
       origin: row.origin,
       responsibleName: row.responsible?.full_name ?? null,
+      avatarUrl: row.avatar_url,
       archivedAt: row.archived_at,
       createdAt: row.created_at,
     })),
@@ -85,7 +87,7 @@ export async function getCustomerDetail(context: TenantContext, id: string): Pro
   const { data } = await supabase
     .from("customers")
     .select(
-      "id, name, phone, whatsapp, email, document, birthday, notes, tags, origin, archived_at, created_at, responsible_user_id, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
+      "id, name, phone, whatsapp, email, document, birthday, notes, tags, origin, avatar_url, archived_at, created_at, responsible_user_id, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
     )
     .eq("tenant_id", context.tenant.id)
     .eq("id", id)
@@ -111,6 +113,7 @@ export async function getCustomerDetail(context: TenantContext, id: string): Pro
     origin: data.origin,
     responsibleUserId: data.responsible_user_id,
     responsibleName: data.responsible?.full_name ?? null,
+    avatarUrl: data.avatar_url,
     archivedAt: data.archived_at,
     createdAt: data.created_at,
     totalSpent: Number(stats?.total_spent ?? 0),
