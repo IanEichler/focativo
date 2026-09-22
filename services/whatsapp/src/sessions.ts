@@ -157,8 +157,16 @@ async function resolveChatId(client: WWebClient, phone: string): Promise<string>
 export async function sendText(tenantId: string, to: string, text: string): Promise<string> {
   const client = requireConnectedClient(tenantId);
   const chatId = await resolveChatId(client, to);
-  const sent = await client.sendMessage(chatId, text);
-  return sent.id._serialized;
+  // DIAGNÓSTICO TEMPORÁRIO (remover depois de confirmar a causa do "No LID
+  // for user"): registra o id resolvido e o erro completo, não só a mensagem.
+  console.log(`[whatsapp-service] sendText: to=${to} resolvedChatId=${chatId}`);
+  try {
+    const sent = await client.sendMessage(chatId, text);
+    return sent.id._serialized;
+  } catch (error) {
+    console.error(`[whatsapp-service] sendText falhou (to=${to} chatId=${chatId}):`, error);
+    throw error;
+  }
 }
 
 export async function sendMedia(
