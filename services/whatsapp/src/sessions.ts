@@ -142,9 +142,22 @@ function requireConnectedClient(tenantId: string): WWebClient {
   return session.client;
 }
 
+/**
+ * Resolve o ID de chat de verdade para um telefone via getNumberId (consulta
+ * ao vivo ao WhatsApp) em vez de reconstruir "<dígitos>@c.us" à mão — desde a
+ * migração para IDs "@lid", endereçar pelo telefone puro falha em silêncio
+ * para parte dos contatos ("No LID for user"). Cai para o "@c.us" clássico
+ * só se a consulta falhar (ex.: número não registrado no WhatsApp).
+ */
+async function resolveChatId(client: WWebClient, phone: string): Promise<string> {
+  const contactId = await client.getNumberId(phone).catch(() => null);
+  return contactId?._serialized ?? toChatId(phone);
+}
+
 export async function sendText(tenantId: string, to: string, text: string): Promise<string> {
   const client = requireConnectedClient(tenantId);
-  const sent = await client.sendMessage(toChatId(to), text);
+  const chatId = await resolveChatId(client, to);
+  const sent = await client.sendMessage(chatId, text);
   return sent.id._serialized;
 }
 
@@ -155,9 +168,10 @@ export async function sendMedia(
   options: { caption?: string; filename?: string },
 ): Promise<string> {
   const client = requireConnectedClient(tenantId);
+  const chatId = await resolveChatId(client, to);
   const { MessageMedia } = pkg;
   const media = await MessageMedia.fromUrl(mediaUrl, { filename: options.filename, unsafeMime: true });
-  const sent = await client.sendMessage(toChatId(to), media, { caption: options.caption });
+  const sent = await client.sendMessage(chatId, media, { caption: options.caption });
   return sent.id._serialized;
 }
 
@@ -166,7 +180,8 @@ export async function getContactInfo(
   phone: string,
 ): Promise<{ name?: string; profilePicUrl?: string } | null> {
   const client = requireConnectedClient(tenantId);
-  const contact = await client.getContactById(toChatId(phone)).catch(() => null);
+  const chatId = await resolveChatId(client, phone);
+  const contact = await client.getContactById(chatId).catch(() => null);
   if (!contact) return null;
   const profilePicUrl = await contact.getProfilePicUrl().catch(() => undefined);
   return { name: contact.pushname || contact.name || undefined, profilePicUrl };
