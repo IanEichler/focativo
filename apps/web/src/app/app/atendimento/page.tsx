@@ -15,6 +15,7 @@ import { getConversationDetail, listConversations, listMessages } from "@/domain
 import { ChatPanel } from "@/domains/whatsapp/components/chat-panel";
 import { ConversationList } from "@/domains/whatsapp/components/conversation-list";
 import { CustomerPanel } from "@/domains/whatsapp/components/customer-panel";
+import { InboxAutoRefresh } from "@/domains/whatsapp/components/inbox-auto-refresh";
 import { buildHref, firstParam } from "@/lib/url";
 
 const FOLDERS = ["abertas", "finalizadas"] as const;
@@ -56,6 +57,7 @@ export default async function AtendimentoPage({ searchParams }: PageProps<"/app/
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <InboxAutoRefresh />
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
         <PageHeader title="Atendimento" />
         <Button asChild variant="ghost" size="sm">
