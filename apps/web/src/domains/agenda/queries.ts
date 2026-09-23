@@ -10,6 +10,8 @@ export interface ServiceRow {
   durationMinutes: number;
   price: number;
   isActive: boolean;
+  requiresHumanConfirmation: boolean;
+  restrictions: string | null;
   /** Vazio = qualquer profissional ativo pode atender (default aberto — ver a migration de elegibilidade). */
   professionalUserIds: string[];
 }
@@ -22,7 +24,7 @@ export async function listServices(
   let query = supabase
     .from("agenda_services")
     .select(
-      "id, name, description, duration_minutes, price, is_active, professionals:agenda_service_professionals(professional_user_id)",
+      "id, name, description, duration_minutes, price, is_active, requires_human_confirmation, restrictions, professionals:agenda_service_professionals(professional_user_id)",
     )
     .eq("tenant_id", context.tenant.id);
   if (params.activeOnly) query = query.eq("is_active", true);
@@ -37,6 +39,8 @@ export async function listServices(
     durationMinutes: row.duration_minutes,
     price: Number(row.price),
     isActive: row.is_active,
+    requiresHumanConfirmation: row.requires_human_confirmation,
+    restrictions: row.restrictions,
     professionalUserIds: (row.professionals ?? []).map((p) => p.professional_user_id),
   }));
 }

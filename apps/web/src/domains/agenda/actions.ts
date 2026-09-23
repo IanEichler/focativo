@@ -46,6 +46,8 @@ export async function saveServiceAction(
         p_price: data.price,
         p_description: data.description ?? undefined,
         p_is_active: data.isActive,
+        p_requires_human_confirmation: data.requiresHumanConfirmation,
+        p_restrictions: data.restrictions ?? undefined,
       })
     : await supabase.rpc("agenda_service_create", {
         p_tenant_id: context.tenant.id,
@@ -53,6 +55,8 @@ export async function saveServiceAction(
         p_duration_minutes: data.durationMinutes,
         p_price: data.price,
         p_description: data.description ?? undefined,
+        p_requires_human_confirmation: data.requiresHumanConfirmation,
+        p_restrictions: data.restrictions ?? undefined,
       });
 
   if (error) {

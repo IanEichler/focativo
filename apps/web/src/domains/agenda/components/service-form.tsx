@@ -128,6 +128,21 @@ function ServiceForm({
             )}
           </div>
         </div>
+        <TextareaField
+          label="Restrições (opcional)"
+          name="restrictions"
+          rows={3}
+          maxLength={1000}
+          defaultValue={pick("restrictions", service?.restrictions)}
+          error={fieldError(state, "restrictions")}
+          description="Ex.: não recomendado para gestantes. A IA leva isso em conta ao conversar com o cliente."
+        />
+        <SwitchField
+          label="Exige confirmação humana antes de agendar"
+          name="requiresHumanConfirmation"
+          defaultChecked={service?.requiresHumanConfirmation ?? false}
+          description="A IA nunca finaliza esse agendamento sozinha na primeira vez — escala para um atendente confirmar antes."
+        />
         {service && <SwitchField label="Serviço ativo" name="isActive" defaultChecked={service.isActive} />}
       </SheetFormLayout>
     </form>

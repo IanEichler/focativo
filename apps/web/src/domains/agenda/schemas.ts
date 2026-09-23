@@ -34,6 +34,8 @@ export const serviceSchema = z.object({
       }
     })
     .default([]),
+  requiresHumanConfirmation: z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean()),
+  restrictions: optionalText(1000, "Restrições muito longas."),
 });
 
 export type ServiceField = keyof z.input<typeof serviceSchema>;

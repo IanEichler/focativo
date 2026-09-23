@@ -48,6 +48,49 @@ describe("agenda: catálogo de serviços, agendamentos e concorrência", () => {
     );
   });
 
+  it("creates and updates a service with requires_human_confirmation and restrictions", async () => {
+    const [created] = await db.as(ownerId).rpc<{ agenda_service_create: string }>("agenda_service_create", {
+      p_tenant_id: tenantId,
+      p_name: "Procedimento delicado",
+      p_duration_minutes: 60,
+      p_price: 400,
+      p_requires_human_confirmation: true,
+      p_restrictions: "Não recomendado para gestantes.",
+    });
+    const id = created!.agenda_service_create;
+
+    const [row] = await db.admin.query<{ requires_human_confirmation: boolean; restrictions: string }>(
+      "select requires_human_confirmation, restrictions from public.agenda_services where id = $1",
+      [id],
+    );
+    expect(row!.requires_human_confirmation).toBe(true);
+    expect(row!.restrictions).toBe("Não recomendado para gestantes.");
+
+    await db.as(ownerId).rpc("agenda_service_update", {
+      p_service_id: id,
+      p_name: "Procedimento delicado",
+      p_duration_minutes: 60,
+      p_price: 400,
+      p_is_active: true,
+      p_requires_human_confirmation: false,
+      p_restrictions: null,
+    });
+    const [updated] = await db.admin.query<{ requires_human_confirmation: boolean; restrictions: string | null }>(
+      "select requires_human_confirmation, restrictions from public.agenda_services where id = $1",
+      [id],
+    );
+    expect(updated!.requires_human_confirmation).toBe(false);
+    expect(updated!.restrictions).toBeNull();
+  });
+
+  it("defaults requires_human_confirmation to false when a service is created without it", async () => {
+    const [row] = await db.admin.query<{ requires_human_confirmation: boolean }>(
+      "select requires_human_confirmation from public.agenda_services where id = $1",
+      [serviceId],
+    );
+    expect(row!.requires_human_confirmation).toBe(false);
+  });
+
   it("creates an appointment computing ends_at from the service duration", async () => {
     const startsAt = isoIn(24);
     const [row] = await db.as(sellerId).rpc<{ agenda_appointment_create: string }>("agenda_appointment_create", {

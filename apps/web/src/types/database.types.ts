@@ -201,6 +201,8 @@ export type Database = {
           is_active: boolean
           name: string
           price: number
+          requires_human_confirmation: boolean
+          restrictions: string | null
           tenant_id: string
           updated_at: string
         }
@@ -213,6 +215,8 @@ export type Database = {
           is_active?: boolean
           name: string
           price?: number
+          requires_human_confirmation?: boolean
+          restrictions?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -225,6 +229,8 @@ export type Database = {
           is_active?: boolean
           name?: string
           price?: number
+          requires_human_confirmation?: boolean
+          restrictions?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -2285,6 +2291,54 @@ export type Database = {
           },
         ]
       }
+      tenant_ai_business_info: {
+        Row: {
+          business_description: string | null
+          created_at: string
+          faq: Json
+          general_policies: string | null
+          screening_flow: Json
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_description?: string | null
+          created_at?: string
+          faq?: Json
+          general_policies?: string | null
+          screening_flow?: Json
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_description?: string | null
+          created_at?: string
+          faq?: Json
+          general_policies?: string | null
+          screening_flow?: Json
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_ai_business_info_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_business_info_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_ai_platform_limits: {
         Row: {
           created_at: string
@@ -3089,6 +3143,8 @@ export type Database = {
           p_duration_minutes: number
           p_price: number
           p_description?: string
+          p_requires_human_confirmation?: boolean
+          p_restrictions?: string
         }
         Returns: string
       }
@@ -3107,6 +3163,8 @@ export type Database = {
           p_price: number
           p_description?: string
           p_is_active?: boolean
+          p_requires_human_confirmation?: boolean
+          p_restrictions?: string
         }
         Returns: undefined
       }
@@ -3119,6 +3177,22 @@ export type Database = {
           p_notes?: string
         }
         Returns: string
+      }
+      ai_business_info_get: {
+        Args: {
+          p_tenant_id: string
+        }
+        Returns: Database["public"]["Tables"]["tenant_ai_business_info"]["Row"][]
+      }
+      ai_business_info_update: {
+        Args: {
+          p_tenant_id: string
+          p_business_description?: string
+          p_general_policies?: string
+          p_faq?: Json
+          p_screening_flow?: Json
+        }
+        Returns: Database["public"]["Tables"]["tenant_ai_business_info"]["Row"][]
       }
       ai_escalate_conversation: {
         Args: {
