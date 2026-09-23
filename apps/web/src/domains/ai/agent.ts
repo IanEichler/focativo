@@ -16,7 +16,8 @@ Use as tools disponíveis para consultar dados reais (catálogo, serviços, disp
 produtos, preços, procedimentos ou horários) e só confirme uma reserva ou agendamento depois que o cliente
 confirmar exatamente o que quer. Se não tiver certeza do que o cliente precisa, pergunte antes de agir. Se o
 cliente pedir para falar com uma pessoa, ou parecer insatisfeito, use a tool de escalonamento em vez de tentar
-resolver sozinha.`;
+resolver sozinha. Se a tool de agendamento devolver "pending_human_confirmation", NÃO diga que o horário está
+confirmado — avise o cliente que um atendente vai revisar e confirmar em breve.`;
 
 /**
  * Um "turno" da IA: dispara depois que `whatsapp_receive_message` grava uma
@@ -35,7 +36,7 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     .single();
   if (!conversation || conversation.status !== "AI_ACTIVE") return;
 
-  const [{ data: settings }, { data: limits }, { data: moduleFlagRows }] = await Promise.all([
+  const [{ data: settings }, { data: limits }, { data: businessInfo }, { data: moduleFlagRows }] = await Promise.all([
     admin
       .from("tenant_ai_settings")
       .select("enabled, system_prompt")
@@ -46,6 +47,11 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     admin
       .from("tenant_ai_platform_limits")
       .select("model, max_tokens_per_reply, monthly_budget_cents")
+      .eq("tenant_id", conversation.tenant_id)
+      .maybeSingle(),
+    admin
+      .from("tenant_ai_business_info")
+      .select("business_description, general_policies, screening_flow")
       .eq("tenant_id", conversation.tenant_id)
       .maybeSingle(),
     admin.from("tenant_module_flags").select("module_code, enabled").eq("tenant_id", conversation.tenant_id),
@@ -70,8 +76,11 @@ export async function runAiTurn(conversationId: string): Promise<void> {
 
   const system = [
     settings.system_prompt || BASE_SYSTEM_PROMPT,
+    buildBusinessInfoBlock(businessInfo),
     await buildCustomerContext(admin, conversation.customer_id),
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const model = limits?.model || "claude-sonnet-5";
   const maxTokens = limits?.max_tokens_per_reply || 1024;
   const tools = buildAiTools({ catalog: !disabledModules.has("catalog"), agenda: !disabledModules.has("agenda") });
@@ -204,6 +213,28 @@ async function buildCustomerContext(admin: ReturnType<typeof createAdminClient>,
     parts.push("Ainda não fez nenhuma compra.");
   }
   return `Contexto do cliente:\n${parts.join(" ")}`;
+}
+
+/**
+ * Bloco compacto e sempre presente no prompt (o modelo precisa disso desde a
+ * primeira mensagem — saudação, ordem de triagem — não dá pra esperar um
+ * tool-call). FAQ fica de fora de propósito: vira a tool consultar_perguntas_frequentes,
+ * sob demanda, pra não inflar todo turno com pergunta que talvez nunca seja feita.
+ */
+function buildBusinessInfoBlock(
+  info: { business_description: string | null; general_policies: string | null; screening_flow: unknown } | null,
+): string | null {
+  if (!info) return null;
+  const flow = Array.isArray(info.screening_flow) ? (info.screening_flow as string[]) : [];
+  const parts: string[] = [];
+  if (info.business_description) parts.push(`Sobre o negócio: ${info.business_description}`);
+  if (info.general_policies) parts.push(`Políticas gerais: ${info.general_policies}`);
+  if (flow.length > 0) {
+    parts.push(
+      `Ordem sugerida de atendimento (oriente-se por ela, sem ser rígida):\n${flow.map((step, i) => `${i + 1}. ${step}`).join("\n")}`,
+    );
+  }
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
 function textFrom(content: AIContentBlock[]): string | null {

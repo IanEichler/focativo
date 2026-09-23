@@ -351,6 +351,90 @@ describe("agenda: catálogo de serviços, agendamentos e concorrência", () => {
       expect(appointment!.origin).toBe("ai");
       expect(appointment!.status).toBe("SCHEDULED");
     });
+
+    it("requires a human to review before the AI can book a service marked requires_human_confirmation, then books it for real once returned", async () => {
+      const [gatedService] = await db.as(ownerId).rpc<{ agenda_service_create: string }>("agenda_service_create", {
+        p_tenant_id: tenantId,
+        p_name: "Procedimento com revisão",
+        p_duration_minutes: 30,
+        p_price: 300,
+        p_requires_human_confirmation: true,
+      });
+      const gatedServiceId = gatedService!.agenda_service_create;
+      const conversationId = await seedConversation("11999990003");
+      const startsAt = isoIn(300);
+
+      await expectDbError(
+        db.admin.rpc("ai_agenda_book", {
+          p_conversation_id: conversationId,
+          p_service_id: gatedServiceId,
+          p_professional_user_id: ownerId,
+          p_starts_at: startsAt,
+        }),
+        "human_confirmation_required",
+      );
+      const beforeCount = await db.admin.query(
+        "select id from public.agenda_appointments where tenant_id = $1 and origin = 'ai' and service_id = $2",
+        [tenantId, gatedServiceId],
+      );
+      expect(beforeCount).toHaveLength(0);
+
+      // Retentar sem ninguém revisar continua bloqueado — não é uma trava de
+      // "uma vez só", é enquanto não for liberado de verdade.
+      await expectDbError(
+        db.admin.rpc("ai_agenda_book", {
+          p_conversation_id: conversationId,
+          p_service_id: gatedServiceId,
+          p_professional_user_id: ownerId,
+          p_starts_at: startsAt,
+        }),
+        "human_confirmation_required",
+      );
+
+      // ai_agenda_book só recusa — quem grava o marcador de "pendente" é o
+      // tool-executor.ts, numa chamada separada (um RAISE não capturado
+      // desfaz qualquer escrita feita na mesma transação do RPC que falhou).
+      await db.admin.rpc("ai_upsert_conversation_state", {
+        p_conversation_id: conversationId,
+        p_turn_count: 1,
+        p_draft_items: JSON.stringify([{ type: "appointment_pending", human_cleared: false }]),
+      });
+
+      // Atendente assume o ticket e devolve à IA — esse gesto libera o agendamento.
+      await db.as(sellerId).rpc("conversation_assume", { p_conversation_id: conversationId });
+      await db.as(sellerId).rpc("conversation_return_to_ai", { p_conversation_id: conversationId });
+
+      const [row] = await db.admin.rpc<{ ai_agenda_book: string }>("ai_agenda_book", {
+        p_conversation_id: conversationId,
+        p_service_id: gatedServiceId,
+        p_professional_user_id: ownerId,
+        p_starts_at: startsAt,
+      });
+      const [appointment] = await db.admin.query<{ origin: string }>(
+        "select origin from public.agenda_appointments where id = $1",
+        [row!.ai_agenda_book],
+      );
+      expect(appointment!.origin).toBe("ai");
+
+      // O agendamento de staff (agenda_appointment_create) nunca foi afetado por esse gate.
+      const [staffService] = await db.as(ownerId).rpc<{ agenda_service_create: string }>("agenda_service_create", {
+        p_tenant_id: tenantId,
+        p_name: "Outro procedimento com revisão",
+        p_duration_minutes: 30,
+        p_price: 300,
+        p_requires_human_confirmation: true,
+      });
+      const [staffBooking] = await db
+        .as(sellerId)
+        .rpc<{ agenda_appointment_create: string }>("agenda_appointment_create", {
+          p_tenant_id: tenantId,
+          p_customer_id: customerId,
+          p_service_id: staffService!.agenda_service_create,
+          p_professional_user_id: ownerId,
+          p_starts_at: isoIn(310),
+        });
+      expect(staffBooking!.agenda_appointment_create).toBeTruthy();
+    });
   });
 
   it("RLS isolates services and appointments between tenants", async () => {

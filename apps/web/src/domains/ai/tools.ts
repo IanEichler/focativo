@@ -55,7 +55,7 @@ const AGENDA_TOOLS: AIToolDefinition[] = [
   {
     name: "consultar_servicos",
     description:
-      "Lista os serviços oferecidos (nome, duração, preço e descrição do procedimento). Use para responder dúvidas do cliente sobre o que é oferecido antes de agendar.",
+      "Lista os serviços oferecidos (nome, duração, preço, descrição, restrições e se exige confirmação humana antes de agendar). Use para responder dúvidas do cliente sobre o que é oferecido antes de agendar.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -64,9 +64,14 @@ const AGENDA_TOOLS: AIToolDefinition[] = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "consultar_horario_atendimento",
+    description: "Consulta o horário de funcionamento da empresa por dia da semana. Use antes de sugerir um horário.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "criar_agendamento",
     description:
-      "Agenda um horário para o cliente desta conversa. Use só depois que o cliente confirmar serviço, profissional (se houver mais de um) e horário exatos — nunca agende por suposição. Se o horário estiver ocupado, a tool falha e você deve sugerir outro horário.",
+      "Agenda um horário para o cliente desta conversa. Use só depois que o cliente confirmar serviço, profissional (se houver mais de um) e horário exatos — nunca agende por suposição. Se o horário estiver ocupado ou fora do expediente, a tool falha e você deve sugerir outro horário. Se o serviço exigir confirmação humana, a tool devolve pending_human_confirmation em vez de confirmar — nesse caso avise o cliente que um atendente vai revisar.",
     inputSchema: {
       type: "object",
       properties: {
@@ -83,6 +88,13 @@ const AGENDA_TOOLS: AIToolDefinition[] = [
   },
 ];
 
+const FAQ_TOOL: AIToolDefinition = {
+  name: "consultar_perguntas_frequentes",
+  description:
+    "Consulta as perguntas frequentes cadastradas pela empresa. Use quando o cliente perguntar algo genérico sobre o negócio (políticas, formas de pagamento, etc.) antes de responder por conta própria.",
+  inputSchema: { type: "object", properties: {} },
+};
+
 const ESCALATE_TOOL: AIToolDefinition = {
   name: "escalar_para_humano",
   description:
@@ -98,6 +110,7 @@ export function buildAiTools(enabledModules: { catalog: boolean; agenda: boolean
   return [
     ...(enabledModules.catalog ? RETAIL_TOOLS : []),
     ...(enabledModules.agenda ? AGENDA_TOOLS : []),
+    FAQ_TOOL,
     ESCALATE_TOOL,
   ];
 }

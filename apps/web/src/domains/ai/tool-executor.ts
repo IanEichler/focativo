@@ -33,6 +33,10 @@ export async function executeTool(
         return { toolUseId, content: JSON.stringify(await listAgendaServices(admin, context.tenantId)) };
       case "consultar_profissionais":
         return { toolUseId, content: JSON.stringify(await listProfessionals(admin, context.tenantId)) };
+      case "consultar_horario_atendimento":
+        return { toolUseId, content: JSON.stringify(await listBusinessHours(admin, context.tenantId)) };
+      case "consultar_perguntas_frequentes":
+        return { toolUseId, content: JSON.stringify(await listFaq(admin, context.tenantId)) };
       case "criar_agendamento":
         return { toolUseId, content: JSON.stringify(await bookAppointment(admin, context.conversationId, input)) };
       default:
@@ -92,7 +96,7 @@ async function escalate(admin: AdminClient, conversationId: string, input: Recor
 async function listAgendaServices(admin: AdminClient, tenantId: string) {
   const { data, error } = await admin
     .from("agenda_services")
-    .select("id, name, description, duration_minutes, price")
+    .select("id, name, description, duration_minutes, price, requires_human_confirmation, restrictions")
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
     .order("name");
@@ -103,6 +107,10 @@ async function listAgendaServices(admin: AdminClient, tenantId: string) {
     description: row.description,
     duration_minutes: row.duration_minutes,
     price: Number(row.price),
+    restrictions: row.restrictions,
+    // Quando true, o próximo pedido de agendamento desse serviço volta com
+    // pending_human_confirmation — avise o cliente disso com antecedência.
+    requires_human_confirmation: row.requires_human_confirmation,
   }));
 }
 
@@ -117,6 +125,33 @@ async function listProfessionals(admin: AdminClient, tenantId: string) {
     professional_user_id: row.user_id,
     name: row.profile?.full_name || "Profissional",
   }));
+}
+
+const DAY_LABELS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+async function listBusinessHours(admin: AdminClient, tenantId: string) {
+  const { data, error } = await admin
+    .from("tenant_business_hours")
+    .select("day_of_week, opens_at, closes_at, is_closed")
+    .eq("tenant_id", tenantId)
+    .order("day_of_week");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    dia: DAY_LABELS[row.day_of_week],
+    fechado: row.is_closed,
+    abre: row.opens_at,
+    fecha: row.closes_at,
+  }));
+}
+
+async function listFaq(admin: AdminClient, tenantId: string) {
+  const { data, error } = await admin
+    .from("tenant_ai_business_info")
+    .select("faq")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.faq ?? [];
 }
 
 async function bookAppointment(admin: AdminClient, conversationId: string, input: Record<string, unknown>) {
@@ -137,6 +172,22 @@ async function bookAppointment(admin: AdminClient, conversationId: string, input
     p_starts_at: startsAt.toISOString(),
     p_notes: typeof input.observacoes === "string" ? input.observacoes : undefined,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // ai_agenda_book só recusa — nunca escreve nada na mesma chamada que
+    // falha de propósito (um RAISE não capturado desfaz a transação
+    // inteira, inclusive qualquer INSERT feito antes dele). Quem grava o
+    // marcador de "pendente" e escala pro humano é este código aqui, em
+    // chamadas separadas que de fato commitam.
+    if (error.message === "human_confirmation_required") {
+      await admin.rpc("ai_upsert_conversation_state", {
+        p_conversation_id: conversationId,
+        p_turn_count: 0,
+        p_draft_items: JSON.stringify([{ type: "appointment_pending", human_cleared: false }]),
+      });
+      await escalate(admin, conversationId, { motivo: "Agendamento pendente de confirmação humana antes de marcar." });
+      return { pending_human_confirmation: true };
+    }
+    throw new Error(error.message);
+  }
   return { appointment_id: data };
 }
