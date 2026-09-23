@@ -44,6 +44,48 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     expect(conversation!.last_message_preview).toBe("Oi, vocês têm whey de chocolate?");
   });
 
+  it("creates a CRM opportunity in the default stage for a brand new WhatsApp customer, but not on their follow-up messages", async () => {
+    const [firstRow] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11933332222",
+      p_content: "Oi, quero saber mais",
+      p_external_message_id: "wa-crm-auto-1",
+      p_sender_name: "Nova Lead",
+    });
+    void firstRow;
+
+    const [customer] = await db.admin.query<{ id: string }>(
+      "select id from public.customers where tenant_id = $1 and whatsapp = $2",
+      [tenantId, "11933332222"],
+    );
+
+    const [defaultStage] = await db.admin.query<{ id: string }>(
+      "select id from public.crm_stages where tenant_id = $1 and is_active and not is_won and not is_lost order by sort_order asc limit 1",
+      [tenantId],
+    );
+
+    const opportunities = await db.admin.query<{ stage_id: string; origin: string }>(
+      "select stage_id, origin from public.crm_opportunities where tenant_id = $1 and customer_id = $2",
+      [tenantId, customer!.id],
+    );
+    expect(opportunities).toHaveLength(1);
+    expect(opportunities[0]!.stage_id).toBe(defaultStage!.id);
+    expect(opportunities[0]!.origin).toBe("whatsapp");
+
+    // Segunda mensagem do mesmo cliente: não pode criar uma segunda oportunidade.
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11933332222",
+      p_content: "Oi de novo",
+      p_external_message_id: "wa-crm-auto-2",
+    });
+    const opportunitiesAfter = await db.admin.query(
+      "select id from public.crm_opportunities where tenant_id = $1 and customer_id = $2",
+      [tenantId, customer!.id],
+    );
+    expect(opportunitiesAfter).toHaveLength(1);
+  });
+
   it("stores the raw WhatsApp chat id alongside the phone, and backfills it if missing on an existing customer", async () => {
     const [row] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
       p_tenant_id: tenantId,
@@ -73,6 +115,51 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       [customer!.id],
     );
     expect(updated!.whatsapp_chat_id).toBe("987654321@lid");
+  });
+
+  it("matches an existing customer by whatsapp_chat_id even when the resolved number is wrong or unstable, instead of creating a duplicate", async () => {
+    const chatId = "555111222@lid";
+    const [first] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "30447375491177", // resolução de LID falhou: caiu no fallback (dígitos crus)
+      p_content: "Oi",
+      p_external_message_id: "wa-dedupe-1",
+      p_whatsapp_chat_id: chatId,
+    });
+    void first;
+
+    // Segunda mensagem do MESMO contato: a lib resolveu certo dessa vez e
+    // mandou um número diferente (bom). Não pode criar um segundo cliente —
+    // tem que casar pelo chat_id e atualizar o telefone pro valor melhor.
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "5511977776666",
+      p_content: "Oi de novo",
+      p_external_message_id: "wa-dedupe-2",
+      p_whatsapp_chat_id: chatId,
+    });
+
+    const customers = await db.admin.query<{ id: string; whatsapp: string }>(
+      "select id, whatsapp from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
+      [tenantId, chatId],
+    );
+    expect(customers).toHaveLength(1);
+    expect(customers[0]!.whatsapp).toBe("5511977776666");
+
+    // Terceira mensagem: resolução falha de novo (número ruim). Não pode
+    // degradar o telefone bom que já está salvo.
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "99988877766655",
+      p_content: "Oi de novo de novo",
+      p_external_message_id: "wa-dedupe-3",
+      p_whatsapp_chat_id: chatId,
+    });
+    const [stillGood] = await db.admin.query<{ whatsapp: string }>(
+      "select whatsapp from public.customers where id = $1",
+      [customers[0]!.id],
+    );
+    expect(stillGood!.whatsapp).toBe("5511977776666");
   });
 
   it("reuses the same conversation for a customer who writes again, accumulating unread count", async () => {

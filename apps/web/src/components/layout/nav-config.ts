@@ -16,6 +16,13 @@ export const APP_NAV: NavSection[] = [
       { title: "CRM", href: "/app/crm", icon: "kanban", permission: "crm.read", module: "crm" },
       { title: "Clientes", href: "/app/clientes", icon: "users-round", permission: "customers.read" },
       { title: "Agenda", href: "/app/agenda", icon: "calendar-days", permission: "agenda.read", module: "agenda" },
+      {
+        title: "Serviços",
+        href: "/app/agenda/servicos",
+        icon: "sliders",
+        permission: "agenda.write",
+        module: "agenda",
+      },
     ],
   },
   {
@@ -55,7 +62,13 @@ export const APP_NAV: NavSection[] = [
   {
     title: "Sistema",
     items: [
-      { title: "WhatsApp", href: "/app/whatsapp", icon: "message", permission: "tenant.update", module: "whatsapp" },
+      {
+        title: "WhatsApp",
+        href: "/app/whatsapp",
+        icon: "whatsapp",
+        permission: "tenant.update",
+        module: "whatsapp",
+      },
       { title: "Assistente de IA", href: "/app/ia", icon: "bot", permission: "tenant.update", module: "ai" },
       { title: "Usuários", href: "/app/usuarios", icon: "users", permission: "users.read" },
       { title: "Configurações", href: "/app/configuracoes", icon: "settings" },

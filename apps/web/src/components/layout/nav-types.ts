@@ -23,7 +23,9 @@ export type NavIconName =
   | "bot"
   | "heart-pulse"
   | "flag"
-  | "scroll";
+  | "scroll"
+  | "whatsapp"
+  | "sliders";
 
 export interface NavItem {
   title: string;

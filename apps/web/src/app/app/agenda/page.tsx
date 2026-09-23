@@ -106,13 +106,6 @@ export default async function AgendaPage({ searchParams }: PageProps<"/app/agend
         actions={
           <div className="flex items-center gap-2">
             {canWrite && (
-              <Button variant="outline" asChild>
-                <Link href="/app/agenda/servicos">
-                  <Settings2 /> Serviços
-                </Link>
-              </Button>
-            )}
-            {canWrite && (
               <AppointmentFormSheet
                 services={services}
                 professionals={professionals}

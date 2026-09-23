@@ -28,6 +28,26 @@ function idleState(): SessionState {
   return { status: "DISCONNECTED", qrCode: null, phoneNumber: null, errorMessage: null };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * getContactLidAndPhone falha de forma intermitente para o MESMO contato
+ * (confirmado ao vivo, em produção: funciona numa mensagem e falha na
+ * seguinte) — não é um contato "sem LID", é o cache interno da lib ainda não
+ * pronto no instante exato em que o evento de mensagem dispara. Tenta mais
+ * algumas vezes com um respiro curto antes de desistir e cair no fallback.
+ */
+async function resolveLidPhoneWithRetry(client: WWebClient, lidChatId: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(600);
+    const lookup = await client.getContactLidAndPhone([lidChatId]).catch(() => []);
+    if (lookup[0]?.pn) return fromChatId(lookup[0].pn);
+  }
+  return null;
+}
+
 export function getSessionState(tenantId: string): SessionState {
   return sessions.get(tenantId)?.state ?? idleState();
 }
@@ -92,8 +112,7 @@ export async function connectSession(tenantId: string): Promise<void> {
       const contact = await message.getContact().catch(() => null);
       let resolvedNumber = contact?.number || null;
       if (!resolvedNumber) {
-        const lookup = await client.getContactLidAndPhone([message.from]).catch(() => []);
-        resolvedNumber = lookup[0]?.pn ? fromChatId(lookup[0].pn) : null;
+        resolvedNumber = await resolveLidPhoneWithRetry(client, message.from);
       }
       const whatsappNumber = ensureCountryCode(resolvedNumber || fromChatId(message.from));
       await postToApp({
