@@ -1,9 +1,14 @@
 "use client";
 
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { updateNavOrderAction } from "@/domains/profile/actions";
 import { cn } from "@/lib/utils";
 import { NavIcon } from "./nav-icon";
 import type { NavItem, NavSection } from "./nav-types";
@@ -20,8 +25,37 @@ function isActive(pathname: string, href: string, rootHref: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SidebarNav({ sections, rootHref, collapsed, onNavigate }: SidebarNavProps) {
+/**
+ * Arrastar reordena só DENTRO de cada seção (cada uma tem seu próprio
+ * SortableContext) — a persistência (updateNavOrderAction) roda em
+ * background sem bloquear a UI, que já reflete a nova ordem na hora.
+ */
+export function SidebarNav({ sections: initialSections, rootHref, collapsed, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const [sections, setSections] = useState(initialSections);
+  const [, startTransition] = useTransition();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  function handleDragEnd(sectionIndex: number) {
+    return (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      setSections((prev) => {
+        const items = prev[sectionIndex]!.items;
+        const oldIndex = items.findIndex((item) => item.href === active.id);
+        const newIndex = items.findIndex((item) => item.href === over.id);
+        if (oldIndex === -1 || newIndex === -1) return prev;
+
+        const next = [...prev];
+        next[sectionIndex] = { ...next[sectionIndex]!, items: arrayMove(items, oldIndex, newIndex) };
+        startTransition(() => {
+          void updateNavOrderAction(next.flatMap((section) => section.items.map((item) => item.href)));
+        });
+        return next;
+      });
+    };
+  }
 
   return (
     <nav aria-label="Navegação principal" className="flex flex-col gap-5 px-3 py-4">
@@ -33,18 +67,35 @@ export function SidebarNav({ sections, rootHref, collapsed, onNavigate }: Sideba
             </p>
           )}
           {section.title && collapsed && index > 0 && <div className="mx-2.5 mb-1.5 h-px bg-sidebar-border" />}
-          {section.items.map((item) => (
-            <SidebarNavItem
-              key={item.href}
-              item={item}
-              active={isActive(pathname, item.href, rootHref)}
-              collapsed={collapsed}
-              onNavigate={onNavigate}
-            />
-          ))}
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd(index)}>
+            <SortableContext items={section.items.map((item) => item.href)} strategy={verticalListSortingStrategy}>
+              {section.items.map((item) => (
+                <SortableNavItem
+                  key={item.href}
+                  item={item}
+                  active={isActive(pathname, item.href, rootHref)}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       ))}
     </nav>
+  );
+}
+
+function SortableNavItem(props: { item: NavItem; active: boolean; collapsed: boolean; onNavigate?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.item.href,
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn(isDragging && "z-10 opacity-70")}>
+      <SidebarNavItem {...props} />
+    </div>
   );
 }
 

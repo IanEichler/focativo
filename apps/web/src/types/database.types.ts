@@ -1652,6 +1652,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          nav_order: Json | null
           phone: string | null
           updated_at: string
         }
@@ -1661,6 +1662,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id: string
+          nav_order?: Json | null
           phone?: string | null
           updated_at?: string
         }
@@ -1670,6 +1672,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          nav_order?: Json | null
           phone?: string | null
           updated_at?: string
         }

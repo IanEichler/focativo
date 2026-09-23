@@ -45,3 +45,18 @@ export async function updateProfileAction(
   revalidatePath("/app", "layout");
   return { status: "success", message: "Perfil atualizado." };
 }
+
+/** Sem revalidatePath de propósito: é só a ordem da sidebar do próprio usuário, o client já reflete na hora. */
+export async function updateNavOrderAction(order: string[]): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = z.array(z.string().max(200)).max(50).safeParse(order);
+  if (!parsed.success) return { status: "error", message: "Ordem inválida." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ nav_order: parsed.data }).eq("id", user.id);
+  if (error) {
+    logger.warn({ event: "profile.nav_order", status: "error", user_id: user.id, code: error.code });
+    return { status: "error", message: toUserMessage(error) };
+  }
+  return { status: "success" };
+}

@@ -111,6 +111,30 @@ export function filterNav(
     .filter((section) => section.items.length > 0);
 }
 
+/**
+ * Reordena os itens DENTRO de cada seção conforme o array salvo (hrefs na
+ * ordem desejada) — nunca move item entre seções. Href presente no array
+ * salvo mas ausente do nav atual é ignorado (feature removida); href do nav
+ * atual ausente do array salvo (feature nova) é anexado ao final da seção,
+ * na ordem padrão — nunca some.
+ */
+export function reorderNav(sections: NavSection[], order: string[] | null): NavSection[] {
+  if (!order || order.length === 0) return sections;
+  const position = new Map(order.map((href, index) => [href, index]));
+
+  return sections.map((section) => ({
+    ...section,
+    items: [...section.items].sort((a, b) => {
+      const posA = position.get(a.href);
+      const posB = position.get(b.href);
+      if (posA === undefined && posB === undefined) return 0;
+      if (posA === undefined) return 1;
+      if (posB === undefined) return -1;
+      return posA - posB;
+    }),
+  }));
+}
+
 export function navCommands(sections: NavSection[], group: string) {
   return sections.flatMap((section) =>
     section.items
