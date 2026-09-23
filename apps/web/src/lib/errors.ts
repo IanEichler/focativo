@@ -45,6 +45,8 @@ export const DB_ERROR_MESSAGES = {
   // Agenda
   slot_unavailable: "Esse horário já está ocupado para este profissional. Escolha outro horário.",
   professional_not_eligible: "Este profissional não atende este serviço.",
+  outside_business_hours: "Esse horário está fora do funcionamento configurado para este dia.",
+  professional_unavailable: "Este profissional registrou uma exceção (folga) nesta data.",
   // Permissões personalizadas
   invalid_permission_code: "Uma das permissões enviadas não existe.",
   invalid_overrides: "Não foi possível salvar as permissões. Tente novamente.",

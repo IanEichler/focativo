@@ -129,3 +129,50 @@ export interface ProfessionalOption {
   userId: string;
   fullName: string;
 }
+
+export interface BusinessHoursRow {
+  dayOfWeek: number;
+  opensAt: string | null;
+  closesAt: string | null;
+  isClosed: boolean;
+}
+
+/** Sem linha pra um dia = sem restrição configurada (default aberto). */
+export async function getBusinessHours(context: TenantContext): Promise<BusinessHoursRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("agenda_business_hours_get", { p_tenant_id: context.tenant.id });
+  if (error) throw new Error(`getBusinessHours failed: ${error.code}`);
+
+  return (data ?? []).map((row) => ({
+    dayOfWeek: row.day_of_week,
+    opensAt: row.opens_at,
+    closesAt: row.closes_at,
+    isClosed: row.is_closed,
+  }));
+}
+
+export interface ProfessionalExceptionRow {
+  id: string;
+  professionalUserId: string;
+  date: string;
+  reason: string | null;
+}
+
+export async function getProfessionalExceptions(
+  context: TenantContext,
+  params: { professionalUserId?: string } = {},
+): Promise<ProfessionalExceptionRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("agenda_professional_exceptions_list", {
+    p_tenant_id: context.tenant.id,
+    p_professional_user_id: params.professionalUserId,
+  });
+  if (error) throw new Error(`getProfessionalExceptions failed: ${error.code}`);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    professionalUserId: row.professional_user_id,
+    date: row.date,
+    reason: row.reason,
+  }));
+}

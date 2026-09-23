@@ -8,8 +8,10 @@ import { AccessDenied } from "@/components/feedback/access-denied";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { BusinessHoursCard } from "@/domains/agenda/components/business-hours-card";
+import { ProfessionalExceptionsCard } from "@/domains/agenda/components/professional-exceptions-card";
 import { ServiceFormSheet } from "@/domains/agenda/components/service-form";
-import { listServices, type ServiceRow } from "@/domains/agenda/queries";
+import { getBusinessHours, getProfessionalExceptions, listServices, type ServiceRow } from "@/domains/agenda/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { listTenantMembers } from "@/domains/users/queries";
 import { formatQuantity } from "@/lib/format";
@@ -27,7 +29,12 @@ export default async function AgendaServicesPage() {
     );
   }
 
-  const [services, members] = await Promise.all([listServices(context), listTenantMembers(context)]);
+  const [services, members, businessHours, exceptions] = await Promise.all([
+    listServices(context),
+    listTenantMembers(context),
+    getBusinessHours(context),
+    getProfessionalExceptions(context),
+  ]);
   const professionals = members
     .filter((m) => m.status === "ACTIVE")
     .map((m) => ({ userId: m.userId, fullName: m.fullName }));
@@ -128,6 +135,11 @@ export default async function AgendaServicesPage() {
           />
         }
       />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BusinessHoursCard hours={businessHours} />
+        <ProfessionalExceptionsCard exceptions={exceptions} professionals={professionals} />
+      </div>
     </PageContainer>
   );
 }

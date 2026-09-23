@@ -49,3 +49,27 @@ export const appointmentSchema = z.object({
 export type AppointmentField = keyof z.input<typeof appointmentSchema>;
 
 export const appointmentIdSchema = z.uuid();
+
+const timeOrNull = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário inválido.")
+  .nullable();
+
+export const businessHoursSchema = z
+  .array(
+    z.object({
+      dayOfWeek: z.number().int().min(0).max(6),
+      opensAt: timeOrNull,
+      closesAt: timeOrNull,
+      isClosed: z.boolean(),
+    }),
+  )
+  .max(7);
+
+export const professionalExceptionSchema = z.object({
+  professionalUserId: z.uuid(),
+  date: z.iso.date("Data inválida."),
+  reason: optionalText(280, "Motivo muito longo."),
+});
+
+export type ProfessionalExceptionField = keyof z.input<typeof professionalExceptionSchema>;

@@ -103,6 +103,58 @@ export type Database = {
           },
         ]
       }
+      agenda_professional_exceptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          professional_user_id: string
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          professional_user_id: string
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          professional_user_id?: string
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_professional_exceptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_professional_exceptions_professional_user_id_fkey"
+            columns: ["professional_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_professional_exceptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_service_professionals: {
         Row: {
           created_at: string
@@ -2284,6 +2336,54 @@ export type Database = {
           },
         ]
       }
+      tenant_business_hours: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          day_of_week: number
+          is_closed: boolean
+          opens_at: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          day_of_week: number
+          is_closed?: boolean
+          opens_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          day_of_week?: number
+          is_closed?: boolean
+          opens_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_business_hours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_business_hours_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_module_flags: {
         Row: {
           enabled: boolean
@@ -2893,6 +2993,43 @@ export type Database = {
           p_idempotency_key?: string
         }
         Returns: string
+      }
+      agenda_business_hours_get: {
+        Args: {
+          p_tenant_id: string
+        }
+        Returns: Database["public"]["Tables"]["tenant_business_hours"]["Row"][]
+      }
+      agenda_business_hours_set: {
+        Args: {
+          p_tenant_id: string
+          p_hours: Json
+        }
+        Returns: Database["public"]["Tables"]["tenant_business_hours"]["Row"][]
+      }
+      agenda_professional_exception_create: {
+        Args: {
+          p_tenant_id: string
+          p_professional_user_id: string
+          p_date: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      agenda_professional_exception_delete: {
+        Args: {
+          p_id: string
+        }
+        Returns: undefined
+      }
+      agenda_professional_exceptions_list: {
+        Args: {
+          p_tenant_id: string
+          p_professional_user_id?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Database["public"]["Tables"]["agenda_professional_exceptions"]["Row"][]
       }
       agenda_service_create: {
         Args: {

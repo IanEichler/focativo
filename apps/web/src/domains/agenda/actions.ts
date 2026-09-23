@@ -8,7 +8,15 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, safeFormValues, validationError } from "@/lib/validation";
 import type { Enums } from "@/types/database.types";
-import { appointmentSchema, serviceSchema, type AppointmentField, type ServiceField } from "./schemas";
+import {
+  appointmentSchema,
+  businessHoursSchema,
+  professionalExceptionSchema,
+  serviceSchema,
+  type AppointmentField,
+  type ProfessionalExceptionField,
+  type ServiceField,
+} from "./schemas";
 
 const AGENDA_PATH = "/app/agenda";
 
@@ -147,4 +155,63 @@ export async function cancelAppointmentAction(appointmentId: string, reason?: st
   if (error) return { status: "error", message: toUserMessage(error) };
   revalidatePath(AGENDA_PATH);
   return { status: "success", message: "Agendamento cancelado." };
+}
+
+export async function saveBusinessHoursAction(hours: unknown): Promise<ActionState> {
+  const context = await requireTenantContext();
+  if (!context.can("agenda.write")) return forbidden();
+
+  const parsed = businessHoursSchema.safeParse(hours);
+  if (!parsed.success) return { status: "error", message: "Horários inválidos." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("agenda_business_hours_set", {
+    p_tenant_id: context.tenant.id,
+    p_hours: JSON.stringify(
+      parsed.data.map((day) => ({
+        day_of_week: day.dayOfWeek,
+        opens_at: day.opensAt,
+        closes_at: day.closesAt,
+        is_closed: day.isClosed,
+      })),
+    ),
+  });
+  if (error) return { status: "error", message: toUserMessage(error) };
+  revalidatePath(`${AGENDA_PATH}/servicos`);
+  return { status: "success", message: "Horário de funcionamento salvo." };
+}
+
+export async function createProfessionalExceptionAction(
+  _prev: ActionState<ProfessionalExceptionField>,
+  formData: FormData,
+): Promise<ActionState<ProfessionalExceptionField>> {
+  const context = await requireTenantContext();
+  const input = formDataToObject(formData);
+  const parsed = professionalExceptionSchema.safeParse(input);
+  if (!parsed.success) return validationError(parsed.error, input);
+  const data = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("agenda_professional_exception_create", {
+    p_tenant_id: context.tenant.id,
+    p_professional_user_id: data.professionalUserId,
+    p_date: data.date,
+    p_reason: data.reason ?? undefined,
+  });
+  if (error) {
+    return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
+  }
+  revalidatePath(`${AGENDA_PATH}/servicos`);
+  return { status: "success", message: "Exceção registrada." };
+}
+
+export async function deleteProfessionalExceptionAction(exceptionId: string): Promise<ActionState> {
+  await requireTenantContext();
+  if (!z.uuid().safeParse(exceptionId).success) return forbidden();
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("agenda_professional_exception_delete", { p_id: exceptionId });
+  if (error) return { status: "error", message: toUserMessage(error) };
+  revalidatePath(`${AGENDA_PATH}/servicos`);
+  return { status: "success", message: "Exceção removida." };
 }
