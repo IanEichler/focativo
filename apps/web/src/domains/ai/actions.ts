@@ -17,16 +17,13 @@ export async function saveAiSettingsAction(
   const input = formDataToObject(formData);
   const parsed = aiSettingsSchema.safeParse(input);
   if (!parsed.success) return validationError(parsed.error, input);
-  const { enabled, systemPrompt, model, maxTokensPerReply, monthlyBudgetUsd } = parsed.data;
+  const { enabled, systemPrompt } = parsed.data;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("ai_settings_update", {
     p_tenant_id: context.tenant.id,
     p_enabled: enabled,
     p_system_prompt: systemPrompt,
-    p_model: model,
-    p_max_tokens_per_reply: maxTokensPerReply,
-    p_monthly_budget_cents: monthlyBudgetUsd !== undefined ? Math.round(monthlyBudgetUsd * 100) : undefined,
   });
   if (error) return { status: "error", message: toUserMessage(error) };
 

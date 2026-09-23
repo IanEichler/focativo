@@ -292,9 +292,7 @@ describe("agenda: catálogo de serviços, agendamentos e concorrência", () => {
     });
 
     it("books an appointment for the conversation's customer when the AI is enabled", async () => {
-      await db
-        .as(ownerId)
-        .rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true, p_model: "claude-sonnet-5" });
+      await db.as(ownerId).rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true });
       const conversationId = await seedConversation("11999990002");
 
       const [row] = await db.admin.rpc<{ ai_agenda_book: string }>("ai_agenda_book", {

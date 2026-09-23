@@ -190,3 +190,23 @@ export async function getDisabledModules(tenantId: string): Promise<Set<string>>
   if (error) throw new Error(`admin_list_module_flags failed: ${error.message}`);
   return new Set((data ?? []).filter((row) => !row.enabled).map((row) => row.module_code));
 }
+
+export interface AiPlatformLimits {
+  model: string;
+  maxTokensPerReply: number;
+  monthlyBudgetCents: number | null;
+}
+
+export async function getAiPlatformLimits(tenantId: string): Promise<AiPlatformLimits> {
+  await requireSuperAdmin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_ai_platform_limits_get", { p_tenant_id: tenantId });
+  if (error) throw new Error(`admin_ai_platform_limits_get failed: ${error.message}`);
+  const row = data?.[0];
+  if (!row) throw new Error("admin_ai_platform_limits_get failed: empty response");
+  return {
+    model: row.model,
+    maxTokensPerReply: row.max_tokens_per_reply,
+    monthlyBudgetCents: row.monthly_budget_cents,
+  };
+}

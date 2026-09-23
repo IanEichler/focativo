@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTenantSchema, setModuleFlagSchema } from "./schemas";
+import { aiPlatformLimitsSchema, createTenantSchema, setModuleFlagSchema } from "./schemas";
 
 describe("createTenantSchema", () => {
   it("accepts a valid payload and defaults the segment", () => {
@@ -45,6 +45,41 @@ describe("setModuleFlagSchema", () => {
       moduleCode: "not_a_module",
       enabled: true,
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("aiPlatformLimitsSchema", () => {
+  const base = {
+    tenantId: "123e4567-e89b-12d3-a456-426614174000",
+    model: "claude-sonnet-5",
+    maxTokensPerReply: "1024",
+  };
+
+  it("accepts a minimal valid payload", () => {
+    const result = aiPlatformLimitsSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.monthlyBudgetUsd).toBeUndefined();
+  });
+
+  it("rejects an unknown model", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, model: "gpt-4" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a max tokens value outside the allowed range", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, maxTokensPerReply: "8192" });
+    expect(result.success).toBe(false);
+  });
+
+  it("parses a positive monthly budget", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, monthlyBudgetUsd: "25.50" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.monthlyBudgetUsd).toBe(25.5);
+  });
+
+  it("rejects a negative monthly budget", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, monthlyBudgetUsd: "-5" });
     expect(result.success).toBe(false);
   });
 });

@@ -17,9 +17,7 @@ describe("AI agent: settings, tools controladas, estado conversacional, custos",
     // (evita alternar o estado de um tenant compartilhado entre testes, que já
     // causou um bug de isolamento na Fase 5 — cada cenário de toggle merece
     // seu próprio tenant, não uma ordem de execução implícita).
-    await db
-      .as(ownerId)
-      .rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true, p_model: "claude-sonnet-5" });
+    await db.as(ownerId).rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true });
   });
 
   async function seedConversation(number: string) {
@@ -42,11 +40,10 @@ describe("AI agent: settings, tools controladas, estado conversacional, custos",
   describe("tenant_ai_settings", () => {
     it("defaults to disabled when no settings row exists yet", async () => {
       const fresh = await db.createTenantWithOwner("Loja Recém-criada");
-      const [row] = await db.as(fresh.ownerId).rpc<{ enabled: boolean; model: string }>("ai_settings_get", {
+      const [row] = await db.as(fresh.ownerId).rpc<{ enabled: boolean }>("ai_settings_get", {
         p_tenant_id: fresh.tenantId,
       });
       expect(row!.enabled).toBe(false);
-      expect(row!.model).toBe("claude-sonnet-5");
     });
 
     it("rejects a VENDEDOR reading or writing settings (tenant.update is OWNER/ADMIN only)", async () => {
@@ -56,13 +53,11 @@ describe("AI agent: settings, tools controladas, estado conversacional, custos",
       ).rejects.toThrow("forbidden");
     });
 
-    it("OWNER can update the prompt/model and it persists", async () => {
+    it("OWNER can update the prompt and it persists (modelo/limites não fazem mais parte desta RPC)", async () => {
       const [row] = await db.as(ownerId).rpc<{ enabled: boolean; system_prompt: string }>("ai_settings_update", {
         p_tenant_id: tenantId,
         p_enabled: true,
         p_system_prompt: "Você é a assistente da Gorila Suplementos.",
-        p_model: "claude-sonnet-5",
-        p_max_tokens_per_reply: 512,
       });
       expect(row!.enabled).toBe(true);
       expect(row!.system_prompt).toBe("Você é a assistente da Gorila Suplementos.");

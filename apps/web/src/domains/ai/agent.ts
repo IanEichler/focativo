@@ -35,10 +35,17 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     .single();
   if (!conversation || conversation.status !== "AI_ACTIVE") return;
 
-  const [{ data: settings }, { data: moduleFlagRows }] = await Promise.all([
+  const [{ data: settings }, { data: limits }, { data: moduleFlagRows }] = await Promise.all([
     admin
       .from("tenant_ai_settings")
-      .select("enabled, system_prompt, model, max_tokens_per_reply, monthly_budget_cents")
+      .select("enabled, system_prompt")
+      .eq("tenant_id", conversation.tenant_id)
+      .maybeSingle(),
+    // Modelo, limite de tokens e orçamento são decisão do admin master, não
+    // do tenant — tabela separada, nunca lida pelo dono da empresa.
+    admin
+      .from("tenant_ai_platform_limits")
+      .select("model, max_tokens_per_reply, monthly_budget_cents")
       .eq("tenant_id", conversation.tenant_id)
       .maybeSingle(),
     admin.from("tenant_module_flags").select("module_code, enabled").eq("tenant_id", conversation.tenant_id),
@@ -49,9 +56,9 @@ export async function runAiTurn(conversationId: string): Promise<void> {
   // IA ligada pelo dono do tenant (mesma trava de private.require_ai_service_call).
   if (disabledModules.has("ai")) return;
 
-  if (settings.monthly_budget_cents != null) {
+  if (limits?.monthly_budget_cents != null) {
     const { data: spent } = await admin.rpc("ai_usage_month_to_date", { p_tenant_id: conversation.tenant_id });
-    if (Number(spent ?? 0) >= settings.monthly_budget_cents / 100) {
+    if (Number(spent ?? 0) >= limits.monthly_budget_cents / 100) {
       await admin.rpc("ai_escalate_conversation", {
         p_conversation_id: conversationId,
         p_reason: "Orçamento mensal de IA atingido.",
@@ -65,8 +72,8 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     settings.system_prompt || BASE_SYSTEM_PROMPT,
     await buildCustomerContext(admin, conversation.customer_id),
   ].join("\n\n");
-  const model = settings.model || "claude-sonnet-5";
-  const maxTokens = settings.max_tokens_per_reply || 1024;
+  const model = limits?.model || "claude-sonnet-5";
+  const maxTokens = limits?.max_tokens_per_reply || 1024;
   const tools = buildAiTools({ catalog: !disabledModules.has("catalog"), agenda: !disabledModules.has("agenda") });
 
   const messages = await loadHistory(admin, conversationId);

@@ -19,9 +19,11 @@ import type { MemberPermissionDTO } from "@/domains/users/queries";
 import {
   adminCreateTenantUserSchema,
   adminSetMemberPermissionsSchema,
+  aiPlatformLimitsSchema,
   createTenantSchema,
   setModuleFlagSchema,
   type AdminCreateTenantUserField,
+  type AiPlatformLimitsField,
   type CreateTenantField,
 } from "./schemas";
 
@@ -149,6 +151,33 @@ export async function setModuleFlagAction(input: {
   });
   revalidatePath(`/admin/empresas/${parsed.data.tenantId}`);
   return { status: "success" };
+}
+
+export async function saveAiPlatformLimitsAction(
+  _prev: ActionState<AiPlatformLimitsField>,
+  formData: FormData,
+): Promise<ActionState<AiPlatformLimitsField>> {
+  const admin = await requireSuperAdmin();
+  const input = formDataToObject(formData);
+  const parsed = aiPlatformLimitsSchema.safeParse(input);
+  if (!parsed.success) return validationError(parsed.error, input);
+  const { tenantId, model, maxTokensPerReply, monthlyBudgetUsd } = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_ai_platform_limits_set", {
+    p_tenant_id: tenantId,
+    p_model: model,
+    p_max_tokens_per_reply: maxTokensPerReply,
+    p_monthly_budget_cents: monthlyBudgetUsd !== undefined ? Math.round(monthlyBudgetUsd * 100) : undefined,
+  });
+  if (error) {
+    logger.warn({ event: "admin.ai_platform_limits", status: "error", user_id: admin.id, code: error.message });
+    return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
+  }
+
+  logger.info({ event: "admin.ai_platform_limits", status: "ok", user_id: admin.id, tenant_id: tenantId });
+  revalidatePath(`/admin/empresas/${tenantId}`);
+  return { status: "success", message: "Limites de IA salvos." };
 }
 
 const RESET_PASSWORD_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; // sem 0/O/1/l/I, ambíguos

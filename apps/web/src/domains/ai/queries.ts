@@ -5,11 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 export interface AiSettings {
   enabled: boolean;
   systemPrompt: string | null;
-  model: string;
-  maxTokensPerReply: number;
-  monthlyBudgetCents: number | null;
 }
 
+/** Modelo, limite de tokens e orçamento são só do admin master agora — ver domains/admin/ai. */
 export async function getAiSettings(context: TenantContext): Promise<AiSettings> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("ai_settings_get", { p_tenant_id: context.tenant.id });
@@ -19,9 +17,6 @@ export async function getAiSettings(context: TenantContext): Promise<AiSettings>
   return {
     enabled: row.enabled,
     systemPrompt: row.system_prompt,
-    model: row.model,
-    maxTokensPerReply: row.max_tokens_per_reply,
-    monthlyBudgetCents: row.monthly_budget_cents,
   };
 }
 

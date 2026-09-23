@@ -2285,13 +2285,55 @@ export type Database = {
           },
         ]
       }
+      tenant_ai_platform_limits: {
+        Row: {
+          created_at: string
+          max_tokens_per_reply: number
+          model: string
+          monthly_budget_cents: number | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          max_tokens_per_reply?: number
+          model?: string
+          monthly_budget_cents?: number | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          max_tokens_per_reply?: number
+          model?: string
+          monthly_budget_cents?: number | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_ai_platform_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_platform_limits_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_ai_settings: {
         Row: {
           created_at: string
           enabled: boolean
-          max_tokens_per_reply: number
-          model: string
-          monthly_budget_cents: number | null
           system_prompt: string | null
           tenant_id: string
           updated_at: string
@@ -2300,9 +2342,6 @@ export type Database = {
         Insert: {
           created_at?: string
           enabled?: boolean
-          max_tokens_per_reply?: number
-          model?: string
-          monthly_budget_cents?: number | null
           system_prompt?: string | null
           tenant_id: string
           updated_at?: string
@@ -2311,9 +2350,6 @@ export type Database = {
         Update: {
           created_at?: string
           enabled?: boolean
-          max_tokens_per_reply?: number
-          model?: string
-          monthly_budget_cents?: number | null
           system_prompt?: string | null
           tenant_id?: string
           updated_at?: string
@@ -2871,6 +2907,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_ai_platform_limits_get: {
+        Args: {
+          p_tenant_id: string
+        }
+        Returns: Database["public"]["Tables"]["tenant_ai_platform_limits"]["Row"][]
+      }
+      admin_ai_platform_limits_set: {
+        Args: {
+          p_tenant_id: string
+          p_model: string
+          p_max_tokens_per_reply?: number
+          p_monthly_budget_cents?: number
+        }
+        Returns: Database["public"]["Tables"]["tenant_ai_platform_limits"]["Row"][]
+      }
       admin_create_tenant: {
         Args: {
           p_name: string
@@ -3116,9 +3167,6 @@ export type Database = {
           p_tenant_id: string
           p_enabled: boolean
           p_system_prompt?: string
-          p_model?: string
-          p_max_tokens_per_reply?: number
-          p_monthly_budget_cents?: number
         }
         Returns: Database["public"]["Tables"]["tenant_ai_settings"]["Row"][]
       }

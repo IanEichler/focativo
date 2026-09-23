@@ -7,12 +7,13 @@ import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminMemberActions } from "@/domains/admin/components/admin-member-actions";
+import { AiPlatformLimitsCard } from "@/domains/admin/components/ai-platform-limits-card";
 import { CreateTenantUserDialog } from "@/domains/admin/components/create-tenant-user-dialog";
 import { ModuleFlagsCard } from "@/domains/admin/components/module-flags-card";
 import { ResetPasswordDialog } from "@/domains/admin/components/reset-password-dialog";
 import { TenantStatusDialog } from "@/domains/admin/components/tenant-status-dialog";
 import { PLATFORM_ACTION_LABEL, TENANT_STATUS_LABEL } from "@/domains/admin/labels";
-import { getAdminTenantDetail, getDisabledModules } from "@/domains/admin/queries";
+import { getAdminTenantDetail, getAiPlatformLimits, getDisabledModules } from "@/domains/admin/queries";
 import { TENANT_SEGMENTS } from "@/domains/tenants/schemas";
 import { formatCpfCnpj } from "@/lib/br-documents";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -29,7 +30,11 @@ function describeChange(before: unknown, after: unknown): string | null {
 
 export default async function AdminTenantDetailPage({ params }: PageProps<"/admin/empresas/[id]">) {
   const { id } = await params;
-  const [detail, disabledModules] = await Promise.all([getAdminTenantDetail(id), getDisabledModules(id)]);
+  const [detail, disabledModules, aiPlatformLimits] = await Promise.all([
+    getAdminTenantDetail(id),
+    getDisabledModules(id),
+    getAiPlatformLimits(id),
+  ]);
   if (!detail) notFound();
 
   const { tenant, members, platformEvents } = detail;
@@ -82,6 +87,7 @@ export default async function AdminTenantDetailPage({ params }: PageProps<"/admi
         </Card>
 
         <ModuleFlagsCard tenantId={tenant.id} disabledModules={[...disabledModules]} />
+        <AiPlatformLimitsCard tenantId={tenant.id} limits={aiPlatformLimits} />
 
         <Card>
           <CardHeader>

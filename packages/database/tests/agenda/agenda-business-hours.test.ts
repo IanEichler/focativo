@@ -231,9 +231,7 @@ describe("agenda: horário de funcionamento e exceções por profissional", () =
          where cu.whatsapp = $1 and c.tenant_id = $2`,
         ["11933221100", tenantId],
       );
-      await db
-        .as(ownerId)
-        .rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true, p_model: "claude-sonnet-5" });
+      await db.as(ownerId).rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true });
 
       await expectDbError(
         db.admin.rpc("ai_agenda_book", {

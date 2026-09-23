@@ -407,9 +407,7 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
 
   it("reopens a closed conversation as AI_ACTIVE on the next message when the tenant has AI enabled", async () => {
     const aiTenant = await db.createTenantWithOwner("Loja com IA");
-    await db
-      .as(aiTenant.ownerId)
-      .rpc("ai_settings_update", { p_tenant_id: aiTenant.tenantId, p_enabled: true, p_model: "claude-sonnet-5" });
+    await db.as(aiTenant.ownerId).rpc("ai_settings_update", { p_tenant_id: aiTenant.tenantId, p_enabled: true });
 
     const [created] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
       p_tenant_id: aiTenant.tenantId,
