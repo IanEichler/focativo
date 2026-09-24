@@ -39,13 +39,38 @@ function sleep(ms: number): Promise<void> {
  * pronto no instante exato em que o evento de mensagem dispara. Tenta mais
  * algumas vezes com um respiro curto antes de desistir e cair no fallback.
  */
-async function resolveLidPhoneWithRetry(client: WWebClient, lidChatId: string): Promise<string | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await sleep(600);
+async function resolveLidPhoneWithRetry(
+  client: WWebClient,
+  lidChatId: string,
+  attempts = 4,
+  delayMs = 600,
+): Promise<string | null> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) await sleep(delayMs);
     const lookup = await client.getContactLidAndPhone([lidChatId]).catch(() => []);
     if (lookup[0]?.pn) return fromChatId(lookup[0].pn);
   }
   return null;
+}
+
+/**
+ * Quando nem o retry na hora resolve, o primeiro contato de um cliente novo
+ * nasce com o número de fallback (dígitos crus do pseudo-ID) — e sem uma
+ * segunda mensagem desse contato, nada corrigia isso depois. Tenta de novo
+ * em segundo plano, ~12s mais tarde (tempo de a lib sincronizar o LID), e
+ * corrige só o telefone salvo se conseguir algo melhor — nunca bloqueia a
+ * entrega da mensagem original, que já foi postada antes desta chamada.
+ */
+function scheduleDelayedCorrection(tenantId: string, client: WWebClient, lidChatId: string, badNumber: string): void {
+  setTimeout(() => {
+    void (async () => {
+      const better = await resolveLidPhoneWithRetry(client, lidChatId, 3, 1500);
+      const fixed = better ? ensureCountryCode(better) : null;
+      if (fixed && fixed !== badNumber) {
+        await postToApp({ event: "chat_id_resolved", tenantId, whatsappChatId: lidChatId, whatsappNumber: fixed });
+      }
+    })().catch(() => {});
+  }, 12000);
 }
 
 export function getSessionState(tenantId: string): SessionState {
@@ -130,6 +155,10 @@ export async function connectSession(tenantId: string): Promise<void> {
         senderName: contact?.pushname || contact?.name || undefined,
         mediaType: message.hasMedia ? message.type : undefined,
       });
+
+      if (!resolvedNumber) {
+        scheduleDelayedCorrection(tenantId, client, message.from, whatsappNumber);
+      }
     })();
   });
 

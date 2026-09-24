@@ -162,6 +162,64 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     expect(stillGood!.whatsapp).toBe("5511977776666");
   });
 
+  it("whatsapp_correct_number fixes a customer whose only message ever resolved to the bad fallback number", async () => {
+    const chatId = "777222111@lid";
+    const [first] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "30447375491177", // única mensagem do contato: resolveu errado, ninguém mais escreveu pra corrigir depois
+      p_content: "Oi",
+      p_external_message_id: "wa-correct-1",
+      p_whatsapp_chat_id: chatId,
+    });
+    void first;
+
+    await db.admin.rpc("whatsapp_correct_number", {
+      p_tenant_id: tenantId,
+      p_whatsapp_chat_id: chatId,
+      p_whatsapp_number: "5511988884444",
+    });
+
+    const [customer] = await db.admin.query<{ whatsapp: string }>(
+      "select whatsapp from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
+      [tenantId, chatId],
+    );
+    expect(customer!.whatsapp).toBe("5511988884444");
+  });
+
+  it("whatsapp_correct_number never downgrades an already-good number, and does nothing for an unknown chat id", async () => {
+    const chatId = "888333222@lid";
+    await db.admin.rpc("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "5511922223333",
+      p_content: "Oi",
+      p_external_message_id: "wa-correct-2",
+      p_whatsapp_chat_id: chatId,
+    });
+
+    await db.admin.rpc("whatsapp_correct_number", {
+      p_tenant_id: tenantId,
+      p_whatsapp_chat_id: chatId,
+      p_whatsapp_number: "99988877766655", // parece pior (mais dígitos) — não deve trocar
+    });
+    const [customer] = await db.admin.query<{ whatsapp: string }>(
+      "select whatsapp from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
+      [tenantId, chatId],
+    );
+    expect(customer!.whatsapp).toBe("5511922223333");
+
+    // chat id que não existe: não cria nada, não estoura erro.
+    await db.admin.rpc("whatsapp_correct_number", {
+      p_tenant_id: tenantId,
+      p_whatsapp_chat_id: "999999999@lid",
+      p_whatsapp_number: "5511900001111",
+    });
+    const orphan = await db.admin.query(
+      "select id from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
+      [tenantId, "999999999@lid"],
+    );
+    expect(orphan).toHaveLength(0);
+  });
+
   it("reuses the same conversation for a customer who writes again, accumulating unread count", async () => {
     const [first] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
       p_tenant_id: tenantId,

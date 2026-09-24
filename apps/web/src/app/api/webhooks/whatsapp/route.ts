@@ -18,7 +18,7 @@ import type { TablesInsert } from "@/types/database.types";
  * reentrega do serviço nunca duplica a mensagem nem o contador de não lidas.
  */
 interface WhatsAppWebhookPayload {
-  event?: "qr" | "ready" | "disconnected" | "auth_failure" | "message";
+  event?: "qr" | "ready" | "disconnected" | "auth_failure" | "message" | "chat_id_resolved";
   tenantId?: string;
   qrCode?: string;
   phoneNumber?: string;
@@ -107,6 +107,22 @@ export async function POST(request: Request) {
       });
     }
 
+    return NextResponse.json({ ok: true });
+  }
+
+  if (event === "chat_id_resolved") {
+    if (!payload.whatsappChatId || !payload.whatsappNumber) {
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    }
+    const { error } = await admin.rpc("whatsapp_correct_number", {
+      p_tenant_id: tenantId,
+      p_whatsapp_chat_id: payload.whatsappChatId,
+      p_whatsapp_number: payload.whatsappNumber,
+    });
+    if (error) {
+      logger.warn({ event: "webhook.whatsapp", status: "error", code: error.message, tenant_id: tenantId });
+      return NextResponse.json({ error: error.message }, { status: 422 });
+    }
     return NextResponse.json({ ok: true });
   }
 

@@ -3908,6 +3908,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      whatsapp_correct_number: {
+        Args: {
+          p_tenant_id: string
+          p_whatsapp_chat_id: string
+          p_whatsapp_number: string
+        }
+        Returns: undefined
+      }
       whatsapp_receive_message: {
         Args: {
           p_tenant_id: string
