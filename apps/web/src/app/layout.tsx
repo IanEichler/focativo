@@ -36,7 +36,7 @@ export const viewport: Viewport = {
 // A CSP atual não restringe script-src; revisar se um nonce for adicionado na Fase 10.
 const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
-)});var r=(t==="light"||t==="dark")?t:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");var h=document.documentElement;h.classList.add(r);h.style.colorScheme=r;}catch(e){}})();`;
+)});var r=(t==="light"||t==="dark")?t:"light";var h=document.documentElement;h.classList.add(r);h.style.colorScheme=r;}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
