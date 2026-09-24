@@ -107,40 +107,57 @@ export async function runAiTurn(conversationId: string): Promise<void> {
   let totalOutputTokens = 0;
   let finalText: string | null = null;
 
-  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const result = await provider.chat({ system, messages, tools, model, maxTokens });
-    totalInputTokens += result.inputTokens;
-    totalOutputTokens += result.outputTokens;
+  try {
+    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+      const result = await chatWithRetry(provider, { system, messages, tools, model, maxTokens });
+      totalInputTokens += result.inputTokens;
+      totalOutputTokens += result.outputTokens;
 
-    if (result.stopReason !== "tool_use") {
-      finalText = textFrom(result.content);
-      break;
-    }
+      if (result.stopReason !== "tool_use") {
+        finalText = textFrom(result.content);
+        break;
+      }
 
-    messages.push({ role: "assistant", content: result.content });
-    const toolUses = result.content.filter(
-      (block): block is Extract<AIContentBlock, { type: "tool_use" }> => block.type === "tool_use",
-    );
-    const results = await Promise.all(
-      toolUses.map((toolUse) =>
-        executeTool(
-          admin,
-          { tenantId: conversation.tenant_id, conversationId },
-          toolUse.id,
-          toolUse.name,
-          toolUse.input,
+      messages.push({ role: "assistant", content: result.content });
+      const toolUses = result.content.filter(
+        (block): block is Extract<AIContentBlock, { type: "tool_use" }> => block.type === "tool_use",
+      );
+      const results = await Promise.all(
+        toolUses.map((toolUse) =>
+          executeTool(
+            admin,
+            { tenantId: conversation.tenant_id, conversationId },
+            toolUse.id,
+            toolUse.name,
+            toolUse.input,
+          ),
         ),
-      ),
-    );
-    messages.push({ role: "user_tool_results", results });
+      );
+      messages.push({ role: "user_tool_results", results });
 
-    const escalated = toolUses.some((toolUse) => toolUse.name === "escalar_para_humano");
-    await admin.rpc("ai_upsert_conversation_state", {
-      p_conversation_id: conversationId,
-      p_turn_count: iteration + 1,
-      p_last_tool_used: toolUses[0]?.name,
+      const escalated = toolUses.some((toolUse) => toolUse.name === "escalar_para_humano");
+      await admin.rpc("ai_upsert_conversation_state", {
+        p_conversation_id: conversationId,
+        p_turn_count: iteration + 1,
+        p_last_tool_used: toolUses[0]?.name,
+      });
+      if (escalated) break;
+    }
+  } catch (providerError) {
+    // Provedor de IA falhou mesmo depois da retentativa (rate limit, indisponibilidade
+    // temporária etc.) — nunca deixa o cliente sem resposta nenhuma: escala pra um
+    // atendente em vez de silêncio (mesmo tratamento já usado pro orçamento estourado).
+    logger.warn({
+      event: "ai.provider_failed",
+      tenant_id: conversation.tenant_id,
+      conversation_id: conversationId,
+      code: String(providerError),
     });
-    if (escalated) break;
+    await admin.rpc("ai_escalate_conversation", {
+      p_conversation_id: conversationId,
+      p_reason: "A IA teve uma falha técnica temporária.",
+    });
+    return;
   }
 
   if (!provider.isDev && (totalInputTokens > 0 || totalOutputTokens > 0)) {
@@ -250,6 +267,21 @@ function buildBusinessInfoBlock(
     );
   }
   return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
+/** Uma retentativa rápida antes de desistir — cobre falhas passageiras do provedor
+ *  (ex.: Gemini 503 "high demand") sem escalar pra humano à toa. */
+async function chatWithRetry(
+  provider: ReturnType<typeof getAIProvider>,
+  params: Parameters<ReturnType<typeof getAIProvider>["chat"]>[0],
+) {
+  try {
+    return await provider.chat(params);
+  } catch (error) {
+    logger.warn({ event: "ai.provider_retry", code: String(error) });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return provider.chat(params);
+  }
 }
 
 function textFrom(content: AIContentBlock[]): string | null {
