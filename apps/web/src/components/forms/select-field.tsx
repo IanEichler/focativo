@@ -35,7 +35,7 @@ export function SelectField({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={id} className="text-body font-medium">
+      <Label htmlFor={id} className="text-body font-medium text-foreground">
         {label}
         {required && (
           <span aria-hidden="true" className="text-danger">

@@ -20,7 +20,7 @@ interface FieldShellProps {
 function FieldShell({ id, label, required, error, description, className, children }: FieldShellProps) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={id} className="text-body font-medium">
+      <Label htmlFor={id} className="text-body font-medium text-foreground">
         {label}
         {required && (
           <span aria-hidden="true" className="text-danger">
@@ -170,7 +170,7 @@ export function SwitchField({
   return (
     <div className={cn("flex items-start justify-between gap-4 rounded-lg border border-border p-3", className)}>
       <div className="flex flex-col gap-0.5">
-        <Label htmlFor={id} className="text-body font-medium">
+        <Label htmlFor={id} className="text-body font-medium text-foreground">
           {label}
         </Label>
         {description && (

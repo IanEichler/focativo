@@ -35,7 +35,7 @@ export function TextField({
   return (
     <div className={cn("flex flex-col gap-1.5", containerClassName)}>
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id} className="text-body font-medium">
+        <Label htmlFor={id} className="text-body font-medium text-foreground">
           {label}
           {props.required && (
             <span aria-hidden="true" className="text-danger">
