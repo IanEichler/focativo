@@ -37,7 +37,12 @@ export class GeminiAIProvider implements AIProvider {
                 },
               ]
             : undefined,
-        generationConfig: { maxOutputTokens: params.maxTokens },
+        // thinkingBudget: 0 — sem isso, modelos Gemini 3.x gastam boa parte de
+        // maxOutputTokens "pensando" internamente antes de responder (visto ao vivo:
+        // 45 de 50 tokens viraram raciocínio invisível), cortando a resposta real pro
+        // cliente. Atendimento de WhatsApp não precisa de raciocínio profundo — prioriza
+        // ter o limite inteiro disponível pro texto visível.
+        generationConfig: { maxOutputTokens: params.maxTokens, thinkingConfig: { thinkingBudget: 0 } },
       }),
     });
 
