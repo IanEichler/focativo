@@ -161,11 +161,12 @@ export async function saveAiPlatformLimitsAction(
   const input = formDataToObject(formData);
   const parsed = aiPlatformLimitsSchema.safeParse(input);
   if (!parsed.success) return validationError(parsed.error, input);
-  const { tenantId, model, maxTokensPerReply, monthlyBudgetUsd } = parsed.data;
+  const { tenantId, provider, model, maxTokensPerReply, monthlyBudgetUsd } = parsed.data;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_ai_platform_limits_set", {
     p_tenant_id: tenantId,
+    p_provider: provider,
     p_model: model,
     p_max_tokens_per_reply: maxTokensPerReply,
     p_monthly_budget_cents: monthlyBudgetUsd !== undefined ? Math.round(monthlyBudgetUsd * 100) : undefined,

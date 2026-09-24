@@ -15,12 +15,13 @@ describe("IA: limites de plataforma (só admin master) vs. comportamento (tenant
     ownerId = owner.ownerId;
   });
 
-  it("defaults to claude-sonnet-5/1024 tokens when no row exists yet", async () => {
+  it("defaults to anthropic/claude-sonnet-5/1024 tokens when no row exists yet", async () => {
     const [row] = await db
       .as(superAdminId)
-      .rpc<{ model: string; max_tokens_per_reply: number }>("admin_ai_platform_limits_get", {
+      .rpc<{ provider: string; model: string; max_tokens_per_reply: number }>("admin_ai_platform_limits_get", {
         p_tenant_id: tenantId,
       });
+    expect(row!.provider).toBe("anthropic");
     expect(row!.model).toBe("claude-sonnet-5");
     expect(row!.max_tokens_per_reply).toBe(1024);
   });
@@ -48,6 +49,34 @@ describe("IA: limites de plataforma (só admin master) vs. comportamento (tenant
       .as(superAdminId)
       .rpc<{ model: string }>("admin_ai_platform_limits_get", { p_tenant_id: tenantId });
     expect(fetched!.model).toBe("claude-opus-5");
+  });
+
+  it("super admin switches a tenant to the gemini provider and back", async () => {
+    const [gemini] = await db
+      .as(superAdminId)
+      .rpc<{ provider: string; model: string }>("admin_ai_platform_limits_set", {
+        p_tenant_id: tenantId,
+        p_provider: "gemini",
+        p_model: "gemini-3.8-flash",
+      });
+    expect(gemini!.provider).toBe("gemini");
+    expect(gemini!.model).toBe("gemini-3.8-flash");
+
+    const [back] = await db
+      .as(superAdminId)
+      .rpc<{ provider: string }>("admin_ai_platform_limits_set", { p_tenant_id: tenantId, p_model: "claude-sonnet-5" });
+    expect(back!.provider).toBe("anthropic"); // default quando p_provider não é informado
+  });
+
+  it("rejects an unknown provider", async () => {
+    await expectDbError(
+      db.as(superAdminId).rpc("admin_ai_platform_limits_set", {
+        p_tenant_id: tenantId,
+        p_provider: "openai",
+        p_model: "gpt-5",
+      }),
+      "invalid_input",
+    );
   });
 
   it("ai_settings_get/update never return model, tokens or budget anymore — that's the admin master's table now", async () => {

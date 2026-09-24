@@ -2348,6 +2348,7 @@ export type Database = {
           max_tokens_per_reply: number
           model: string
           monthly_budget_cents: number | null
+          provider: string
           tenant_id: string
           updated_at: string
           updated_by: string | null
@@ -2357,6 +2358,7 @@ export type Database = {
           max_tokens_per_reply?: number
           model?: string
           monthly_budget_cents?: number | null
+          provider?: string
           tenant_id: string
           updated_at?: string
           updated_by?: string | null
@@ -2366,6 +2368,7 @@ export type Database = {
           max_tokens_per_reply?: number
           model?: string
           monthly_budget_cents?: number | null
+          provider?: string
           tenant_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -2976,6 +2979,7 @@ export type Database = {
           p_model: string
           p_max_tokens_per_reply?: number
           p_monthly_budget_cents?: number
+          p_provider?: string
         }
         Returns: Database["public"]["Tables"]["tenant_ai_platform_limits"]["Row"][]
       }

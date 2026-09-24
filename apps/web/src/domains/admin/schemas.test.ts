@@ -52,6 +52,7 @@ describe("setModuleFlagSchema", () => {
 describe("aiPlatformLimitsSchema", () => {
   const base = {
     tenantId: "123e4567-e89b-12d3-a456-426614174000",
+    provider: "anthropic",
     model: "claude-sonnet-5",
     maxTokensPerReply: "1024",
   };
@@ -64,6 +65,16 @@ describe("aiPlatformLimitsSchema", () => {
 
   it("rejects an unknown model", () => {
     const result = aiPlatformLimitsSchema.safeParse({ ...base, model: "gpt-4" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a gemini model with the gemini provider", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, provider: "gemini", model: "gemini-3.8-flash" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a model that doesn't belong to the selected provider", () => {
+    const result = aiPlatformLimitsSchema.safeParse({ ...base, provider: "gemini", model: "claude-sonnet-5" });
     expect(result.success).toBe(false);
   });
 

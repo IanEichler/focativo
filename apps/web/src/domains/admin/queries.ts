@@ -192,6 +192,7 @@ export async function getDisabledModules(tenantId: string): Promise<Set<string>>
 }
 
 export interface AiPlatformLimits {
+  provider: string;
   model: string;
   maxTokensPerReply: number;
   monthlyBudgetCents: number | null;
@@ -205,6 +206,7 @@ export async function getAiPlatformLimits(tenantId: string): Promise<AiPlatformL
   const row = data?.[0];
   if (!row) throw new Error("admin_ai_platform_limits_get failed: empty response");
   return {
+    provider: row.provider,
     model: row.model,
     maxTokensPerReply: row.max_tokens_per_reply,
     monthlyBudgetCents: row.monthly_budget_cents,

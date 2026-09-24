@@ -15,6 +15,10 @@ const serverSchema = z.object({
   // Sem chave da Anthropic (Fase 7), a aplicação usa o provider DEV (regras
   // simples, sem custo, mas exercitando o mesmo pipeline de tools/handoff).
   ANTHROPIC_API_KEY: z.string().min(10).optional(),
+  // Provider alternativo (2026-09-24): admin master escolhe por tenant em
+  // tenant_ai_platform_limits.provider. Sem a chave, um tenant configurado
+  // pra "gemini" cai pro provider DEV, mesma regra do Anthropic acima.
+  GEMINI_API_KEY: z.string().min(10).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
@@ -32,6 +36,7 @@ export function getServerEnv(): ServerEnv {
       WHATSAPP_SERVICE_URL: process.env.WHATSAPP_SERVICE_URL || undefined,
       WHATSAPP_SERVICE_SECRET: process.env.WHATSAPP_SERVICE_SECRET || undefined,
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || undefined,
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY || undefined,
     });
     if (!parsed.success) {
       throw new Error(

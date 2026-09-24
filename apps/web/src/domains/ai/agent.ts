@@ -46,7 +46,7 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     // do tenant — tabela separada, nunca lida pelo dono da empresa.
     admin
       .from("tenant_ai_platform_limits")
-      .select("model, max_tokens_per_reply, monthly_budget_cents")
+      .select("provider, model, max_tokens_per_reply, monthly_budget_cents")
       .eq("tenant_id", conversation.tenant_id)
       .maybeSingle(),
     admin
@@ -86,7 +86,7 @@ export async function runAiTurn(conversationId: string): Promise<void> {
   const tools = buildAiTools({ catalog: !disabledModules.has("catalog"), agenda: !disabledModules.has("agenda") });
 
   const messages = await loadHistory(admin, conversationId);
-  const provider = getAIProvider();
+  const provider = getAIProvider(limits?.provider ?? "anthropic");
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
