@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  CircleHelp,
   CreditCard,
   Flag,
   HeartPulse,
@@ -59,6 +60,7 @@ const ICONS: Record<NavIconName, LucideIcon | typeof WhatsAppGlyph> = {
   scroll: ScrollText,
   whatsapp: WhatsAppGlyph,
   sliders: Settings2,
+  help: CircleHelp,
 };
 
 export function NavIcon({ name, className }: { name: NavIconName; className?: string }) {

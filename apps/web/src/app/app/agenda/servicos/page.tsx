@@ -7,6 +7,7 @@ import { AccessDenied } from "@/components/feedback/access-denied";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessHoursCard } from "@/domains/agenda/components/business-hours-card";
 import { ProfessionalExceptionsCard } from "@/domains/agenda/components/professional-exceptions-card";
 import { ServiceFormSheet } from "@/domains/agenda/components/service-form";
@@ -15,14 +16,14 @@ import { requireTenantContext } from "@/domains/tenants/context";
 import { listTenantMembers } from "@/domains/users/queries";
 import { formatQuantity } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Serviços · Agenda" };
+export const metadata: Metadata = { title: "Serviços e Horários · Agenda" };
 
 export default async function AgendaServicesPage() {
   const context = await requireTenantContext();
   if (!context.can("agenda.write") || !context.hasModule("agenda")) {
     return (
       <PageContainer>
-        <PageHeader title="Serviços" />
+        <PageHeader title="Serviços e Horários" />
         <AccessDenied />
       </PageContainer>
     );
@@ -89,49 +90,58 @@ export default async function AgendaServicesPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Serviços"
-        description="Catálogo de serviços oferecidos, usado nos agendamentos e pela assistente de IA."
-        actions={
-          <ServiceFormSheet
-            professionals={professionals}
-            trigger={
-              <Button>
-                <Plus /> Novo serviço
-              </Button>
-            }
-          />
-        }
+        title="Serviços e Horários"
+        description="Catálogo de serviços, horário de funcionamento e exceções — usados nos agendamentos e pela assistente de IA."
       />
 
-      <DataTable
-        caption="Serviços"
-        columns={columns}
-        rows={services}
-        getRowKey={(service) => service.id}
-        empty={
-          <EmptyState
-            className="border-0"
-            icon={<ClipboardList />}
-            title="Nenhum serviço cadastrado"
-            description="Cadastre os serviços que podem ser agendados pelos clientes."
-            action={
-              <ServiceFormSheet
-                professionals={professionals}
-                trigger={
-                  <Button>
-                    <Plus /> Cadastrar serviço
-                  </Button>
+      <Tabs defaultValue="servicos">
+        <TabsList>
+          <TabsTrigger value="servicos">Serviços</TabsTrigger>
+          <TabsTrigger value="horarios">Horários</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="servicos" className="flex flex-col gap-4">
+          <div className="flex justify-end">
+            <ServiceFormSheet
+              professionals={professionals}
+              trigger={
+                <Button>
+                  <Plus /> Novo serviço
+                </Button>
+              }
+            />
+          </div>
+          <DataTable
+            caption="Serviços"
+            columns={columns}
+            rows={services}
+            getRowKey={(service) => service.id}
+            empty={
+              <EmptyState
+                className="border-0"
+                icon={<ClipboardList />}
+                title="Nenhum serviço cadastrado"
+                description="Cadastre os serviços que podem ser agendados pelos clientes."
+                action={
+                  <ServiceFormSheet
+                    professionals={professionals}
+                    trigger={
+                      <Button>
+                        <Plus /> Cadastrar serviço
+                      </Button>
+                    }
+                  />
                 }
               />
             }
           />
-        }
-      />
+        </TabsContent>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <BusinessHoursCard hours={businessHours} />
-        <ProfessionalExceptionsCard exceptions={exceptions} professionals={professionals} />
-      </div>
+        <TabsContent value="horarios" className="grid gap-6 lg:grid-cols-2">
+          <BusinessHoursCard hours={businessHours} />
+          <ProfessionalExceptionsCard exceptions={exceptions} professionals={professionals} />
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }

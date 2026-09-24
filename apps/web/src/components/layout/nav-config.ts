@@ -17,7 +17,7 @@ export const APP_NAV: NavSection[] = [
       { title: "Clientes", href: "/app/clientes", icon: "users-round", permission: "customers.read" },
       { title: "Agenda", href: "/app/agenda", icon: "calendar-days", permission: "agenda.read", module: "agenda" },
       {
-        title: "Serviços",
+        title: "Serviços e Horários",
         href: "/app/agenda/servicos",
         icon: "sliders",
         permission: "agenda.write",
@@ -72,6 +72,7 @@ export const APP_NAV: NavSection[] = [
       { title: "Assistente de IA", href: "/app/ia", icon: "bot", permission: "tenant.update", module: "ai" },
       { title: "Usuários", href: "/app/usuarios", icon: "users", permission: "users.read" },
       { title: "Configurações", href: "/app/configuracoes", icon: "settings" },
+      { title: "Como usar", href: "/app/ajuda", icon: "help" },
     ],
   },
 ];

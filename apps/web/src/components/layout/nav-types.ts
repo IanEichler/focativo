@@ -25,7 +25,8 @@ export type NavIconName =
   | "flag"
   | "scroll"
   | "whatsapp"
-  | "sliders";
+  | "sliders"
+  | "help";
 
 export interface NavItem {
   title: string;
