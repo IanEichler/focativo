@@ -63,7 +63,7 @@ export function AppShell({
       <div className="min-h-dvh bg-background">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex",
+            "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out will-change-[width] contain-layout lg:flex",
             collapsed ? "w-sidebar-collapsed" : "w-sidebar",
           )}
         >
@@ -88,7 +88,7 @@ export function AppShell({
 
         <div
           className={cn(
-            "flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200",
+            "flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200 ease-out will-change-[padding] contain-layout",
             collapsed ? "lg:pl-sidebar-collapsed" : "lg:pl-sidebar",
           )}
         >
