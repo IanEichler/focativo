@@ -23,6 +23,7 @@ export const DB_ERROR_MESSAGES = {
   sku_taken: "Já existe um produto ativo com este SKU.",
   barcode_taken: "Já existe um produto ativo com este código de barras.",
   name_taken: "Já existe um registro com este nome.",
+  contact_number_in_use: "Esse número já está cadastrado em outro cliente (como telefone ou WhatsApp).",
   in_use: "Este registro está em uso e não pode ser excluído. Você pode desativá-lo.",
   product_archived: "Este produto está arquivado e não pode ser alterado.",
   product_has_stock: "Zere o estoque (e as reservas) antes desta alteração.",

@@ -23,8 +23,6 @@ export function OverviewTab({ customer, timeline }: { customer: CustomerDetail; 
             <dd className="text-right">{customer.document ?? "—"}</dd>
             <dt className="text-muted-foreground">Aniversário</dt>
             <dd className="text-right">{customer.birthday ? formatDate(customer.birthday) : "—"}</dd>
-            <dt className="text-muted-foreground">Responsável</dt>
-            <dd className="text-right">{customer.responsibleName ?? "—"}</dd>
             <dt className="text-muted-foreground">Cliente desde</dt>
             <dd className="text-right tabular">{formatDate(customer.createdAt)}</dd>
           </dl>

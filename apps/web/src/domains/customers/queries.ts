@@ -43,7 +43,9 @@ export async function listCustomers(
     const pattern = likePattern(searchNormalize(params.query));
     const digits = params.query.replace(/\D/g, "");
     const clauses = [`name.ilike.${pattern}`, `email.ilike.${pattern}`];
-    if (digits.length >= 4) clauses.push(`phone.ilike.%${digits}%`, `whatsapp.ilike.%${digits}%`);
+    if (digits.length >= 4) {
+      clauses.push(`phone.ilike.%${digits}%`, `whatsapp.ilike.%${digits}%`, `document.ilike.%${digits}%`);
+    }
     query = query.or(clauses.join(","));
   }
 
@@ -178,7 +180,15 @@ export async function lookupCustomers(context: TenantContext, query: string): Pr
     .is("archived_at", null)
     .order("name")
     .limit(20);
-  if (query) request = request.ilike("name", likePattern(searchNormalize(query)));
+  if (query) {
+    const pattern = likePattern(searchNormalize(query));
+    const digits = query.replace(/\D/g, "");
+    const clauses = [`name.ilike.${pattern}`];
+    if (digits.length >= 4) {
+      clauses.push(`phone.ilike.%${digits}%`, `whatsapp.ilike.%${digits}%`, `document.ilike.%${digits}%`);
+    }
+    request = request.or(clauses.join(","));
+  }
   const { data } = await request;
   return (data ?? []).map((row) => ({ id: row.id, name: row.name, phone: row.phone, whatsapp: row.whatsapp }));
 }

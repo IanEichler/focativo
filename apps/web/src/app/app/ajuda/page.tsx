@@ -164,6 +164,12 @@ export default function HelpPage() {
 
       <Topic id="clientes" title="Clientes">
         <P>Cadastro central de contatos, com histórico de conversas, compras e reservas.</P>
+        <P>
+          Telefone é obrigatório no cadastro; WhatsApp e e-mail continuam opcionais. Telefone e WhatsApp são formatados
+          sozinhos enquanto você digita, e compartilham o mesmo número — um telefone já usado por um cliente não pode
+          virar o WhatsApp de outro (nem vice-versa), pra nunca duplicar. A busca da lista de clientes encontra por
+          nome, telefone, e-mail ou CPF.
+        </P>
         <P>Duas ações bem diferentes, de propósito:</P>
         <Ul>
           <li>

@@ -67,7 +67,6 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
           canWrite ? (
             <>
               <CustomerFormSheet
-                responsibles={responsibles}
                 customer={{
                   id: customer.id,
                   name: customer.name,
@@ -79,7 +78,6 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
                   notes: customer.notes,
                   tags: customer.tags,
                   origin: customer.origin,
-                  responsibleUserId: customer.responsibleUserId,
                 }}
                 trigger={
                   <Button variant="outline">

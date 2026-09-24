@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { TextareaField } from "@/components/forms/fields";
 import { fieldError, FormMessage, SubmitButton } from "@/components/forms/form-feedback";
-import { FormSheet, SheetFormLayout } from "@/components/forms/form-sheet";
+import { DialogFormLayout, FormDialog } from "@/components/forms/form-dialog";
+import { MaskedTextField } from "@/components/forms/masked-text-field";
 import { SelectField } from "@/components/forms/select-field";
 import { TextField } from "@/components/forms/text-field";
 import { useActionFeedback } from "@/components/forms/use-action-feedback";
 import { Button } from "@/components/ui/button";
 import { IDLE, type ActionState } from "@/lib/errors";
+import { maskCpfCnpj, maskPhone } from "@/lib/masks";
 import { saveCustomerAction } from "../actions";
 import { CUSTOMER_ORIGINS } from "../labels";
 import type { CustomerField } from "../schemas";
@@ -27,43 +29,21 @@ export interface CustomerFormValues {
   notes: string | null;
   tags: string[];
   origin: string | null;
-  responsibleUserId: string | null;
 }
 
-export interface ResponsibleOption {
-  userId: string;
-  fullName: string;
-}
-
-export function CustomerFormSheet({
-  trigger,
-  customer,
-  responsibles,
-}: {
-  trigger: React.ReactNode;
-  customer?: CustomerFormValues;
-  responsibles: ResponsibleOption[];
-}) {
+export function CustomerFormSheet({ trigger, customer }: { trigger: React.ReactNode; customer?: CustomerFormValues }) {
   return (
-    <FormSheet
+    <FormDialog
       trigger={trigger}
       title={customer ? "Editar cliente" : "Novo cliente"}
       description={customer ? customer.name : "Cadastre o cliente para começar o atendimento."}
     >
-      {(close) => <CustomerForm customer={customer} responsibles={responsibles} onDone={close} />}
-    </FormSheet>
+      {(close) => <CustomerForm customer={customer} onDone={close} />}
+    </FormDialog>
   );
 }
 
-function CustomerForm({
-  customer,
-  responsibles,
-  onDone,
-}: {
-  customer?: CustomerFormValues;
-  responsibles: ResponsibleOption[];
-  onDone: () => void;
-}) {
+function CustomerForm({ customer, onDone }: { customer?: CustomerFormValues; onDone: () => void }) {
   const router = useRouter();
   const [state, action] = useActionState<ActionState<CustomerField>, FormData>(saveCustomerAction, IDLE);
   const values = state.status === "error" ? state.values : undefined;
@@ -77,15 +57,11 @@ function CustomerForm({
   });
 
   const originOptions = [{ value: NONE, label: "Não informado" }, ...CUSTOMER_ORIGINS];
-  const responsibleOptions = [
-    { value: NONE, label: "Sem responsável" },
-    ...responsibles.map((item) => ({ value: item.userId, label: item.fullName })),
-  ];
 
   return (
     <form action={action} className="flex min-h-0 flex-1 flex-col" noValidate>
       {customer && <input type="hidden" name="id" value={customer.id} />}
-      <SheetFormLayout
+      <DialogFormLayout
         footer={
           <>
             <Button type="button" variant="ghost" onClick={onDone}>
@@ -107,21 +83,24 @@ function CustomerForm({
           error={fieldError(state, "name")}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
+          <MaskedTextField
             label="Telefone"
             name="phone"
+            required
             inputMode="numeric"
-            placeholder="11988887777"
-            defaultValue={pick("phone", customer?.phone)}
+            placeholder="(11) 98888-7777"
+            mask={maskPhone}
+            defaultValue={pick("phone", customer?.phone) as string | undefined}
             error={fieldError(state, "phone")}
           />
-          <TextField
+          <MaskedTextField
             label="WhatsApp"
             name="whatsapp"
             inputMode="numeric"
-            placeholder="11988887777"
-            description="Usado para reconhecer a conversa no WhatsApp"
-            defaultValue={pick("whatsapp", customer?.whatsapp)}
+            placeholder="(11) 98888-7777"
+            description="Opcional — usado para reconhecer a conversa no WhatsApp"
+            mask={maskPhone}
+            defaultValue={pick("whatsapp", customer?.whatsapp) as string | undefined}
             error={fieldError(state, "whatsapp")}
           />
         </div>
@@ -133,12 +112,13 @@ function CustomerForm({
           error={fieldError(state, "email")}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
+          <MaskedTextField
             label="CPF/CNPJ"
             name="document"
             inputMode="numeric"
             description="Opcional"
-            defaultValue={pick("document", customer?.document)}
+            mask={maskCpfCnpj}
+            defaultValue={pick("document", customer?.document) as string | undefined}
             error={fieldError(state, "document")}
           />
           <TextField
@@ -149,22 +129,13 @@ function CustomerForm({
             error={fieldError(state, "birthday")}
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField
-            label="Origem"
-            name="origin"
-            options={originOptions}
-            defaultValue={pick("origin", customer?.origin) ?? NONE}
-            error={fieldError(state, "origin")}
-          />
-          <SelectField
-            label="Responsável"
-            name="responsibleUserId"
-            options={responsibleOptions}
-            defaultValue={pick("responsibleUserId", customer?.responsibleUserId) ?? NONE}
-            error={fieldError(state, "responsibleUserId")}
-          />
-        </div>
+        <SelectField
+          label="Origem"
+          name="origin"
+          options={originOptions}
+          defaultValue={pick("origin", customer?.origin) ?? NONE}
+          error={fieldError(state, "origin")}
+        />
         <TextField
           label="Tags"
           name="tags"
@@ -181,7 +152,7 @@ function CustomerForm({
           defaultValue={pick("notes", customer?.notes)}
           error={fieldError(state, "notes")}
         />
-      </SheetFormLayout>
+      </DialogFormLayout>
     </form>
   );
 }

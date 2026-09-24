@@ -26,13 +26,24 @@ describe("customers", () => {
     userId: string,
     overrides: Partial<{ name: string; phone: string | null; whatsapp: string | null; email: string | null }> = {},
   ) {
+    // Único por chamada de propósito (não um valor fixo): telefone agora
+    // compartilha o mesmo conjunto de unicidade de whatsapp, então um
+    // default repetido colidiria entre testes que não se importam com o
+    // número em si. "phone: null" explícito continua respeitado (nunca cai
+    // no default — só quando a chave nem aparece no objeto de overrides).
+    const phone =
+      overrides.phone === undefined
+        ? `1199${Math.floor(Math.random() * 1_000_000)
+            .toString()
+            .padStart(6, "0")}`
+        : overrides.phone;
     const [row] = await db.as(userId).query<{ id: string }>(
       `insert into public.customers (tenant_id, name, phone, whatsapp, email)
        values ($1, $2, $3, $4, $5) returning id`,
       [
         tenantId,
         overrides.name ?? `Cliente ${randomUUID().slice(0, 6)}`,
-        overrides.phone ?? "11988887777",
+        phone,
         overrides.whatsapp ?? null,
         overrides.email ?? null,
       ],
@@ -82,6 +93,42 @@ describe("customers", () => {
           "11955554444",
         ]),
     ).rejects.toThrow();
+  });
+
+  it("phone and whatsapp share the same uniqueness pool — a number used as one customer's phone can't be another's whatsapp", async () => {
+    await createCustomer(ownerId, { phone: "11966665555", whatsapp: null });
+    await expect(
+      db
+        .as(ownerId)
+        .query("insert into public.customers (tenant_id, name, whatsapp) values ($1, $2, $3)", [
+          tenantId,
+          "Mesmo número, outro cliente",
+          "11966665555",
+        ]),
+    ).rejects.toThrow("contact_number_in_use");
+  });
+
+  it("phone is unique on its own too, not just against whatsapp", async () => {
+    await createCustomer(ownerId, { phone: "11977778888", whatsapp: null });
+    await expect(
+      db
+        .as(ownerId)
+        .query("insert into public.customers (tenant_id, name, phone) values ($1, $2, $3)", [
+          tenantId,
+          "Telefone duplicado",
+          "11977778888",
+        ]),
+    ).rejects.toThrow("contact_number_in_use");
+  });
+
+  it("archiving a customer frees their phone for reuse too", async () => {
+    const phone = `1198${Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, "0")}`;
+    const id = await createCustomer(ownerId, { phone, whatsapp: null });
+    await db.as(ownerId).query("update public.customers set archived_at = now() where id = $1", [id]);
+    const secondId = await createCustomer(ownerId, { phone, whatsapp: null });
+    expect(secondId).not.toBe(id);
   });
 
   it("archiving frees the whatsapp number for reuse", async () => {

@@ -13,7 +13,6 @@ import { CustomerFormSheet } from "@/domains/customers/components/customer-form"
 import { originLabel, CUSTOMER_ORIGINS } from "@/domains/customers/labels";
 import { CUSTOMER_PAGE_SIZE, listCustomers, type CustomerListItem } from "@/domains/customers/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
-import { listTenantMembers } from "@/domains/users/queries";
 import { initials } from "@/lib/format";
 import { buildHref, firstParam, parsePage } from "@/lib/url";
 
@@ -41,16 +40,10 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
   const archived = firstParam(params.status) === "arquivados";
   const page = parsePage(params.page);
 
-  const [list, members] = await Promise.all([
-    listCustomers(context, { query, origin, archived, page }),
-    context.can("customers.write") ? listTenantMembers(context) : Promise.resolve([]),
-  ]);
+  const list = await listCustomers(context, { query, origin, archived, page });
 
   const canWrite = context.can("customers.write");
   const filtered = Boolean(query || origin || archived);
-  const responsibles = members
-    .filter((member) => member.status === "ACTIVE")
-    .map((member) => ({ userId: member.userId, fullName: member.fullName }));
 
   const columns: DataTableColumn<CustomerListItem>[] = [
     {
@@ -88,12 +81,6 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
       hideBelow: "md",
       cell: (customer) => <span className="text-muted-foreground">{originLabel(customer.origin)}</span>,
     },
-    {
-      id: "responsible",
-      header: "Responsável",
-      hideBelow: "lg",
-      cell: (customer) => <span className="text-muted-foreground">{customer.responsibleName ?? "—"}</span>,
-    },
   ];
 
   return (
@@ -104,7 +91,6 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
         actions={
           canWrite ? (
             <CustomerFormSheet
-              responsibles={responsibles}
               trigger={
                 <Button>
                   <UserPlus /> Novo cliente
@@ -122,7 +108,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
         getRowKey={(customer) => customer.id}
         toolbar={
           <FilterBar>
-            <SearchInput placeholder="Buscar por nome, telefone ou e-mail…" label="Buscar clientes" />
+            <SearchInput placeholder="Buscar por nome, telefone, e-mail ou CPF…" label="Buscar clientes" />
             <FilterSelect
               param="origem"
               label="Origem"
@@ -153,7 +139,6 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
               action={
                 canWrite ? (
                   <CustomerFormSheet
-                    responsibles={responsibles}
                     trigger={
                       <Button>
                         <UserPlus /> Cadastrar cliente

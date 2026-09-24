@@ -528,4 +528,29 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       db.as(other.ownerId).rpc("conversation_assume", { p_conversation_id: conversation.id }),
     ).rejects.toThrow("forbidden");
   });
+
+  it("matches a manually-registered customer by phone when they later message on that same number by WhatsApp, instead of trying (and failing) to create a duplicate", async () => {
+    const [manual] = await db
+      .as(ownerId)
+      .query<{ id: string }>("insert into public.customers (tenant_id, name, phone) values ($1, $2, $3) returning id", [
+        tenantId,
+        "Cliente Cadastrado Manualmente",
+        "11966660000",
+      ]);
+
+    const [row] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: "11966660000",
+      p_content: "Oi, sou eu",
+      p_external_message_id: "wa-phone-match-1",
+    });
+    expect(row!.whatsapp_receive_message).toBeTruthy();
+
+    const customers = await db.admin.query<{ id: string }>(
+      "select id from public.customers where tenant_id = $1 and (phone = $2 or whatsapp = $2)",
+      [tenantId, "11966660000"],
+    );
+    expect(customers).toHaveLength(1);
+    expect(customers[0]!.id).toBe(manual!.id);
+  });
 });

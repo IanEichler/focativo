@@ -50,7 +50,6 @@ export async function saveCustomerAction(
     notes: data.notes,
     tags: parseTags(data.tags),
     origin: data.origin,
-    responsible_user_id: data.responsibleUserId,
     archived_at: data.archived ? new Date().toISOString() : null,
   };
 
