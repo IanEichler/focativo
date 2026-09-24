@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const notice = NOTICES[firstParam(params.erro) ?? ""];
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background p-3 sm:p-6">
+    <div className="flex min-h-dvh items-center justify-center bg-neutral-black p-3 sm:p-6">
       <div className="grid w-full max-w-[1080px] overflow-hidden rounded-3xl border border-border bg-background lg:grid-cols-[1.05fr_1fr] lg:border-border-strong">
         {/* Painel de marca — some em telas pequenas */}
         <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-neutral-graphite via-neutral-black to-neutral-black p-10 lg:flex">
