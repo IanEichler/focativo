@@ -1,6 +1,5 @@
-import { ArrowLeft, ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
 import { MoneyValue } from "@/components/data/money-value";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -89,13 +88,6 @@ export default async function AgendaServicesPage() {
 
   return (
     <PageContainer>
-      <div>
-        <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
-          <Link href="/app/agenda">
-            <ArrowLeft /> Agenda
-          </Link>
-        </Button>
-      </div>
       <PageHeader
         title="Serviços"
         description="Catálogo de serviços oferecidos, usado nos agendamentos e pela assistente de IA."

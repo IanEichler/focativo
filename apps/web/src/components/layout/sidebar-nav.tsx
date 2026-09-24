@@ -20,9 +20,24 @@ interface SidebarNavProps {
   onNavigate?: () => void;
 }
 
-function isActive(pathname: string, href: string, rootHref: string) {
-  if (href === rootHref) return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
+/**
+ * Só UM item fica marcado como ativo: o de href mais específico (mais
+ * comprido) que bate com a URL atual. Sem isso, "/app/agenda/servicos"
+ * marcava "Agenda" (href "/app/agenda", prefixo) E "Serviços" ao mesmo
+ * tempo — os dois acesos juntos no menu.
+ */
+function computeActiveHref(pathname: string, sections: NavSection[], rootHref: string): string | null {
+  let best: string | null = null;
+  for (const section of sections) {
+    for (const item of section.items) {
+      const matches =
+        item.href === rootHref
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      if (matches && (!best || item.href.length > best.length)) best = item.href;
+    }
+  }
+  return best;
 }
 
 /**
@@ -35,6 +50,7 @@ export function SidebarNav({ sections: initialSections, rootHref, collapsed, onN
   const [sections, setSections] = useState(initialSections);
   const [, startTransition] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const activeHref = computeActiveHref(pathname, sections, rootHref);
 
   function handleDragEnd(sectionIndex: number) {
     return (event: DragEndEvent) => {
@@ -73,7 +89,7 @@ export function SidebarNav({ sections: initialSections, rootHref, collapsed, onN
                 <SortableNavItem
                   key={item.href}
                   item={item}
-                  active={isActive(pathname, item.href, rootHref)}
+                  active={item.href === activeHref}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
                 />
