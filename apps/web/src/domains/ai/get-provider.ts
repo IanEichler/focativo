@@ -4,6 +4,7 @@ import type { AIProvider } from "./provider";
 import { AnthropicAIProvider } from "./providers/anthropic-provider";
 import { DevAIProvider } from "./providers/dev-provider";
 import { GeminiAIProvider } from "./providers/gemini-provider";
+import { OpenAIAIProvider } from "./providers/openai-provider";
 
 const cache = new Map<string, AIProvider>();
 
@@ -17,10 +18,12 @@ export function getAIProvider(providerCode: string = "anthropic"): AIProvider {
   const cached = cache.get(providerCode);
   if (cached) return cached;
 
-  const { ANTHROPIC_API_KEY, GEMINI_API_KEY } = getServerEnv();
+  const { ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY } = getServerEnv();
   let provider: AIProvider;
   if (providerCode === "gemini") {
     provider = GEMINI_API_KEY ? new GeminiAIProvider(GEMINI_API_KEY) : new DevAIProvider();
+  } else if (providerCode === "openai") {
+    provider = OPENAI_API_KEY ? new OpenAIAIProvider(OPENAI_API_KEY) : new DevAIProvider();
   } else {
     provider = ANTHROPIC_API_KEY ? new AnthropicAIProvider(ANTHROPIC_API_KEY) : new DevAIProvider();
   }

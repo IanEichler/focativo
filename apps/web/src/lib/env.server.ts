@@ -19,6 +19,8 @@ const serverSchema = z.object({
   // tenant_ai_platform_limits.provider. Sem a chave, um tenant configurado
   // pra "gemini" cai pro provider DEV, mesma regra do Anthropic acima.
   GEMINI_API_KEY: z.string().min(10).optional(),
+  // Terceiro provider alternativo (2026-09-24), mesma regra dos dois acima.
+  OPENAI_API_KEY: z.string().min(10).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
@@ -37,6 +39,7 @@ export function getServerEnv(): ServerEnv {
       WHATSAPP_SERVICE_SECRET: process.env.WHATSAPP_SERVICE_SECRET || undefined,
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || undefined,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || undefined,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY || undefined,
     });
     if (!parsed.success) {
       throw new Error(

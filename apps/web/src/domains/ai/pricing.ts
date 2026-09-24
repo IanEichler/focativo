@@ -10,6 +10,7 @@ const PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number
   "claude-opus-5": { input: 15, output: 75 },
   "claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
   "gemini-3.8-flash": { input: 0.75, output: 3.75 },
+  "gpt-5.6-luna": { input: 0.2, output: 1.2 },
 };
 
 const DEFAULT_PRICING = PRICING_PER_MILLION_TOKENS["claude-sonnet-5"]!;

@@ -28,6 +28,7 @@ export type SetModuleFlagField = keyof z.input<typeof setModuleFlagSchema>;
 export const AI_PROVIDERS = [
   { value: "anthropic", label: "Anthropic (Claude)" },
   { value: "gemini", label: "Google (Gemini)" },
+  { value: "openai", label: "OpenAI (GPT)" },
 ] as const;
 
 export const AI_MODELS = [
@@ -35,6 +36,7 @@ export const AI_MODELS = [
   { value: "claude-opus-5", label: "Claude Opus 5 (mais caro, mais capaz)", provider: "anthropic" },
   { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (mais barato e rápido)", provider: "anthropic" },
   { value: "gemini-3.8-flash", label: "Gemini 3.8 Flash (rápido e barato)", provider: "gemini" },
+  { value: "gpt-5.6-luna", label: "GPT-5.6 Luna (rápido e o mais barato)", provider: "openai" },
 ] as const;
 
 export const aiPlatformLimitsSchema = z
