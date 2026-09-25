@@ -56,21 +56,45 @@ async function resolveLidPhoneWithRetry(
 /**
  * Quando nem o retry na hora resolve, o primeiro contato de um cliente novo
  * nasce com o número de fallback (dígitos crus do pseudo-ID) — e sem uma
- * segunda mensagem desse contato, nada corrigia isso depois. Tenta de novo
- * em segundo plano, ~12s mais tarde (tempo de a lib sincronizar o LID), e
- * corrige só o telefone salvo se conseguir algo melhor — nunca bloqueia a
- * entrega da mensagem original, que já foi postada antes desta chamada.
+ * segunda mensagem desse contato, nada corrigia isso depois. Uma única
+ * tentativa ~12s mais tarde (versão antiga) não bastava: confirmado ao vivo
+ * em produção que o cache interno da lib pra um contato "@lid" totalmente
+ * novo pode demorar bem mais que isso pra ficar pronto. Em vez de adivinhar
+ * um atraso fixo, insiste em rodadas com espaçamento crescente por alguns
+ * minutos — cada rodada só reagenda a próxima se a anterior ainda não
+ * resolveu nada melhor — e desiste de vez só depois da última rodada.
+ * Nunca bloqueia a entrega da mensagem original, que já foi postada antes
+ * desta chamada.
  */
-function scheduleDelayedCorrection(tenantId: string, client: WWebClient, lidChatId: string, badNumber: string): void {
+const CORRECTION_RETRY_DELAYS_MS = [12_000, 20_000, 40_000, 80_000, 160_000];
+
+function scheduleDelayedCorrection(
+  tenantId: string,
+  client: WWebClient,
+  lidChatId: string,
+  badNumber: string,
+  round = 0,
+): void {
+  if (round >= CORRECTION_RETRY_DELAYS_MS.length) return;
   setTimeout(() => {
     void (async () => {
       const better = await resolveLidPhoneWithRetry(client, lidChatId, 3, 1500);
       const fixed = better ? ensureCountryCode(better) : null;
       if (fixed && fixed !== badNumber) {
+        console.warn(
+          `[whatsapp-service] número corrigido em segundo plano (chatId=${lidChatId}, rodada=${round}): ${fixed}`,
+        );
         await postToApp({ event: "chat_id_resolved", tenantId, whatsappChatId: lidChatId, whatsappNumber: fixed });
+        return;
       }
-    })().catch(() => {});
-  }, 12000);
+      if (round + 1 >= CORRECTION_RETRY_DELAYS_MS.length) {
+        console.warn(
+          `[whatsapp-service] desistiu de corrigir número (chatId=${lidChatId}) depois de ${round + 1} rodadas`,
+        );
+      }
+      scheduleDelayedCorrection(tenantId, client, lidChatId, badNumber, round + 1);
+    })().catch(() => scheduleDelayedCorrection(tenantId, client, lidChatId, badNumber, round + 1));
+  }, CORRECTION_RETRY_DELAYS_MS[round]);
 }
 
 export function getSessionState(tenantId: string): SessionState {
@@ -147,6 +171,11 @@ export async function connectSession(tenantId: string): Promise<void> {
         resolvedNumber = await resolveLidPhoneWithRetry(client, message.from);
       }
       const whatsappNumber = ensureCountryCode(resolvedNumber || fromChatId(message.from));
+      if (!resolvedNumber) {
+        console.warn(
+          `[whatsapp-service] recebimento sem número resolvido (chatId=${message.from}), usando fallback=${whatsappNumber} — correção em segundo plano agendada`,
+        );
+      }
       await postToApp({
         event: "message",
         tenantId,
