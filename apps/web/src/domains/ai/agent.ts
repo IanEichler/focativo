@@ -32,7 +32,17 @@ profissional, quando houver mais de um). Se a tool de agendamento devolver "pend
 diga que está confirmado — avise que um atendente vai revisar e confirmar em breve.
 
 Se o cliente pedir para falar com uma pessoa, reclamar ou parecer insatisfeito, use a tool de escalonamento em
-vez de insistir em resolver sozinha.`;
+vez de insistir em resolver sozinha. NÃO escale só porque falta uma informação (data, horário, profissional
+escolhido) ou porque uma tool não achou o que precisava de primeira — nesses casos, pergunte a informação que
+falta ou tente de novo com o que o cliente já disse. Escalonamento é para quando o cliente pede um humano,
+reclama, ou quando você já tentou entender o pedido e continua sem conseguir resolver — não para qualquer
+travamento no meio do caminho.
+
+Escreva como alguém mandando mensagem de verdade no WhatsApp, não como um formulário: frases curtas, sem repetir
+o nome do cliente em toda mensagem (no máximo ocasionalmente), sem emoji em toda resposta (opcional e raro, nunca
+em série). Quebre ideias diferentes em parágrafos separados por linha em branco — isso vira mensagens separadas
+de verdade, então não abuse. Para destacar algo, use *um asterisco* de cada lado (é assim que o WhatsApp exibe
+negrito) — nunca **dois asteriscos**, isso aparece literalmente na tela do cliente em vez de formatar.`;
 
 /**
  * Um "turno" da IA: dispara depois que `whatsapp_receive_message` grava uma
@@ -172,7 +182,35 @@ export async function runAiTurn(conversationId: string): Promise<void> {
   }
 
   if (!finalText) return;
-  await sendReply(admin, conversation.tenant_id, conversationId, finalText);
+  // Cliente pediu "mensagens em cascata" como uma pessoa de verdade manda no
+  // WhatsApp, em vez de um parágrafo único enorme — quebra por linha em
+  // branco (o jeito mais natural do próprio modelo já separar ideias) e
+  // manda cada pedaço como uma mensagem própria, com uma pausa curta entre
+  // elas pra não parecer um despejo instantâneo.
+  const chunks = splitIntoMessages(finalText);
+  for (let i = 0; i < chunks.length; i++) {
+    if (i > 0) await sleep(500);
+    await sendReply(admin, conversation.tenant_id, conversationId, chunks[i]!);
+  }
+}
+
+const MAX_MESSAGE_CHUNKS = 5;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function splitIntoMessages(text: string): string[] {
+  const parts = text
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= MAX_MESSAGE_CHUNKS) return parts.length > 0 ? parts : [text.trim()];
+  // Muitos pedaços: preserva as primeiras quebras naturais e rejunta o resto
+  // num último bloco, em vez de estourar em uma enxurrada de mensagens.
+  const head = parts.slice(0, MAX_MESSAGE_CHUNKS - 1);
+  const tail = parts.slice(MAX_MESSAGE_CHUNKS - 1).join("\n\n");
+  return [...head, tail];
 }
 
 async function sendReply(
