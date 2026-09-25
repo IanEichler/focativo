@@ -63,6 +63,12 @@ export async function POST(request: Request) {
 
   if (event === "message") {
     if (!payload.whatsappNumber) return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    // Segunda camada contra mensagem de grupo (a primeira é o serviço de
+    // WhatsApp, que já nem deveria mandar isso) — nunca confiar só na origem.
+    if (payload.whatsappChatId?.endsWith("@g.us")) {
+      logger.info({ event: "webhook.whatsapp", status: "ignored_group", tenant_id: tenantId });
+      return NextResponse.json({ ok: true });
+    }
 
     // whatsapp_receive_message é idempotente por external_message_id (uma
     // reentrega do serviço devolve o id da mensagem já existente) — mas isso

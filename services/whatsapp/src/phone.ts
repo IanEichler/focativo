@@ -1,3 +1,8 @@
+/** Grupos do WhatsApp usam o domínio "@g.us" no chatId — nunca é um cliente individual. */
+export function isGroupChatId(chatId: string): boolean {
+  return chatId.endsWith("@g.us");
+}
+
 /** Converte um telefone (com ou sem formatação) no chatId individual do WhatsApp Web. */
 export function toChatId(phone: string): string {
   const digits = phone.replace(/\D/g, "");

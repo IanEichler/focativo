@@ -2,7 +2,7 @@ import fs from "node:fs";
 import QRCode from "qrcode";
 import pkg, { type Message } from "whatsapp-web.js";
 import { config } from "./config";
-import { ensureCountryCode, fromChatId, toChatId } from "./phone";
+import { ensureCountryCode, fromChatId, isGroupChatId, toChatId } from "./phone";
 import { postToApp } from "./webhook";
 
 const { Client, LocalAuth } = pkg;
@@ -126,6 +126,13 @@ export async function connectSession(tenantId: string): Promise<void> {
   client.on("message", (message: Message) => {
     void (async () => {
       if (message.fromMe) return;
+      // Mensagem de grupo: message.from é o ID do GRUPO, nunca o do remetente
+      // individual (quem mandou de fato fica em message.author, nunca lido
+      // aqui) — tratar isso como telefone de cliente produz lixo, e todo
+      // membro do grupo cairia no mesmo "cliente" (confirmado ao vivo em
+      // produção). Este app é de atendimento individual; grupo nunca vira
+      // cliente/conversa.
+      if (isGroupChatId(message.from)) return;
       // Prioriza o número real resolvido pela lib: desde a migração do WhatsApp
       // para IDs "@lid" (privacidade), message.from pode ser um pseudo-ID sem
       // relação com o telefone — extrair dígitos dele produz lixo. Para a
