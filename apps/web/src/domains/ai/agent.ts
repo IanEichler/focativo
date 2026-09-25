@@ -192,10 +192,11 @@ async function sendReply(
 
   const { data: conversation } = await admin
     .from("conversations")
-    .select("customer:customers(whatsapp)")
+    .select("customer:customers(whatsapp, whatsapp_chat_id)")
     .eq("id", conversationId)
     .single();
   const to = conversation?.customer?.whatsapp;
+  const chatId = conversation?.customer?.whatsapp_chat_id;
   if (!to) {
     await admin.rpc("message_mark_failed", { p_message_id: messageId, p_reason: "Cliente sem WhatsApp cadastrado" });
     return;
@@ -203,7 +204,12 @@ async function sendReply(
 
   try {
     const provider = getWhatsAppProvider();
-    const sent = await provider.sendText(tenantId, to, text);
+    // Sem o chat_id salvo no recebimento, o envio cai no fallback de endereçar
+    // só pelo telefone (resolveChatId em services/whatsapp), que falha com
+    // "No LID for user" pra contatos migrados pro "@lid" — mesmo problema já
+    // resolvido pro envio manual do atendente (domains/whatsapp/actions.ts),
+    // só faltava aplicar aqui também.
+    const sent = await provider.sendText(tenantId, to, text, chatId);
     await admin.rpc("message_mark_sent", { p_message_id: messageId, p_external_message_id: sent.externalMessageId });
   } catch (sendError) {
     logger.warn({ event: "ai.provider_send", status: "error", tenant_id: tenantId, code: String(sendError) });
