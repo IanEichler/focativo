@@ -733,6 +733,68 @@ export type Database = {
           },
         ]
       }
+      customer_documents: {
+        Row: {
+          created_at: string
+          customer_id: string
+          file_path: string
+          generated_by: string | null
+          id: string
+          name: string
+          template_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          file_path: string
+          generated_by?: string | null
+          id?: string
+          name: string
+          template_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          file_path?: string
+          generated_by?: string | null
+          id?: string
+          name?: string
+          template_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           archived_at: string | null
@@ -811,6 +873,57 @@ export type Database = {
           },
           {
             foreignKeyName: "customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fields: Json
+          file_path: string
+          id: string
+          is_active: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          file_path: string
+          id?: string
+          is_active?: boolean
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3562,6 +3675,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      customer_document_create: {
+        Args: {
+          p_customer_id: string
+          p_template_id: string
+          p_name: string
+          p_file_path: string
+        }
+        Returns: string
+      }
       customer_purge: {
         Args: {
           p_customer_id: string
@@ -3573,6 +3695,21 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: undefined
+      }
+      document_template_archive: {
+        Args: {
+          p_template_id: string
+        }
+        Returns: undefined
+      }
+      document_template_create: {
+        Args: {
+          p_tenant_id: string
+          p_name: string
+          p_file_path: string
+          p_fields?: Json
+        }
+        Returns: string
       }
       financial_summary: {
         Args: {

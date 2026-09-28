@@ -15,6 +15,7 @@ export const TENANT_MODULES = [
   { code: "financial", label: "Financeiro" },
   { code: "whatsapp", label: "WhatsApp e Atendimento" },
   { code: "ai", label: "Assistente de IA" },
+  { code: "documents", label: "Documentos" },
 ] as const;
 
 export type ModuleCode = (typeof TENANT_MODULES)[number]["code"];

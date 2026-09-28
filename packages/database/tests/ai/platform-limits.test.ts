@@ -72,8 +72,8 @@ describe("IA: limites de plataforma (só admin master) vs. comportamento (tenant
     await expectDbError(
       db.as(superAdminId).rpc("admin_ai_platform_limits_set", {
         p_tenant_id: tenantId,
-        p_provider: "openai",
-        p_model: "gpt-5",
+        p_provider: "deepseek",
+        p_model: "deepseek-v4",
       }),
       "invalid_input",
     );

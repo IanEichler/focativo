@@ -30,6 +30,8 @@ export const PERMISSIONS = [
   "whatsapp.write",
   "agenda.read",
   "agenda.write",
+  "documents.read",
+  "documents.write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -79,6 +81,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "whatsapp.write": "Responder conversas do WhatsApp",
   "agenda.read": "Ver agenda",
   "agenda.write": "Criar e editar agendamentos",
+  "documents.read": "Ver modelos e documentos gerados",
+  "documents.write": "Subir modelos e gerar/salvar documentos para clientes",
 };
 
 export interface PermissionGroup {
@@ -104,4 +108,5 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   { module: "financial", label: "Financeiro", permissions: ["financial.read"] },
   { module: "whatsapp", label: "WhatsApp", permissions: ["whatsapp.read", "whatsapp.write"] },
   { module: "agenda", label: "Agenda", permissions: ["agenda.read", "agenda.write"] },
+  { module: "documents", label: "Documentos", permissions: ["documents.read", "documents.write"] },
 ];

@@ -14,6 +14,7 @@ import { getCustomerDetail, listCustomerTimeline } from "@/domains/customers/que
 import { requireTenantContext } from "@/domains/tenants/context";
 import { listTenantMembers } from "@/domains/users/queries";
 import { firstParam } from "@/lib/url";
+import { DocumentsTab } from "./documents-tab";
 import { OpportunitiesTab } from "./opportunities-tab";
 import { OverviewTab } from "./overview-tab";
 import { PurchasesTab } from "./purchases-tab";
@@ -21,7 +22,7 @@ import { TimelineTab } from "./timeline-tab";
 
 export const metadata: Metadata = { title: "Cliente" };
 
-const TABS = ["geral", "timeline", "oportunidades", "compras"] as const;
+const TABS = ["geral", "timeline", "oportunidades", "compras", "documentos"] as const;
 
 export default async function CustomerDetailPage({ params, searchParams }: PageProps<"/app/clientes/[id]">) {
   const context = await requireTenantContext();
@@ -100,6 +101,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
           { id: "timeline", label: "Timeline", href: `${base}?aba=timeline` },
           { id: "oportunidades", label: "Oportunidades", href: `${base}?aba=oportunidades` },
           { id: "compras", label: "Compras", href: `${base}?aba=compras` },
+          { id: "documentos", label: "Documentos", href: `${base}?aba=documentos` },
         ]}
       />
 
@@ -109,6 +111,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
         <OpportunitiesTab context={context} customer={customer} responsibles={responsibles} />
       )}
       {tab === "compras" && <PurchasesTab context={context} customerId={customer.id} />}
+      {tab === "documentos" && <DocumentsTab context={context} customerId={customer.id} />}
     </PageContainer>
   );
 }

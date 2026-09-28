@@ -211,6 +211,8 @@ describe("tenant creation, invitations and RBAC", () => {
         "crm.write",
         "customers.read",
         "customers.write",
+        "documents.read",
+        "documents.write",
         "inventory.read",
         "reservations.read",
         "reservations.write",

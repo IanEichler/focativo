@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CircleHelp,
   CreditCard,
+  FileText,
   Flag,
   HeartPulse,
   Inbox,
@@ -61,6 +62,7 @@ const ICONS: Record<NavIconName, LucideIcon | typeof WhatsAppGlyph> = {
   whatsapp: WhatsAppGlyph,
   sliders: Settings2,
   help: CircleHelp,
+  "file-text": FileText,
 };
 
 export function NavIcon({ name, className }: { name: NavIconName; className?: string }) {
