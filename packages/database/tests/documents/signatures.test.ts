@@ -84,3 +84,36 @@ it("rejects revoked and expired links and blocks snapshot edits", async () => {
   await db.service.query("update public.contract_signatures set expires_at=now()-interval '1 minute' where id=$1", [expired.id]);
   expect(await issue(expired.token)).toEqual({ error: "unavailable" });
 });
+
+async function completeLink(id: string, token: string, changes = {}) {
+  const [row] = await db.service.rpc("signature_complete_link", {
+    p_token_hash: token, p_signed_path: `${tenantId}/${id}/signed.pdf`, p_signed_sha256: "b".repeat(64), p_seal: "c".repeat(64),
+    p_evidence: JSON.stringify({ requestId: id, originalSha256: "a".repeat(64), signerName: "Signatária teste", accepted: true,
+      authentication: "unique_link", consentVersion: "2026-09-29-v2-link", ...changes }),
+  });
+  return row!.signature_complete_link;
+}
+it("signs by link without email verification but requires PDF access and accurate evidence", async () => {
+  const r = await request();
+  expect(await completeLink(r.id, r.token)).toEqual({ error: "review_required" });
+  await db.service.query("update public.contract_signatures set viewed_at=now() where id=$1", [r.id]);
+  expect(await completeLink(r.id, r.token, { verifiedAt: "2026-09-29" })).toEqual({ error: "invalid_evidence" });
+  expect(await completeLink(r.id, r.token, { authentication: "email_otp" })).toEqual({ error: "invalid_evidence" });
+  expect(await completeLink(r.id, r.token, { accepted: false })).toEqual({ error: "invalid_evidence" });
+  const results = await Promise.all([completeLink(r.id, r.token), completeLink(r.id, r.token)]);
+  expect(results).toContainEqual({ ok: true }); expect(results).toContainEqual({ error: "unavailable" });
+  const [saved] = await db.service.query("select verified_at,authentication_method,evidence from public.contract_signatures where id=$1", [r.id]);
+  expect(saved!.verified_at).toBeNull(); expect(saved!.authentication_method).toBe("unique_link");
+  expect(saved!.evidence).not.toHaveProperty("verifiedAt");
+  await expect(db.service.query("update public.contract_signatures set authentication_method='email_otp' where id=$1", [r.id])).rejects.toThrow("signed_document_immutable");
+});
+it("blocks expired/revoked links and direct browser signing RPC access", async () => {
+  for (const status of ["REVOKED", "PENDING"]) {
+    const r = await request();
+    await db.service.query("update public.contract_signatures set viewed_at=now(),status=$2,expires_at=now()-interval '1 second' where id=$1", [r.id, status]);
+    expect(await completeLink(r.id, r.token)).toEqual({ error: "unavailable" });
+  }
+  for (const session of [db.anon, db.as(ownerId)]) {
+    await expect(session.query("select public.signature_complete_link('x','x','x','{}'::jsonb,'x')")).rejects.toThrow("permission denied");
+  }
+});

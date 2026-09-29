@@ -294,28 +294,28 @@ pm2 reload estoque-ia-web
 
 ## Assinatura eletrônica de contratos
 
-Ao gerar e salvar um contrato no perfil, o sistema guarda uma cópia exata do PDF e dos dados da signatária. Com domínio e e-mail configurados, o link é criado junto com o contrato e aparece na confirmação para copiar. Também é possível usar **Gerar link para assinatura** na aba de documentos da cliente. Contratos antigos precisam ser gerados novamente para obter essa cópia.
+Ao gerar e salvar um contrato no perfil, o sistema guarda uma cópia exata do PDF e dos dados da signatária. Com o domínio público configurado, cria o link junto com o contrato. Na aba de documentos, use **Gerar e copiar link** ou **Copiar link de assinatura**. Contratos anteriores ao assinador precisam de nova geração para obter a cópia; contratos já preparados podem usar o mesmo botão sem preencher e-mail.
 
-O link vence em 7 dias. A cliente confirma o e-mail com um código, confere o PDF, digita o nome e aceita o contrato; o desenho da assinatura é opcional. O código dura 10 minutos, com intervalo de 60 segundos entre envios, até 10 envios por link, 5 tentativas por código e 20 no total. A sessão confirmada dura até 30 minutos. O PDF assinado contém o contrato e um comprovante; a clínica pode baixá-lo no perfil. O link pode ser cancelado antes da assinatura. Nenhum envio de link por WhatsApp ocorre automaticamente.
+O link vence em 7 dias e permite ler e assinar o contrato, sem e-mail, conta ou código de confirmação. Compartilhe-o diretamente com a cliente. Ela confere o PDF, digita o nome como consta no documento e marca o aceite; desenhar a assinatura é opcional. O PDF final inclui o comprovante do método de acesso e fica no perfil. É possível cancelar links pendentes. Não há envio automático por WhatsApp ou e-mail.
 
 ### Configuração do servidor
 
-- Aplique `20260929201627_native_contract_signatures.sql` e instale as dependências do workspace.
-- Defina `SIGNING_PUBLIC_URL` com o domínio HTTPS que serve esta aplicação. Localhost não é aceito para links destinados às clientes.
-- Configure `RESEND_API_KEY` e `SIGNING_EMAIL_FROM` usando um remetente de domínio verificado. O serviço de envio precisa ter capacidade disponível; não há código fixo nem modo de confirmação sem e-mail.
-- Defina `SIGNING_SECRET` com 32 bytes aleatórios em hexadecimal (veja `.env.example`). Guarde essa chave em um cofre e no backup: ela protege os links armazenados e sela as evidências. Não a substitua sem implementar uma migração de chaves, pois os registros anteriores dependem dela.
+- Aplique as migrations de assinatura, incluindo `20260929204900_contract_signatures_link_access.sql`.
+- Defina `SIGNING_PUBLIC_URL` com o domínio HTTPS desta aplicação. Localhost não é aceito para links destinados às clientes.
+- Defina `SIGNING_SECRET` com 32 bytes aleatórios em hexadecimal (veja `.env.example`). Guarde essa chave em um cofre e no backup: ela protege os links armazenados e sela as evidências. Não a substitua sem uma migração de chaves, pois os registros anteriores dependem dela.
+- Nenhum provedor ou remetente de e-mail é necessário para assinar.
 - `SIGNING_TRUST_PROXY=true` somente quando o proxy confiável sobrescrever `X-Forwarded-For` com o IP real. Caso contrário, o comprovante registra IP indisponível.
-- Reinicie a aplicação ao alterar as variáveis. Links ficam bloqueados enquanto a configuração necessária estiver incompleta.
+- Reinicie a aplicação ao alterar as variáveis.
 
 ### Armazenamento e evidências
 
-As tabelas de assinatura e o bucket privado `contract-signatures` não permitem acesso direto por `anon`/`authenticated`. A aplicação exige a permissão de documentos e verifica o acesso ao contrato com o cliente autenticado antes de usar o cliente privilegiado. A página pública exige um token aleatório e a confirmação por e-mail para ler o PDF. Downloads verificam os hashes; o PDF final também exige o selo das evidências. JSON é serializado com chaves ordenadas recursivamente por `serializeEvidence` antes do HMAC, preservando a verificação após armazenamento em JSONB.
+As tabelas de assinatura e o bucket privado `contract-signatures` não permitem acesso direto por `anon`/`authenticated`. A aplicação exige a permissão de documentos e verifica o acesso ao contrato com o cliente autenticado antes de criar ou cancelar links. O link aleatório de 256 bits funciona como credencial para acessar o documento e registrar o aceite; a posse dele não certifica identidade civil. Downloads verificam os hashes; o PDF final também exige o selo das evidências. JSON é serializado com chaves ordenadas recursivamente por `serializeEvidence` antes do HMAC, preservando a verificação após armazenamento em JSONB.
 
-Após a assinatura, o registro fica bloqueado para alteração e os eventos não permitem exclusão pelo serviço. A finalização usa bloqueio de linha para impedir assinatura duplicada ou concorrente com cancelamento. Guarde backups das tabelas, eventos, PDFs originais/finais e da chave. Os administradores da infraestrutura ainda controlam o armazenamento: isso não é um serviço independente de carimbo do tempo nem um certificado ICP-Brasil. O comprovante explicita o método e seus limites. A confirmação por e-mail comprova o controle daquele contato, sem certificar por si só a identidade civil. A adequação do fluxo e do contrato ao uso da clínica deve ser revisada juridicamente.
+O novo comprovante identifica o método `unique_link`, sem declarar confirmação de e-mail. Contratos já assinados preservam o PDF, o método e as evidências originais. Após assinatura, o registro fica bloqueado para alteração e os eventos não permitem exclusão pelo serviço. A finalização usa bloqueio de linha para impedir assinatura duplicada ou concorrente com cancelamento. Guarde backups das tabelas, eventos, PDFs e da chave. Administradores da infraestrutura controlam o armazenamento: isso não é um serviço independente de carimbo do tempo nem um certificado ICP-Brasil. A adequação do fluxo e do contrato ao uso da clínica deve ser revisada juridicamente.
 
-O módulo não cobra por assinatura. Hospedagem, armazenamento e envio de e-mails continuam sujeitos aos custos e limites dos serviços utilizados.
+O módulo não cobra por assinatura. Hospedagem e armazenamento continuam sujeitos aos custos e limites dos serviços utilizados.
 
-Testes focados: `pnpm --filter @estoque-ia/web exec vitest run src/domains/signatures` e `pnpm --filter @estoque-ia/database exec vitest run tests/documents/signatures.test.ts`. Os testes usam identidades fictícias, e-mail simulado e não assinam contratos de clientes.
+Testes focados: `pnpm --filter @estoque-ia/web exec vitest run src/domains/signatures` e `pnpm --filter @estoque-ia/database exec vitest run tests/documents/signatures.test.ts`. Os testes usam identidades fictícias e não assinam contratos de clientes.
 
 ## Deploy automático da VPS
 

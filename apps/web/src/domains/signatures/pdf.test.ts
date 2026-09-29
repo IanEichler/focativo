@@ -12,11 +12,11 @@ it("preserves original pages and appends the consent receipt without clipping lo
   original.addPage([595.28, 841.89]).drawText("TESTE - SEM VALIDADE", { x: 50, y: 750, size: 22 });
   const bytes = await original.save();
   const evidence: SignatureEvidence = {
-    version: 1, requestId: "00000000-0000-4000-8000-000000000000", documentName: "TESTE - SEM VALIDADE.pdf",
+    version: 2, requestId: "00000000-0000-4000-8000-000000000000", documentName: "TESTE - SEM VALIDADE.pdf",
     originalSha256: hash(bytes), signerName: "Pessoa fictícia para teste", signerDocument: "00000000000",
-    signerEmail: "teste@example.test", accepted: true, consentVersion: "2026-09-29-v1", consentText: CONSENT_TEXT,
-    signedAt: "2026-09-29T20:00:00.000Z", verifiedAt: "2026-09-29T19:58:00.000Z", viewedAt: "2026-09-29T19:59:00.000Z",
-    authentication: "email_otp", ip: null, userAgent: "Navegador de teste", signatureImageSha256: null,
+    signerEmail: "", accepted: true, consentVersion: "2026-09-29-v2-link", consentText: CONSENT_TEXT,
+    signedAt: "2026-09-29T20:00:00.000Z", viewedAt: "2026-09-29T19:59:00.000Z",
+    authentication: "unique_link", ip: null, userAgent: "Navegador de teste", signatureImageSha256: null,
   };
   const signed = await appendSignatureReceipt(bytes, evidence, "b".repeat(64));
   const parsed = await PDFDocument.load(signed);

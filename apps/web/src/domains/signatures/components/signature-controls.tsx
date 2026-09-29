@@ -38,7 +38,7 @@ export function SignatureControls({ documentId, canWrite = true, initialUrl = ""
     {summary?.status === "error" && <p role="alert">{summary.message}</p>}
     {summary?.status === "success" && !row && <p>Este contrato é anterior ao assinador. Gere uma nova versão para solicitar a assinatura.</p>}
     {row && <>
-      <p className="text-muted-foreground">Signatária: {row.signer_name} · {row.signer_email || "E-mail não preenchido no contrato"}</p>
+      <p className="text-muted-foreground">Signatária: {row.signer_name}</p>
       {row.signed_at && <p>Assinado em {formatDateTime(row.signed_at)}</p>}
       {row.status === "PENDING" && row.expires_at && <p>Link válido até {formatDateTime(row.expires_at)}.</p>}
       {canWrite && row.status !== "SIGNED" && summary?.status === "success" && summary.configurationMessage && <p className="text-muted-foreground">{summary.configurationMessage}</p>}
@@ -47,8 +47,11 @@ export function SignatureControls({ documentId, canWrite = true, initialUrl = ""
           onClick={() => run(async () => {
             const result = await createSignatureLinkAction(documentId);
             if (result.status === "error") { setError(result.message); return; }
-            setUrl(result.url); setSummary(await signatureStatusAction(documentId));
-          })}><Link2 className="size-4" />{row.status === "PENDING" && !expired ? "Exibir link" : "Gerar link para assinatura"}</Button>}
+            setUrl(result.url);
+            try { await navigator.clipboard.writeText(result.url); toast.success("Link copiado."); }
+            catch { toast.info("Link pronto. Use o campo abaixo para copiar."); }
+            setSummary(await signatureStatusAction(documentId));
+          })}><Link2 className="size-4" />{row.status === "PENDING" && !expired ? "Copiar link de assinatura" : "Gerar e copiar link"}</Button>}
         {row.status === "SIGNED" && <Button type="button" size="sm" disabled={pending} onClick={() => run(async () => {
           const result = await downloadSignedContractAction(documentId);
           if (result.status === "error") { setError(result.message); return; }

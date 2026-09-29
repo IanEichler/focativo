@@ -1,10 +1,10 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const SIGNATURE_BUCKET = "contract-signatures";
 export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-export const CONSENT_VERSION = "2026-09-29-v1";
-export const CONSENT_TEXT = "Li o contrato apresentado, concordo com seu conteúdo e aceito assiná-lo eletronicamente. Autorizo o registro da confirmação por e-mail, data, horário e informações técnicas deste acesso como evidências da minha manifestação de vontade.";
+export const CONSENT_VERSION = "2026-09-29-v2-link";
+export const CONSENT_TEXT = "Declaro ser a pessoa identificada neste contrato, li seu conteúdo e concordo em assiná-lo eletronicamente. Autorizo o registro do meu aceite, data, horário e informações técnicas deste acesso pelo link como evidências da minha manifestação de vontade.";
 
 function key() {
   const value = process.env.SIGNING_SECRET;
@@ -13,8 +13,6 @@ function key() {
 }
 export const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 export const newToken = () => randomBytes(32).toString("base64url");
-export const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
-export const codeHash = (token: string, code: string) => createHmac("sha256", key()).update(`otp:${hash(token)}:${code}`).digest("hex");
 // JSONB may reorder keys. Canonicalize recursively so archived evidence stays verifiable.
 export function serializeEvidence(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(serializeEvidence).join(",")}]`;
@@ -50,7 +48,6 @@ export function publicSigningOrigin() {
 export function signingReadiness(): string | null {
   try {
     key(); publicSigningOrigin();
-    if (!process.env.RESEND_API_KEY || !process.env.SIGNING_EMAIL_FROM) return "Configure o serviço de e-mail e o remetente verificado para enviar os códigos de assinatura.";
     return null;
   } catch (error) { return error instanceof Error ? error.message : "Configure o assinador."; }
 }

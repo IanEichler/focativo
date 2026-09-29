@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { CONSENT_TEXT, CONSENT_VERSION, publicSigningOrigin, TOKEN_PATTERN } from "@/domains/signatures/security";
-import { getSignature, isVerified, requestSignatureCode, signContract, signaturePdf, SigningError, verifySignatureCode } from "@/domains/signatures/service";
+import { getSignature, canAccessDocument, signContract, signaturePdf, SigningError } from "@/domains/signatures/service";
 
 export const runtime = "nodejs";
 const COOKIE = "signature_session";
 const headers = { "Cache-Control": "no-store, private", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff" };
-const bodySchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("request_code") }),
-  z.object({ action: z.literal("verify"), code: z.string().regex(/^\d{6}$/) }),
-  z.object({ action: z.literal("sign"), name: z.string().min(2).max(160), accepted: z.literal(true), consentVersion: z.literal(CONSENT_VERSION),
-    signature: z.string().max(165000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional() }),
-]);
+const bodySchema = z.object({ action: z.literal("sign"), name: z.string().min(2).max(160), accepted: z.literal(true), consentVersion: z.literal(CONSENT_VERSION),
+  signature: z.string().max(165000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional() });
 const messages: Record<string, string> = {
   unavailable: "Este link está expirado, cancelado ou indisponível. Solicite um novo link à clínica.",
-  verification_required: "Confirme o código recebido e abra o PDF antes de assinar.",
-  invalid_code: "Código inválido ou expirado.", locked: "Limite de tentativas atingido. Solicite ajuda à clínica.",
-  rate_limit: "Aguarde 60 segundos antes de pedir outro código.", delivery_failed: "Não foi possível enviar o e-mail. Aguarde um minuto e tente novamente.",
+  review_required: "Abra e confira o PDF antes de assinar.",
   consent_required: "Confira seu nome e confirme o aceite do contrato.", invalid_signature: "Não foi possível ler a assinatura desenhada.",
   integrity_error: "A integridade do documento não pôde ser confirmada. Contate a clínica.",
   too_large: "Solicitação muito grande.",
@@ -30,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { token } = await params;
     const row = await getSignature(token);
     const session = request.cookies.get(COOKIE)?.value;
-    const verified = isVerified(row, session);
+    const accessible = canAccessDocument(row, session);
     const file = request.nextUrl.searchParams.get("file");
     if (file) {
       if (!["original", "signed"].includes(file)) throw new SigningError("unavailable", 404);
@@ -39,9 +33,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         "Content-Disposition": `${file === "signed" ? "attachment" : "inline"}; filename="contrato${file === "signed" ? "-assinado" : ""}.pdf"`,
         "X-Frame-Options": "SAMEORIGIN", "Content-Security-Policy": "frame-ancestors 'self'; sandbox" } });
     }
-    const [local, domain] = row.signer_email.split("@");
-    return NextResponse.json({ status: row.status, verified, emailHint: `${local?.slice(0, 2)}***@${domain}`, expiresAt: row.expires_at,
-      ...(verified ? { signerName: row.signer_name, documentName: row.document_name, documentHash: row.original_sha256, consentText: CONSENT_TEXT, consentVersion: CONSENT_VERSION } : {}) }, { headers });
+    return NextResponse.json({ status: row.status, accessible, expiresAt: row.expires_at,
+      ...(accessible ? { signerName: row.signer_name, documentName: row.document_name, documentHash: row.original_sha256, consentText: CONSENT_TEXT, consentVersion: CONSENT_VERSION } : {}) }, { headers });
   } catch (error) { return failure(error); }
 }
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -69,13 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try { parsed = bodySchema.safeParse(JSON.parse(text)); } catch { throw new SigningError("invalid_signature"); }
     if (!parsed.success) throw new SigningError("consent_required");
     const body = parsed.data;
-    if (body.action === "request_code") await requestSignatureCode(token);
-    if (body.action === "sign") await signContract(token, request.cookies.get(COOKIE)?.value, body, request.headers);
-    const response = NextResponse.json({ ok: true }, { headers });
-    if (body.action === "verify") {
-      const session = await verifySignatureCode(token, body.code);
-      response.cookies.set(COOKIE, session, { httpOnly: true, secure: true, sameSite: "strict", path: `/api/assinaturas/${token}`, maxAge: 1800 });
-    }
-    return response;
+    await signContract(token, body, request.headers);
+    return NextResponse.json({ ok: true }, { headers });
   } catch (error) { return failure(error); }
 }

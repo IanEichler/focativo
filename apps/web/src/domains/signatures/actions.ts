@@ -37,8 +37,8 @@ export async function createSignatureLinkAction(documentId: string) {
     const { data: row, error } = await client.from("contract_signatures").select("*").eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
     if (error || !row) throw new Error("Gere um novo contrato para preparar o PDF e os dados para assinatura.");
     if (row.status === "SIGNED") throw new Error("Este contrato já foi assinado.");
-    if (!z.email().safeParse(row.signer_email).success || row.signer_name.trim().length < 2 || !/^(\d{11}|\d{14})$/.test(row.signer_document)) {
-      throw new Error("Preencha nome, CPF/CNPJ e e-mail da cliente no contrato e gere uma nova versão antes de solicitar a assinatura.");
+    if (row.signer_name.trim().length < 2 || !/^(\d{11}|\d{14})$/.test(row.signer_document)) {
+      throw new Error("Preencha nome e CPF/CNPJ da cliente no contrato e gere uma nova versão antes de solicitar a assinatura.");
     }
     if (row.status === "PENDING" && row.expires_at && Date.parse(row.expires_at) > Date.now() && row.token_cipher) {
       return { status: "success" as const, url: `${publicSigningOrigin()}/assinar/${decryptToken(row.token_cipher)}`, expiresAt: row.expires_at };

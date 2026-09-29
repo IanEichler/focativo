@@ -524,6 +524,7 @@ export type Database = {
       }
       contract_signatures: {
         Row: {
+          authentication_method: string
           created_at: string
           created_by: string
           customer_id: string
@@ -557,6 +558,7 @@ export type Database = {
           viewed_at: string | null
         }
         Insert: {
+          authentication_method?: string
           created_at?: string
           created_by: string
           customer_id: string
@@ -590,6 +592,7 @@ export type Database = {
           viewed_at?: string | null
         }
         Update: {
+          authentication_method?: string
           created_at?: string
           created_by?: string
           customer_id?: string
@@ -4252,6 +4255,16 @@ export type Database = {
         Args: {
           p_token_hash: string
           p_session_hash: string
+          p_signed_path: string
+          p_signed_sha256: string
+          p_evidence: Json
+          p_seal: string
+        }
+        Returns: Json
+      }
+      signature_complete_link: {
+        Args: {
+          p_token_hash: string
           p_signed_path: string
           p_signed_sha256: string
           p_evidence: Json
