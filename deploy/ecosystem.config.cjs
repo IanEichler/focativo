@@ -58,6 +58,7 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         ...loadEnvFile(ENV_FILE),
+        APP_RELEASE_SHA: process.env.APP_RELEASE_SHA || "development",
       },
     },
     {
@@ -72,7 +73,7 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "1G",
-      kill_timeout: 10000,
+      kill_timeout: 20000,
       time: true,
       env_production: {
         NODE_ENV: "production",

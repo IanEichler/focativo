@@ -316,3 +316,17 @@ Após a assinatura, o registro fica bloqueado para alteração e os eventos não
 O módulo não cobra por assinatura. Hospedagem, armazenamento e envio de e-mails continuam sujeitos aos custos e limites dos serviços utilizados.
 
 Testes focados: `pnpm --filter @estoque-ia/web exec vitest run src/domains/signatures` e `pnpm --filter @estoque-ia/database exec vitest run tests/documents/signatures.test.ts`. Os testes usam identidades fictícias, e-mail simulado e não assinam contratos de clientes.
+
+## Deploy automático da VPS
+
+O workflow `.github/workflows/deploy-vps.yml` publica cada push na `main`. Commits apenas locais ainda precisam de `git push`. Também há execução manual em GitHub → Actions → Deploy VPS → Run workflow.
+
+- GitHub guarda `VPS_DEPLOY_KEY` e `VPS_KNOWN_HOSTS` como secrets e `VPS_HOST`/`VPS_USER` como variables. A chave dedicada é restrita, em `authorized_keys`, a `/usr/local/bin/focativo-deploy-dispatch`, sem terminal ou encaminhamento de portas. O dispatcher é uma cópia de `deploy/dispatch.sh`, instalada com proprietário root. Alterações nele precisam ser instaladas explicitamente na VPS.
+- O dispatcher verifica que o SHA solicitado é o atual da `origin/main` e serializa os deploys com `flock`. O workflow não cancela uma publicação em andamento; uma solicitação ultrapassada por um push mais novo é ignorada.
+- O código é extraído para `/opt/estoque-ia/releases/<sha>.<id>`. Dependências e build são preparados antes da troca. `/opt/estoque-ia/app` permanece como fonte Git; o código em execução fica na pasta apontada por `/opt/estoque-ia/current`.
+- Depois do build, novas migrations são aplicadas em transações, com lock, timeout e TLS validado. `/etc/estoque-ia/deploy.env` guarda a conexão do banco e os caminhos da CA e do baseline histórico, fora do Git. O baseline revisado de 29/09/2026 cobre o histórico já instalado, inclusive migrations antigas sem registro CLI; hashes impedem que esses arquivos sejam reescritos. Novas mudanças de banco precisam de novas migrations, com timestamp posterior ao baseline.
+- Os três processos PM2 são atualizados: web, WhatsApp e jobs. O caminho absoluto das sessões WhatsApp permanece em `/etc/estoque-ia/whatsapp.env`. Há uma breve reinicialização dos processos durante a troca.
+- A publicação só termina após verificar o SHA em `https://focativo.com/api/health`, a saúde local do WhatsApp e os três processos executando a nova pasta. Em falha após a troca, tenta restaurar a versão anterior. Migrations não são revertidas automaticamente: devem ser compatíveis com a versão anterior.
+- São mantidas as três releases mais recentes e a release anteriormente ativa. Segredos continuam em `/etc/estoque-ia`; nenhum arquivo `.env` é enviado ao GitHub.
+
+Para acompanhar, abra a execução em Actions. Para consultar a versão ativa, use `/api/health` ou `readlink -f /opt/estoque-ia/current` na VPS. Atualizações de variáveis de ambiente devem ser feitas no servidor, e o LibreOffice (`soffice`) precisa estar instalado para gerar PDFs.
