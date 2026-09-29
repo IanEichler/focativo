@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, validationError } from "@/lib/validation";
 import { mapKnownFields } from "./field-mapping";
 import { contractFieldError } from "./field-format";
-import { customerProfileValues } from "./customer-profile-fields";
+import { customerProfileExpected, customerProfileValues } from "./customer-profile-fields";
 import { convertDocxToPdf } from "./convert-to-pdf";
 import { fillTemplate } from "./fill-template";
 import { getDocumentTemplate, getTenantFieldsForDocument } from "./queries";
@@ -284,23 +284,30 @@ export async function generateDocumentAction(
   let profileMessage: string | undefined;
   let profileWarning = false;
   if (!context.can("customers.write")) {
-    profileMessage = "O contrato foi gerado, mas seu acesso não permite completar o cadastro da cliente.";
+    profileMessage = "O contrato foi gerado, mas seu acesso não permite atualizar o cadastro da cliente.";
     profileWarning = true;
   } else if (Object.keys(profileValues).length) {
-    const { data: updatedCount, error: profileError } = await supabase.rpc("customer_fill_missing_from_contract", {
+    const { data: updatedCount, error: profileError } = await supabase.rpc("customer_sync_from_contract", {
       p_customer_id: customerId,
       p_values: profileValues,
+      p_expected: customerProfileExpected(profileValues, customer),
     });
     if (profileError) {
       logger.warn({ event: "document.customer_profile_fill", tenant_id: context.tenant.id, code: profileError.code });
-      profileMessage = `Contrato gerado. Não foi possível completar o perfil da cliente: ${toUserMessage(profileError)}`;
+      profileMessage = profileError.code === "40001"
+        ? "Contrato gerado, mas o perfil foi alterado durante a geração. Confira o cadastro e gere novamente para aplicar os dados do contrato."
+        : `Contrato gerado. Não foi possível atualizar o perfil da cliente: ${toUserMessage(profileError)}`;
       profileWarning = true;
     } else if (updatedCount) {
-      profileMessage = "Os dados pessoais que estavam vazios foram salvos no perfil da cliente.";
+      profileMessage = "Perfil da cliente atualizado com os dados pessoais preenchidos no contrato.";
       revalidatePath(`/app/clientes/${customerId}`);
       revalidatePath("/app/clientes");
       revalidatePath("/app/atendimento", "layout");
+    } else {
+      profileMessage = "Os dados pessoais do perfil já estão atualizados.";
     }
+  } else {
+    profileMessage = "Nenhuma alteração de dados pessoais para salvar no perfil.";
   }
 
   return {

@@ -108,8 +108,8 @@ export function GenerateDocumentForm({
             Salvar o arquivo do contrato no perfil do cliente
           </label>
           <p className="text-small text-muted-foreground">
-            Ao gerar, os dados pessoais preenchidos completam os campos vazios do perfil da cliente. Informações já
-            cadastradas são preservadas, mesmo se você alterar o valor neste contrato.
+            Ao gerar, os dados pessoais preenchidos atualizam o perfil da cliente, incluindo correções de informações
+            já cadastradas. Campos deixados em branco não apagam dados do perfil.
           </p>
 
           </fieldset>

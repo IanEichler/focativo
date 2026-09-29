@@ -3887,6 +3887,14 @@ export type Database = {
         }
         Returns: number
       }
+      customer_sync_from_contract: {
+        Args: {
+          p_customer_id: string
+          p_values: Json
+          p_expected: Json
+        }
+        Returns: number
+      }
       customer_purge: {
         Args: {
           p_customer_id: string

@@ -57,7 +57,7 @@ export function customerProfileValues(
   const values: Record<string, string> = {};
   for (const [placeholder, raw] of Object.entries(fields)) {
     const key = aliases[normalizeFieldName(placeholder)];
-    if (!key || customer[key]?.trim()) continue;
+    if (!key) continue;
     let value = raw.trim();
     if (!value || /^[_\s/.-]+$/.test(value)) continue;
     if (["phone", "whatsapp", "document", "postal_code"].includes(key)) value = value.replace(/\D/g, "");
@@ -88,5 +88,18 @@ export function customerProfileValues(
       throw new Error(`Os campos de ${labels[key]} no contrato têm valores diferentes.`);
     values[key] = value;
   }
+  // The profile has one contact number; both legacy columns must stay in sync.
+  if (values.phone && values.whatsapp && values.phone !== values.whatsapp)
+    throw new Error("Os campos de telefone e WhatsApp no contrato têm valores diferentes.");
+  const contact = values.whatsapp ?? values.phone;
+  if (contact) { values.phone = contact; values.whatsapp = contact; }
+  for (const key of Object.keys(values) as (keyof CustomerFieldsInput)[]) {
+    if (values[key] === customer[key]?.trim()) delete values[key];
+  }
   return values;
+}
+
+/** Compare under a row lock so a profile edit during PDF generation is not lost. */
+export function customerProfileExpected(values: Record<string, string>, customer: CustomerFieldsInput): Record<string, string | null> {
+  return Object.fromEntries(Object.keys(values).map(key => [key, customer[key as keyof CustomerFieldsInput] ?? null]));
 }

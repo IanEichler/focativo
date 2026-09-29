@@ -32,8 +32,10 @@ it("normalizes personal data while ignoring prices, company data and signatures"
       customer,
     ),
   ).toEqual({
+    name: "Outro nome",
     document: "12345678900",
     phone: "65999991234",
+    whatsapp: "65999991234",
     email: "maria@example.com",
     birthday: "1990-05-20",
     rg: "RG123",
@@ -44,13 +46,20 @@ it("normalizes personal data while ignoring prices, company data and signatures"
   });
 });
 
-it("preserves existing values, even if the contract contains an invalid correction", () => {
-  expect(
+it("validates corrections even when the profile already has a value", () => {
+  expect(() =>
     customerProfileValues(
       { cliente_email: "inválido", cliente_cpf: "outro", cliente_telefone: "123" },
       { ...customer, email: "original@example.com", document: "12345678900", phone: "65999991234" },
     ),
-  ).toEqual({});
+  ).toThrow("e-mail");
+});
+
+it("updates existing personal data and mirrors the unified WhatsApp number", () => {
+  expect(customerProfileValues({ cliente_nome: "Nome completo", cliente_email: "novo@example.com", cliente_telefone: "+55 (65) 99999-1234", cliente_rg: "" },
+    { ...customer, email: "antigo@example.com", phone: "65988881234", whatsapp: "65988881234", rg: "Não apagar" }))
+    .toEqual({ name: "Nome completo", email: "novo@example.com", phone: "5565999991234", whatsapp: "5565999991234" });
+  expect(customerProfileValues({ cliente_nome: "Maria" }, customer)).toEqual({});
 });
 
 it.each(["31/02/1990", "1990-13-01", "amanhã"])("rejects invalid birthdays: %s", (value) => {

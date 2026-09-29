@@ -62,18 +62,24 @@ function form() {
   data.set("field_tenant_id", "injected");
   return data;
 }
-it("fills missing personal data on generation even when saving the contract file is unchecked", async () => {
+it("syncs corrected and missing personal data even when saving the contract file is unchecked", async () => {
   const result = await generateDocumentAction({ status: "idle" }, form());
   expect(result.status).toBe("success");
-  expect(mock.rpc).toHaveBeenCalledExactlyOnceWith("customer_fill_missing_from_contract", {
+  expect(mock.rpc).toHaveBeenCalledExactlyOnceWith("customer_sync_from_contract", {
     p_customer_id: "22222222-2222-4222-8222-222222222222",
-    p_values: { document: "12345678900", rg: "RG123" },
+    p_values: { name: "Nome no contrato", email: "contrato@example.com", document: "12345678900", rg: "RG123" },
+    p_expected: { name: "Nome original", email: "original@example.com", document: null, rg: null },
   });
   expect(mock.fill).toHaveBeenCalledWith(
     expect.any(Buffer),
     expect.objectContaining({ cliente_nome: "Nome no contrato", cliente_email: "contrato@example.com" }),
   );
   expect(mock.revalidate).toHaveBeenCalledWith("/app/clientes/22222222-2222-4222-8222-222222222222");
+});
+
+it("explains concurrent profile edits without discarding the generated contract", async () => {
+  mock.rpc.mockResolvedValue({ data: null, error: { code: "40001", message: "customer_changed" } });
+  expect(await generateDocumentAction({ status: "idle" }, form())).toMatchObject({ status: "success", profileWarning: true, profileMessage: expect.stringContaining("perfil foi alterado durante a geração") });
 });
 it("does not change the profile if PDF generation fails", async () => {
   mock.convert.mockRejectedValue(new Error("conversion failed"));
