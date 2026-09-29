@@ -7,8 +7,10 @@ repo="$base/app"
 export APP_RELEASE_SHA="$sha"
 export CI=true
 mkdir -p "$base/releases"
-previous=$(readlink -f "$base/current" || true)
-previous=${previous:-$repo}
+previous=$repo
+if [[ -L "$base/current" && -d "$base/current" ]]; then
+  previous=$(readlink -f "$base/current")
+fi
 if [[ -f "$previous/.release-sha" ]] && [[ $(cat "$previous/.release-sha") == "$sha" ]]; then
   echo "Already deployed: $sha"
   exit 0
