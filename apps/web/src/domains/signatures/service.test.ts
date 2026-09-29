@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ row: {} as Record<string, unknown>, download: vi.fn(), upload: vi.fn(), remove: vi.fn(), rpc: vi.fn(), receipt: vi.fn(), committed: false, path: "" }));
+const mock = vi.hoisted(() => ({ row: {} as Record<string, unknown>, download: vi.fn(), upload: vi.fn(), remove: vi.fn(), rpc: vi.fn(), receipt: vi.fn(), committed: false, path: "", archive: vi.fn() }));
 vi.mock("server-only", () => ({}));
+vi.mock("./archive", () => ({ archiveSignedPdf: mock.archive }));
 vi.mock("./pdf", () => ({ appendSignatureReceipt: mock.receipt }));
 vi.mock("./client", () => ({ signingClient: () => ({
   from: () => {
@@ -20,6 +21,7 @@ beforeEach(() => {
   mock.download.mockResolvedValue({ data: new Blob(["original"]), error: null });
   mock.receipt.mockResolvedValue(Buffer.from("signed"));
   mock.upload.mockImplementation(async path => { mock.path = path; return { error: null }; });
+  mock.archive.mockResolvedValue(undefined);
   mock.rpc.mockResolvedValue({ data: { ok: true }, error: null });
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -81,4 +83,11 @@ it("rejects expired and revoked bearer links", async () => {
   mock.row.expires_at = "2100-01-01"; mock.row.status = "REVOKED";
   await expect(signContract(token, input, new Headers())).rejects.toMatchObject({ code: "unavailable" });
   expect(mock.upload).not.toHaveBeenCalled();
+});
+
+it("does not finalize a signature if the durable archive cannot be written", async () => {
+  mock.archive.mockRejectedValueOnce(new Error("disk unavailable"));
+  await expect(signContract(token, input, new Headers())).rejects.toThrow("disk unavailable");
+  expect(mock.upload).not.toHaveBeenCalled();
+  expect(mock.rpc).not.toHaveBeenCalled();
 });

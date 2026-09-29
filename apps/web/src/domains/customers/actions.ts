@@ -126,7 +126,7 @@ export async function deleteCustomerAction(customerId: string): Promise<ActionSt
     return {
       status: "error",
       message: blocked
-        ? "Não é possível excluir: este cliente tem reservas, pagamentos ou agendamentos reais. Arquive em vez de excluir."
+        ? "Não é possível excluir: este cliente tem contratos, reservas, pagamentos ou agendamentos vinculados. Arquive em vez de excluir."
         : toUserMessage(error),
     };
   }

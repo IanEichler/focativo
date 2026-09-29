@@ -12,6 +12,7 @@ import { DeleteCustomerDialog } from "@/domains/customers/components/delete-cust
 import { originLabel } from "@/domains/customers/labels";
 import { getCustomerDetail, listCustomerTimeline } from "@/domains/customers/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
+import { signingClient } from "@/domains/signatures/client";
 import { firstParam } from "@/lib/url";
 import { DocumentsTab } from "./documents-tab";
 import { OverviewTab } from "./overview-tab";
@@ -32,6 +33,9 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
   if (!customer) notFound();
 
   const canWrite = context.can("customers.write");
+  const signed = canWrite ? await signingClient().from("contract_signatures").select("id")
+    .eq("tenant_id", context.tenant.id).eq("customer_id", id).eq("status", "SIGNED").limit(1) : null;
+  const canDelete = canWrite && signed && !signed.error && signed.data?.length === 0;
   const timeline = tab === "geral" ? await listCustomerTimeline(context, id) : [];
 
   const base = `/app/clientes/${customer.id}`;
@@ -83,7 +87,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
                 }
               />
               <ArchiveCustomerButton customerId={customer.id} archived={Boolean(customer.archivedAt)} />
-              <DeleteCustomerDialog customerId={customer.id} customerName={customer.name} />
+              {canDelete && <DeleteCustomerDialog customerId={customer.id} customerName={customer.name} />}
             </>
           ) : undefined
         }

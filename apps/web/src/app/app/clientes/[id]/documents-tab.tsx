@@ -3,7 +3,6 @@ import Link from "next/link";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DownloadDocumentButton, DownloadPdfButton } from "@/domains/documents/components/download-document-button";
 import { listCustomerDocuments, listDocumentTemplates } from "@/domains/documents/queries";
 import type { TenantContext } from "@/domains/tenants/context";
 import { formatDateTime } from "@/lib/format";
@@ -84,11 +83,7 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
                       {formatDateTime(document.createdAt)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <DownloadPdfButton documentId={document.id} />
-                    <DownloadDocumentButton documentId={document.id} />
-                  </div>
-                  <SignatureControls documentId={document.id} canWrite={canWrite} />
+                  <SignatureControls documentId={document.id} canWrite={canWrite} showDocumentDownloads />
                 </div>
               ))}
             </div>

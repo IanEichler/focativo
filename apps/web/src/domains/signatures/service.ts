@@ -1,4 +1,6 @@
 import "server-only";
+import { archiveSignedPdf } from "./archive";
+import { readSignedPdf } from "./stored-pdf";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { signingClient, type SignatureRow } from "./client";
@@ -31,15 +33,15 @@ export function canAccessDocument(row: SignatureRow, session?: string) {
 }
 export async function signaturePdf(row: SignatureRow, session: string | undefined, signed: boolean) {
   if (!canAccessDocument(row, session)) throw new SigningError("unavailable", 401);
-  const path = signed ? row.signed_path : row.original_path;
+  if (signed) return readSignedPdf(row);
+  const path = row.original_path;
   if (!path) throw new SigningError("unavailable", 404);
-  if (signed && (!row.evidence || !row.evidence_seal || !safeEqual(sealEvidence(row.evidence), row.evidence_seal))) throw new SigningError("integrity_error", 409);
   const client = signingClient();
   const { data, error } = await client.storage.from(SIGNATURE_BUCKET).download(path);
   if (error || !data) throw new SigningError("internal", 500);
   const bytes = Buffer.from(await data.arrayBuffer());
-  if (hash(bytes) !== (signed ? row.signed_sha256 : row.original_sha256)) throw new SigningError("integrity_error", 409);
-  if (!signed && row.status === "PENDING" && !row.viewed_at) {
+  if (hash(bytes) !== row.original_sha256) throw new SigningError("integrity_error", 409);
+  if (row.status === "PENDING" && !row.viewed_at) {
     let update = client.from("contract_signatures").update({ viewed_at: new Date().toISOString() })
       .eq("id", row.id).eq("status", "PENDING").eq("token_hash", row.token_hash!);
     if (row.authentication_method !== "unique_link") update = update.eq("session_hash", hash(session!));
@@ -74,6 +76,7 @@ export async function signContract(token: string, input: { name: string; consent
   const seal = sealEvidence(evidence);
   const original = await signaturePdf(row, undefined, false);
   const signed = await appendSignatureReceipt(original, evidence, seal, drawing);
+  await archiveSignedPdf(signed);
   const path = `${row.tenant_id}/${row.id}/${randomUUID()}-assinado.pdf`;
   const client = signingClient();
   const upload = await client.storage.from(SIGNATURE_BUCKET).upload(path, signed, { contentType: "application/pdf", upsert: false });

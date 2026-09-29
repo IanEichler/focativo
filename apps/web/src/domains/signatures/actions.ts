@@ -5,7 +5,8 @@ import { z } from "zod";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { createClient } from "@/lib/supabase/server";
 import { signingClient } from "./client";
-import { decryptToken, encryptToken, hash, newToken, publicSigningOrigin, safeEqual, sealEvidence, SIGNATURE_BUCKET, signingReadiness } from "./security";
+import { readSignedPdf } from "./stored-pdf";
+import { decryptToken, encryptToken, hash, newToken, publicSigningOrigin, signingReadiness } from "./security";
 
 async function authorized(documentId: string, write = false) {
   const context = await requireTenantContext();
@@ -74,11 +75,7 @@ export async function downloadSignedContractAction(documentId: string) {
     const { data: row } = await client.from("contract_signatures").select("signed_path,signed_sha256,document_name,evidence,evidence_seal")
       .eq("document_id", documentId).eq("tenant_id", context.tenant.id).eq("status", "SIGNED").maybeSingle();
     if (!row?.signed_path) throw new Error("Contrato assinado não encontrado.");
-    if (!row.evidence || !row.evidence_seal || !safeEqual(sealEvidence(row.evidence), row.evidence_seal)) throw new Error("Falha na verificação das evidências. Contate o suporte.");
-    const { data, error } = await client.storage.from(SIGNATURE_BUCKET).download(row.signed_path);
-    if (error || !data) throw new Error("Não foi possível baixar o PDF.");
-    const bytes = Buffer.from(await data.arrayBuffer());
-    if (hash(bytes) !== row.signed_sha256) throw new Error("Falha na verificação de integridade do PDF. Contate o suporte.");
+    const bytes = await readSignedPdf(row);
     return { status: "success" as const, base64: bytes.toString("base64"), name: row.document_name.replace(/\.pdf$/i, "-assinado.pdf") };
   } catch (error) { return { status: "error" as const, message: error instanceof Error ? error.message : "Falha no download." }; }
 }

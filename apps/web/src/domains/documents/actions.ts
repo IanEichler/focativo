@@ -19,7 +19,8 @@ import { getDocumentTemplate, getTenantFieldsForDocument } from "./queries";
 import { generateDocumentSchema, uploadTemplateSchema, type UploadTemplateField } from "./schemas";
 import { extractPlaceholders } from "./template-parser";
 import { saveSigningSnapshot } from "@/domains/signatures/snapshot";
-import { createSignatureLinkAction } from "@/domains/signatures/actions";
+import { signingClient } from "@/domains/signatures/client";
+import { downloadSignedContractAction, createSignatureLinkAction } from "@/domains/signatures/actions";
 import { signingReadiness } from "@/domains/signatures/security";
 
 const DOCUMENTS_PATH = "/app/documentos";
@@ -337,6 +338,15 @@ export async function getCustomerDocumentPdfAction(
     .eq("id", documentId)
     .maybeSingle();
   if (!document) return { status: "error" };
+  const signature = await signingClient().from("contract_signatures").select("status")
+    .eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
+  if (signature.error) return { status: "error" };
+  if (signature.data?.status === "SIGNED") {
+    const result = await downloadSignedContractAction(documentId);
+    return result.status === "success"
+      ? { status: "success", fileBase64: result.base64, fileName: result.name }
+      : { status: "error" };
+  }
 
   const { data: file, error } = await supabase.storage.from(CUSTOMER_DOCUMENTS_BUCKET).download(document.file_path);
   if (error || !file) return { status: "error" };
@@ -370,6 +380,9 @@ export async function getCustomerDocumentDownloadUrlAction(documentId: string): 
     .eq("id", documentId)
     .maybeSingle();
   if (!doc) return null;
+  const signature = await signingClient().from("contract_signatures").select("status")
+    .eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
+  if (signature.error || signature.data?.status === "SIGNED") return null;
 
   const { data, error } = await supabase.storage
     .from(CUSTOMER_DOCUMENTS_BUCKET)

@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ rpc: vi.fn(), convert: vi.fn(), fill: vi.fn(), revalidate: vi.fn(), snapshot: vi.fn(), link: vi.fn(), ready: vi.fn() }));
+const mock = vi.hoisted(() => ({ rpc: vi.fn(), convert: vi.fn(), fill: vi.fn(), revalidate: vi.fn(), snapshot: vi.fn(), link: vi.fn(), ready: vi.fn(), signature: vi.fn(), document: vi.fn(), signedDownload: vi.fn(), signedUrl: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: mock.revalidate }));
 vi.mock("@/lib/logger", () => ({ logger: { warn: vi.fn() } }));
@@ -32,18 +32,25 @@ vi.mock("./queries", () => ({
 vi.mock("./fill-template", () => ({ fillTemplate: mock.fill }));
 vi.mock("./convert-to-pdf", () => ({ convertDocxToPdf: mock.convert }));
 vi.mock("@/domains/signatures/snapshot", () => ({ saveSigningSnapshot: mock.snapshot }));
-vi.mock("@/domains/signatures/actions", () => ({ createSignatureLinkAction: mock.link }));
+vi.mock("@/domains/signatures/actions", () => ({ createSignatureLinkAction: mock.link, downloadSignedContractAction: mock.signedDownload }));
 vi.mock("@/domains/signatures/security", () => ({ signingReadiness: mock.ready }));
+vi.mock("@/domains/signatures/client", () => ({ signingClient: () => ({
+  from: () => { const q = { select: () => q, eq: () => q, maybeSingle: mock.signature }; return q; },
+}) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     rpc: mock.rpc,
-    storage: { from: () => ({ download: async () => ({ data: new Blob(["template"]), error: null }), upload: async () => ({ error: null }) }) },
+    from: () => { const q = { select: () => q, eq: () => q, maybeSingle: mock.document }; return q; },
+    storage: { from: () => ({ createSignedUrl: mock.signedUrl, download: async () => ({ data: new Blob(["template"]), error: null }), upload: async () => ({ error: null }) }) },
   }),
 }));
-import { generateDocumentAction } from "./actions";
+import { getCustomerDocumentPdfAction, getCustomerDocumentDownloadUrlAction, generateDocumentAction } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mock.document.mockResolvedValue({ data: { name: "Contract.docx", file_path: "contract.docx" }, error: null });
+  mock.signature.mockResolvedValue({ data: { status: "SIGNED" }, error: null });
+  mock.signedDownload.mockResolvedValue({ status: "success", base64: "immutable-bytes", name: "Contract-assinado.pdf" });
   mock.rpc.mockResolvedValue({ data: 2, error: null });
   mock.fill.mockReturnValue(Buffer.from("docx"));
   mock.convert.mockResolvedValue(Buffer.from("pdf"));
@@ -113,4 +120,27 @@ it("creates the signing link automatically from the saved PDF and retains downlo
   expect(mock.snapshot).toHaveBeenCalledWith(expect.any(Object), expect.any(String), expect.any(String), expect.any(String), Buffer.from("pdf"), expect.objectContaining({ cliente_nome: "Nome no contrato" }), expect.any(Object));
   mock.link.mockResolvedValue({ status: "error", message: "Link temporariamente indisponível" });
   expect(await generateDocumentAction({ status: "idle" }, data)).toMatchObject({ status: "success", pdfBase64: expect.any(String), signatureWarning: "Link temporariamente indisponível" });
+});
+
+it("serves the original signed PDF through the legacy download action and disables Word", async () => {
+  expect(await getCustomerDocumentPdfAction("document")).toEqual({ status: "success", fileBase64: "immutable-bytes", fileName: "Contract-assinado.pdf" });
+  expect(await getCustomerDocumentDownloadUrlAction("document")).toBeNull();
+  expect(mock.convert).not.toHaveBeenCalled();
+  expect(mock.signedUrl).not.toHaveBeenCalled();
+});
+it("fails closed when signature status is unavailable or signed storage fails", async () => {
+  mock.signature.mockResolvedValue({ data: null, error: {} });
+  expect(await getCustomerDocumentPdfAction("document")).toEqual({ status: "error" });
+  expect(await getCustomerDocumentDownloadUrlAction("document")).toBeNull();
+  mock.signature.mockResolvedValue({ data: { status: "SIGNED" }, error: null });
+  mock.signedDownload.mockResolvedValue({ status: "error", message: "unavailable" });
+  expect(await getCustomerDocumentPdfAction("document")).toEqual({ status: "error" });
+  expect(mock.convert).not.toHaveBeenCalled();
+  expect(mock.signedUrl).not.toHaveBeenCalled();
+});
+it("checks access to the customer document before looking up a privileged signature", async () => {
+  mock.document.mockResolvedValue({ data: null, error: null });
+  expect(await getCustomerDocumentPdfAction("other-tenant")).toEqual({ status: "error" });
+  expect(await getCustomerDocumentDownloadUrlAction("other-tenant")).toBeNull();
+  expect(mock.signature).not.toHaveBeenCalled();
 });

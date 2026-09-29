@@ -126,3 +126,23 @@ it("blocks expired/revoked links and direct browser signing RPC access", async (
     await expect(session.query("select public.signature_complete_link('x','x','x','{}'::jsonb,'x')")).rejects.toThrow("permission denied");
   }
 });
+
+it("retains signed documents and rejects deletion of their signature or customer", async () => {
+  const r = await request();
+  await db.service.query("update public.contract_signatures set viewed_at=now() where id=$1", [r.id]);
+  expect(await completeLink(r.id, r.token)).toEqual({ ok: true });
+  const [row] = await db.service.query("select document_id,customer_id from public.contract_signatures where id=$1", [r.id]);
+  await expect(db.admin.query("delete from public.contract_signatures where id=$1", [r.id])).rejects.toThrow("signed_document_immutable");
+  await expect(db.service.query("update public.customer_documents set file_path='replacement.docx' where id=$1", [row!.document_id])).rejects.toThrow("signed_document_immutable");
+  await expect(db.service.query("delete from public.customer_documents where id=$1", [row!.document_id])).rejects.toThrow("signed_document_immutable");
+  await expect(db.as(ownerId).rpc("customer_purge", { p_customer_id: row!.customer_id })).rejects.toThrow();
+  expect(await db.service.query("select id from public.customer_documents where id=$1", [row!.document_id])).toHaveLength(1);
+});
+it("permits cleanup of orphaned uploads but protects registered contract files in storage", async () => {
+  const r = await request();
+  const [row] = await db.service.query("select d.file_path from public.customer_documents d join public.contract_signatures s on s.document_id=d.id where s.id=$1", [r.id]);
+  const orphan = `${tenantId}/${randomUUID()}.docx`;
+  await db.admin.query("insert into storage.objects(bucket_id,name) values('customer-documents',$1),('customer-documents',$2) on conflict do nothing", [row!.file_path, orphan]);
+  expect(await db.as(ownerId).query("delete from storage.objects where bucket_id='customer-documents' and name=$1 returning id", [row!.file_path])).toHaveLength(0);
+  expect(await db.as(ownerId).query("delete from storage.objects where bucket_id='customer-documents' and name=$1 returning id", [orphan])).toHaveLength(1);
+});

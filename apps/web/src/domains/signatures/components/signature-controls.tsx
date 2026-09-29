@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Copy, FileCheck2, Link2, RefreshCw, X } from "lucide-react";
+import { Copy, FileCheck2, LockKeyhole, Link2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/data/status-badge";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { createSignatureLinkAction, downloadSignedContractAction, revokeSignatureAction, signatureStatusAction } from "../actions";
+import { DownloadDocumentButton, DownloadPdfButton } from "@/domains/documents/components/download-document-button";
 import { formatDateTime } from "@/lib/format";
 
 type Summary = Awaited<ReturnType<typeof signatureStatusAction>>;
-export function SignatureControls({ documentId, canWrite = true, initialUrl = "" }: { documentId: string; canWrite?: boolean; initialUrl?: string }) {
+export function SignatureControls({ documentId, canWrite = true, initialUrl = "", showDocumentDownloads = false }: { documentId: string; canWrite?: boolean; initialUrl?: string; showDocumentDownloads?: boolean }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [url, setUrl] = useState(initialUrl);
   const [error, setError] = useState("");
@@ -32,9 +33,13 @@ export function SignatureControls({ documentId, canWrite = true, initialUrl = ""
     <div className="flex flex-wrap items-center gap-2">
       <span className="font-medium">Assinatura eletrônica</span>
       {row && <StatusBadge tone={row.status === "SIGNED" ? "success" : row.status === "PENDING" && !expired ? "warning" : "neutral"}>{status}</StatusBadge>}
-      <Button type="button" size="sm" variant="ghost" disabled={pending} aria-label="Atualizar status da assinatura"
-        onClick={() => run(async () => { setSummary(await signatureStatusAction(documentId)); })}><RefreshCw className="size-4" /></Button>
+      {row?.status !== "SIGNED" && <Button type="button" size="sm" variant="ghost" disabled={pending} aria-label="Atualizar status da assinatura"
+        onClick={() => run(async () => { setSummary(await signatureStatusAction(documentId)); })}><RefreshCw className="size-4" /></Button>}
     </div>
+    {showDocumentDownloads && summary?.status === "success" && row?.status !== "SIGNED" && <div className="flex gap-2">
+      <DownloadPdfButton documentId={documentId} /><DownloadDocumentButton documentId={documentId} />
+    </div>}
+    {row?.status === "SIGNED" && <p className="flex items-start gap-2 text-muted-foreground"><LockKeyhole className="mt-0.5 size-4 shrink-0" />PDF assinado armazenado. Este contrato não pode ser alterado, excluído ou refeito.</p>}
     {summary?.status === "error" && <p role="alert">{summary.message}</p>}
     {summary?.status === "success" && !row && <p>Este contrato é anterior ao assinador. Gere uma nova versão para solicitar a assinatura.</p>}
     {row && <>
