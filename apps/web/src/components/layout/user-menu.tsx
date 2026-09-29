@@ -27,9 +27,10 @@ interface UserMenuProps {
   email: string | null;
   isSuperAdmin: boolean;
   area: "app" | "admin";
+  companyMenu?: React.ReactNode;
 }
 
-export function UserMenu({ name, email, isSuperAdmin, area }: UserMenuProps) {
+export function UserMenu({ name, email, isSuperAdmin, area, companyMenu }: UserMenuProps) {
   const { theme, setTheme } = useTheme();
   const displayName = name || email || "Usuário";
   const [signingOut, startTransition] = useTransition();
@@ -46,12 +47,18 @@ export function UserMenu({ name, email, isSuperAdmin, area }: UserMenuProps) {
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-24px)]">
         <DropdownMenuLabel className="flex flex-col gap-0.5 py-2">
           <span className="truncate text-body font-medium text-foreground">{displayName}</span>
           {email && <span className="truncate text-caption font-normal text-muted-foreground">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {companyMenu && (
+          <>
+            {companyMenu}
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuGroup>
           {area === "app" && (
             <DropdownMenuItem asChild>

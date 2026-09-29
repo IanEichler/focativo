@@ -27,19 +27,24 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
       sections={sections}
       rootHref="/app/dashboard"
       defaultCollapsed={cookieStore.get(SIDEBAR_COOKIE)?.value === "1"}
-      sidebarFooter={
-        <TenantSwitcher
-          current={current}
-          options={context.memberships.map((m) => ({ id: m.id, name: m.name, roleName: m.roleName }))}
-        />
-      }
       topbar={
         <Topbar
           commands={navCommands(sections, "Navegação")}
           end={
             <>
               <NotificationsBell items={notifications} />
-              <UserMenu name={context.user.fullName} email={context.user.email} isSuperAdmin={superAdmin} area="app" />
+              <UserMenu
+                name={context.user.fullName}
+                email={context.user.email}
+                isSuperAdmin={superAdmin}
+                area="app"
+                companyMenu={
+                  <TenantSwitcher
+                    current={current}
+                    options={context.memberships.map((m) => ({ id: m.id, name: m.name, roleName: m.roleName }))}
+                  />
+                }
+              />
             </>
           }
         />
