@@ -12,17 +12,14 @@ import { DeleteCustomerDialog } from "@/domains/customers/components/delete-cust
 import { originLabel } from "@/domains/customers/labels";
 import { getCustomerDetail, listCustomerTimeline } from "@/domains/customers/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
-import { listTenantMembers } from "@/domains/users/queries";
 import { firstParam } from "@/lib/url";
 import { DocumentsTab } from "./documents-tab";
-import { OpportunitiesTab } from "./opportunities-tab";
 import { OverviewTab } from "./overview-tab";
 import { PurchasesTab } from "./purchases-tab";
-import { TimelineTab } from "./timeline-tab";
 
 export const metadata: Metadata = { title: "Cliente" };
 
-const TABS = ["geral", "timeline", "oportunidades", "compras", "contratos", "documentos"] as const;
+const TABS = ["geral", "compras", "contratos", "documentos"] as const;
 
 export default async function CustomerDetailPage({ params, searchParams }: PageProps<"/app/clientes/[id]">) {
   const context = await requireTenantContext();
@@ -35,13 +32,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
   if (!customer) notFound();
 
   const canWrite = context.can("customers.write");
-  const [members, timeline] = await Promise.all([
-    canWrite ? listTenantMembers(context) : Promise.resolve([]),
-    tab === "timeline" || tab === "geral" ? listCustomerTimeline(context, id) : Promise.resolve([]),
-  ]);
-  const responsibles = members
-    .filter((m) => m.status === "ACTIVE")
-    .map((m) => ({ userId: m.userId, fullName: m.fullName }));
+  const timeline = tab === "geral" ? await listCustomerTimeline(context, id) : [];
 
   const base = `/app/clientes/${customer.id}`;
 
@@ -103,18 +94,12 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
         active={tab === "documentos" ? "contratos" : tab}
         items={[
           { id: "geral", label: "Visão geral", href: base },
-          { id: "timeline", label: "Timeline", href: `${base}?aba=timeline` },
-          { id: "oportunidades", label: "Oportunidades", href: `${base}?aba=oportunidades` },
           { id: "compras", label: "Compras", href: `${base}?aba=compras` },
           { id: "contratos", label: "Contratos", href: `${base}?aba=contratos` },
         ]}
       />
 
       {tab === "geral" && <OverviewTab customer={customer} timeline={timeline.slice(0, 5)} />}
-      {tab === "timeline" && <TimelineTab timeline={timeline} />}
-      {tab === "oportunidades" && (
-        <OpportunitiesTab context={context} customer={customer} responsibles={responsibles} />
-      )}
       {tab === "compras" && <PurchasesTab context={context} customerId={customer.id} />}
       {(tab === "contratos" || tab === "documentos") && <DocumentsTab context={context} customerId={customer.id} />}
     </PageContainer>
