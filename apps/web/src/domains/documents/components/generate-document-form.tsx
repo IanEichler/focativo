@@ -16,14 +16,17 @@ import type { DocumentTemplateRow } from "../queries";
 import { contractDateInWords, contractFieldKind, contractFieldMask, normalizeFieldName } from "../field-format";
 import { ContractValueField } from "./contract-value-field";
 import { ContractPaymentField } from "./contract-payment-field";
+import { SessionScheduleFields, type ContractSchedulingOptions } from "./session-schedule-fields";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
 
 export function GenerateDocumentForm({
   template,
   initialCustomer,
+  scheduling,
 }: {
   template: DocumentTemplateRow;
   initialCustomer: CustomerOption;
+  scheduling?: ContractSchedulingOptions;
 }) {
   const customer = initialCustomer;
   const [preview, setPreview] = useState<FieldPreview | null>(null);
@@ -86,7 +89,7 @@ export function GenerateDocumentForm({
 
           {loadingPreview && <p className="text-small text-muted-foreground">Carregando campos do modelo…</p>}
 
-          {preview && <ContractFields key={customer?.id} fields={preview.remaining} autoFilled={preview.autoFilled} />}
+          {preview && <ContractFields key={customer?.id} fields={preview.remaining} autoFilled={preview.autoFilled} scheduling={scheduling} />}
 
           {customer && preview && preview.remaining.length === 0 && Object.keys(preview.autoFilled).length === 0 && (
             <p className="text-small text-muted-foreground">Esse modelo não tem campos de preenchimento.</p>
@@ -207,7 +210,7 @@ function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field.replaceAll("_", " ");
 }
 
-export function ContractFields({ fields: remainingFields, autoFilled }: { fields: string[]; autoFilled: Record<string, string> }) {
+export function ContractFields({ fields: remainingFields, autoFilled, scheduling }: { fields: string[]; autoFilled: Record<string, string>; scheduling?: ContractSchedulingOptions }) {
   const signatureField = [...Object.keys(autoFilled), ...remainingFields].find((field) => normalizeFieldName(field) === "data_assinatura");
   const [signatureDate, setSignatureDate] = useState(signatureField ? autoFilled[signatureField] ?? "" : "");
   const addressFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) =>
@@ -237,7 +240,7 @@ export function ContractFields({ fields: remainingFields, autoFilled }: { fields
   const sessionGroups = sessionNumbers.map((number) => ({
     title: `Sessão ${number} (opcional)`,
     optional: true,
-    fields: sessionFields.filter((field) => field.startsWith(`sessao_${number}_`)).sort((a, b) => {
+    fields: sessionFields.filter((field) => field.startsWith(`sessao_${number}_`) && !(scheduling && field === `sessao_${number}_procedimento`)).sort((a, b) => {
       const order = (field: string) => {
         const index = sessionOrder.indexOf(field.replace(/^sessao_\d+_/, ""));
         return index < 0 ? sessionOrder.length : index;
@@ -284,7 +287,7 @@ export function ContractFields({ fields: remainingFields, autoFilled }: { fields
     },
     ...sessionGroups,
   ];
-  const used = new Set(groups.flatMap((group) => group.fields));
+  const used = new Set([...groups.flatMap((group) => group.fields), ...sessionFields]);
   const other = fields.filter(
     (field) => !used.has(field) && !field.startsWith("assinatura_") && !field.endsWith("_assinatura"),
   );
@@ -342,6 +345,7 @@ export function ContractFields({ fields: remainingFields, autoFilled }: { fields
             <details key={group.title} className="rounded-lg border border-border p-4">
               <summary className="cursor-pointer font-medium">{group.title}</summary>
               {inputs}
+              {scheduling && <div className="mt-4"><SessionScheduleFields number={/^Sessão (\d+)/.exec(group.title)![1]!} {...scheduling} /></div>}
             </details>
           ) : (
             <fieldset key={group.title} className="rounded-lg border border-border p-4">

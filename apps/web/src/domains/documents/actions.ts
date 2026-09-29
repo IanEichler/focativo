@@ -21,6 +21,8 @@ import { extractPlaceholders } from "./template-parser";
 import { saveSigningSnapshot } from "@/domains/signatures/snapshot";
 import { signingClient } from "@/domains/signatures/client";
 import { downloadSignedContractAction, createSignatureLinkAction } from "@/domains/signatures/actions";
+import { contractSessionInputs, sessionAgendaError, type ContractSessionPlan } from "./session-plan";
+import type { Json } from "@/types/database.types";
 import { signingReadiness } from "@/domains/signatures/security";
 
 
@@ -199,6 +201,20 @@ export async function generateDocumentAction(
   }
 
   const supabase = await createClient();
+  let sessionPlan: ContractSessionPlan[] = [];
+  try {
+    const sessions = contractSessionInputs(data, formData);
+    if (sessions.length) {
+      if (!context.hasModule("agenda") || !context.can("agenda.write")) return { status: "error", message: "Seu acesso não permite agendar as sessões. Peça a um responsável com acesso à agenda." };
+      if (!saveToProfile) return { status: "error", message: "Marque “Salvar o arquivo do contrato no perfil” para agendar as sessões após a assinatura." };
+      const validated = await supabase.rpc("contract_validate_sessions", { p_tenant_id: context.tenant.id, p_sessions: sessions as unknown as Json });
+      if (validated.error) return { status: "error", message: sessionAgendaError(validated.error.message) };
+      sessionPlan = validated.data as unknown as ContractSessionPlan[];
+      for (const session of sessionPlan) {
+        if (`sessao_${session.number}_procedimento` in data) data[`sessao_${session.number}_procedimento`] = session.serviceName;
+      }
+    }
+  } catch (error) { return { status: "error", message: error instanceof Error ? error.message : "Confira os dados das sessões." }; }
   const { data: templateFile, error: downloadError } = await supabase.storage
     .from(DOCUMENT_TEMPLATES_BUCKET)
     .download(template.filePath);
@@ -267,7 +283,7 @@ export async function generateDocumentAction(
     }
     if (savedDocumentId) {
       try {
-        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer);
+        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer, sessionPlan);
         signatureDocumentId = savedDocumentId;
         if (!signingReadiness()) {
           const link = await createSignatureLinkAction(savedDocumentId);

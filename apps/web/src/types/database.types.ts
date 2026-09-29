@@ -490,6 +490,97 @@ export type Database = {
           },
         ]
       }
+      contract_session_appointments: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          customer_id: string
+          ends_at: string
+          error_code: string | null
+          id: string
+          notes: string
+          professional_user_id: string
+          service_id: string
+          session_number: number
+          signature_id: string
+          starts_at: string
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          customer_id: string
+          ends_at: string
+          error_code?: string | null
+          id?: string
+          notes?: string
+          professional_user_id: string
+          service_id: string
+          session_number: number
+          signature_id: string
+          starts_at: string
+          tenant_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          customer_id?: string
+          ends_at?: string
+          error_code?: string | null
+          id?: string
+          notes?: string
+          professional_user_id?: string
+          service_id?: string
+          session_number?: number
+          signature_id?: string
+          starts_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_session_appointments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_session_appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_session_appointments_professional_user_id_fkey"
+            columns: ["professional_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_session_appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_session_appointments_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "contract_signatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_session_appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signature_events: {
         Row: {
           created_at: string
@@ -543,6 +634,7 @@ export type Database = {
           otp_sent_at: string | null
           session_expires_at: string | null
           session_hash: string | null
+          session_plan: Json
           signed_at: string | null
           signed_path: string | null
           signed_sha256: string | null
@@ -577,6 +669,7 @@ export type Database = {
           otp_sent_at?: string | null
           session_expires_at?: string | null
           session_hash?: string | null
+          session_plan?: Json
           signed_at?: string | null
           signed_path?: string | null
           signed_sha256?: string | null
@@ -611,6 +704,7 @@ export type Database = {
           otp_sent_at?: string | null
           session_expires_at?: string | null
           session_hash?: string | null
+          session_plan?: Json
           signed_at?: string | null
           signed_path?: string | null
           signed_sha256?: string | null
@@ -3790,6 +3884,20 @@ export type Database = {
         }
         Returns: string
       }
+      contract_session_retry: {
+        Args: {
+          p_session_id: string
+          p_changes?: Json
+        }
+        Returns: string
+      }
+      contract_validate_sessions: {
+        Args: {
+          p_tenant_id: string
+          p_sessions: Json
+        }
+        Returns: Json
+      }
       conversation_assume: {
         Args: {
           p_conversation_id: string
@@ -3887,6 +3995,12 @@ export type Database = {
         }
         Returns: number
       }
+      customer_purge: {
+        Args: {
+          p_customer_id: string
+        }
+        Returns: undefined
+      }
       customer_sync_from_contract: {
         Args: {
           p_customer_id: string
@@ -3894,12 +4008,6 @@ export type Database = {
           p_expected: Json
         }
         Returns: number
-      }
-      customer_purge: {
-        Args: {
-          p_customer_id: string
-        }
-        Returns: undefined
       }
       decline_tenant_invitation: {
         Args: {
@@ -4306,7 +4414,7 @@ export type Database = {
         Args: {
           p_tenant_id: string
           p_whatsapp_chat_id: string
-          p_whatsapp_number: string
+          p_whatsapp_number: string | null
         }
         Returns: undefined
       }

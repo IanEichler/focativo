@@ -25,7 +25,10 @@ export async function signatureStatusAction(documentId: string) {
       .select("id,status,expires_at,signed_at,signer_name,signer_email,signer_document")
       .eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
     if (error) throw new Error("Não foi possível consultar a assinatura.");
-    return { status: "success" as const, signature: data, expired: Boolean(data?.status === "PENDING" && data.expires_at && Date.parse(data.expires_at) <= Date.now()), configurationMessage: signingReadiness() };
+    const sessions = data?.status === "SIGNED" ? await signingClient().from("contract_session_appointments").select("appointment_id")
+      .eq("signature_id", data.id).eq("tenant_id", context.tenant.id) : null;
+    const scheduleSummary = sessions && !sessions.error ? { total: sessions.data.length, scheduled: sessions.data.filter(item => item.appointment_id).length } : null;
+    return { status: "success" as const, signature: data, scheduleSummary, expired: Boolean(data?.status === "PENDING" && data.expires_at && Date.parse(data.expires_at) <= Date.now()), configurationMessage: signingReadiness() };
   } catch (error) { return { status: "error" as const, message: error instanceof Error ? error.message : "Falha ao consultar assinatura." }; }
 }
 

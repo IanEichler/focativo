@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { AppointmentFormSheet } from "@/domains/agenda/components/appointment-form";
+import { ContractSessionsPending } from "@/domains/agenda/components/contract-session-pending";
 import { AppointmentRowActions } from "@/domains/agenda/components/appointment-row-actions";
 import {
   APPOINTMENT_STATUS_FILTERS,
@@ -119,6 +120,8 @@ export default async function AgendaPage({ searchParams }: PageProps<"/app/agend
           </div>
         }
       />
+
+      <ContractSessionsPending context={context} services={services} professionals={professionals} />
 
       <DataTable
         caption="Agendamentos"

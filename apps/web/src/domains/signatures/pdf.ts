@@ -5,6 +5,7 @@ import { locationStatusLabels, type SignatureLocation } from "./location";
 
 export interface SignatureEvidence {
   version: 1 | 2 | 3;
+  sessionPlanSha256?: string;
   requestId: string;
   documentName: string;
   originalSha256: string;

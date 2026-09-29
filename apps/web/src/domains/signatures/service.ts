@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { signingClient, type SignatureRow } from "./client";
 import { appendSignatureReceipt, type SignatureEvidence } from "./pdf";
-import { CONSENT_TEXT, CONSENT_VERSION, hash, safeEqual, sealEvidence, SIGNATURE_BUCKET, TOKEN_PATTERN } from "./security";
+import { CONSENT_TEXT, CONSENT_VERSION, hash, safeEqual, sealEvidence, serializeEvidence, SIGNATURE_BUCKET, TOKEN_PATTERN } from "./security";
 import type { Json } from "@/types/database.types";
 import { signatureLocationSchema, type SignatureLocation } from "./location";
 
@@ -65,6 +65,7 @@ export async function signContract(token: string, input: { name: string; consent
   const locationResult = signatureLocationSchema.safeParse(input.location ?? { status: "not_requested" });
   if (!locationResult.success) throw new SigningError("invalid_location");
   const evidence: SignatureEvidence = {
+    sessionPlanSha256: hash(serializeEvidence(row.session_plan ?? [])),
     version: 3, requestId: row.id, documentName: row.document_name, originalSha256: row.original_sha256,
     signerName: row.signer_name, signerDocument: row.signer_document, signerEmail: row.signer_email,
     accepted: true, consentVersion: CONSENT_VERSION, consentText: CONSENT_TEXT,

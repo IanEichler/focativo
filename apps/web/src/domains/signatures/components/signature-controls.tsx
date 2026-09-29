@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Copy, FileCheck2, LockKeyhole, Link2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +43,10 @@ export function SignatureControls({ documentId, canWrite = true, initialUrl = ""
     {row?.status === "SIGNED" && <p className="flex items-start gap-2 text-muted-foreground"><LockKeyhole className="mt-0.5 size-4 shrink-0" />PDF assinado armazenado. Este contrato não pode ser alterado, excluído ou refeito.</p>}
     {summary?.status === "error" && <p role="alert">{summary.message}</p>}
     {summary?.status === "success" && !row && <p>Este contrato é anterior ao assinador. Gere uma nova versão para solicitar a assinatura.</p>}
+    {summary?.status === "success" && summary.scheduleSummary && summary.scheduleSummary.total > 0 && <p className="text-small">
+      {summary.scheduleSummary.scheduled} de {summary.scheduleSummary.total} sessões registradas na agenda.
+      {summary.scheduleSummary.scheduled < summary.scheduleSummary.total && <> <Link href="/app/agenda" className="text-warning underline">Há sessões que precisam de ajuste.</Link></>}
+    </p>}
     {row && <>
       <p className="text-muted-foreground">Signatária: {row.signer_name}</p>
       {row.signed_at && <p>Assinado em {formatDateTime(row.signed_at)}</p>}

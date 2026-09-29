@@ -25,7 +25,7 @@ vi.mock("./queries", () => ({
   getDocumentTemplate: async () => ({
     name: "Contrato",
     filePath: "template.docx",
-    fields: ["cliente_nome", "cliente_email", "cliente_cpf", "cliente_rg", "data_contratacao", "valor_parcela", "numero_parcelas"],
+    fields: ["cliente_nome", "cliente_email", "cliente_cpf", "cliente_rg", "data_contratacao", "valor_parcela", "numero_parcelas", "sessao_1_data", "sessao_1_procedimento"],
   }),
   getTenantFieldsForDocument: async () => ({ name: "Clínica" }),
 }));
@@ -117,7 +117,7 @@ it("creates the signing link automatically from the saved PDF and retains downlo
   const data = form(); data.set("saveToProfile", "true");
   const result = await generateDocumentAction({ status: "idle" }, data);
   expect(result).toMatchObject({ status: "success", signatureDocumentId: "33333333-3333-4333-8333-333333333333", signatureUrl: "https://sign.example.test/assinar/test" });
-  expect(mock.snapshot).toHaveBeenCalledWith(expect.any(Object), expect.any(String), expect.any(String), expect.any(String), Buffer.from("pdf"), expect.objectContaining({ cliente_nome: "Nome no contrato" }), expect.any(Object));
+  expect(mock.snapshot).toHaveBeenCalledWith(expect.any(Object), expect.any(String), expect.any(String), expect.any(String), Buffer.from("pdf"), expect.objectContaining({ cliente_nome: "Nome no contrato" }), expect.any(Object), []);
   mock.link.mockResolvedValue({ status: "error", message: "Link temporariamente indisponível" });
   expect(await generateDocumentAction({ status: "idle" }, data)).toMatchObject({ status: "success", pdfBase64: expect.any(String), signatureWarning: "Link temporariamente indisponível" });
 });
@@ -143,4 +143,23 @@ it("checks access to the customer document before looking up a privileged signat
   expect(await getCustomerDocumentPdfAction("other-tenant")).toEqual({ status: "error" });
   expect(await getCustomerDocumentDownloadUrlAction("other-tenant")).toBeNull();
   expect(mock.signature).not.toHaveBeenCalled();
+});
+
+it("validates dated sessions before rendering and stores their immutable agenda plan with the signature", async () => {
+  const data = form(); data.set("saveToProfile", "true"); data.set("field_sessao_1_data", "01/01/2100");
+  data.set("session_1_time", "14:00"); data.set("session_1_serviceId", "11111111-1111-4111-8111-111111111111"); data.set("session_1_professionalId", "22222222-2222-4222-8222-222222222222");
+  const plan = [{ number: 1, serviceName: "Serviço da agenda", startsAt: "2100-01-01T18:00:00Z" }];
+  mock.rpc.mockImplementation(async name => ({ data: name === "contract_validate_sessions" ? plan : name === "customer_document_create" ? "33333333-3333-4333-8333-333333333333" : 2, error: null }));
+  expect((await generateDocumentAction({ status: "idle" }, data)).status).toBe("success");
+  expect(mock.fill).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ sessao_1_procedimento: "Serviço da agenda" }));
+  expect(mock.snapshot.mock.calls[0]![7]).toEqual(plan);
+  expect(mock.rpc).not.toHaveBeenCalledWith("agenda_appointment_create", expect.anything());
+});
+it("does not render or save an invalid session or an occupied slot", async () => {
+  const data = form(); data.set("saveToProfile", "true"); data.set("field_sessao_1_data", "01/01/2100");
+  expect(await generateDocumentAction({ status: "idle" }, data)).toMatchObject({ status: "error", message: expect.stringContaining("Sessão 1") });
+  data.set("session_1_time", "14:00"); data.set("session_1_serviceId", "11111111-1111-4111-8111-111111111111"); data.set("session_1_professionalId", "22222222-2222-4222-8222-222222222222");
+  mock.rpc.mockResolvedValue({ error: { message: "slot_unavailable" } });
+  expect(await generateDocumentAction({ status: "idle" }, data)).toMatchObject({ status: "error", message: expect.stringContaining("ocupado") });
+  expect(mock.fill).not.toHaveBeenCalled(); expect(mock.snapshot).not.toHaveBeenCalled();
 });
