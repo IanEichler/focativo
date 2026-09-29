@@ -8,7 +8,6 @@ import { MaskedTextField } from "@/components/forms/masked-text-field";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CustomerPicker } from "@/domains/customers/components/customer-picker";
 import { CustomerAddressFields } from "@/domains/customers/components/customer-address-fields";
 import type { CustomerOption } from "@/domains/customers/queries";
 import { generateDocumentAction, previewDocumentFieldsAction, type FieldPreview } from "../actions";
@@ -24,9 +23,9 @@ export function GenerateDocumentForm({
   initialCustomer,
 }: {
   template: DocumentTemplateRow;
-  initialCustomer: CustomerOption | null;
+  initialCustomer: CustomerOption;
 }) {
-  const [customer, setCustomer] = useState<CustomerOption | null>(initialCustomer);
+  const customer = initialCustomer;
   const [preview, setPreview] = useState<FieldPreview | null>(null);
   const [loadingPreview, startPreviewTransition] = useTransition();
   const submitting = useRef(false);
@@ -47,18 +46,8 @@ export function GenerateDocumentForm({
     });
   }
 
-  function handleCustomerChange(option: CustomerOption) {
-    if (submitting.current) return;
-    setCustomer(option);
-    setPreview(null);
-    loadPreview(option.id);
-  }
-
   useEffect(() => {
-    // Só a primeira carga (cliente pré-selecionado ao abrir a página) — trocas
-    // depois disso disparam pelo handler do CustomerPicker, num evento real,
-    // não sincronamente dentro do efeito.
-    if (initialCustomer) loadPreview(initialCustomer.id);
+    loadPreview(initialCustomer.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,7 +82,7 @@ export function GenerateDocumentForm({
           <input type="hidden" name="templateId" value={template.id} />
           {customer && <input type="hidden" name="customerId" value={customer.id} />}
 
-          <CustomerPicker value={customer} onChange={handleCustomerChange} />
+          <p className="text-small text-muted-foreground">Contrato vinculado ao perfil de <span className="font-medium text-foreground">{customer.name}</span>.</p>
 
           {loadingPreview && <p className="text-small text-muted-foreground">Carregando campos do modelo…</p>}
 

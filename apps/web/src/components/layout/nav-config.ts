@@ -38,13 +38,6 @@ export const APP_NAV: NavSection[] = [
         module: "reservations",
       },
       { title: "Vendas", href: "/app/vendas", icon: "receipt", permission: "sales.read", module: "sales" },
-      {
-        title: "Documentos",
-        href: "/app/documentos",
-        icon: "file-text",
-        permission: "documents.read",
-        module: "documents",
-      },
     ],
   },
   {

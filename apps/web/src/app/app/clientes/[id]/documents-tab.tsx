@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listCustomerDocuments, listDocumentTemplates } from "@/domains/documents/queries";
 import type { TenantContext } from "@/domains/tenants/context";
 import { formatDateTime } from "@/lib/format";
+import { UploadTemplateDialog } from "@/domains/documents/components/upload-template-dialog";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
 
 export async function DocumentsTab({ context, customerId }: { context: TenantContext; customerId: string }) {
@@ -25,8 +26,9 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
     <div className="flex flex-col gap-6">
       {canWrite && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between gap-3">
             <CardTitle>Novo contrato</CardTitle>
+            {templates.length > 0 && <UploadTemplateDialog trigger={<Button variant="outline" size="sm"><Plus /> Novo modelo</Button>} />}
           </CardHeader>
           <CardContent>
             {templates.length === 0 ? (
@@ -36,11 +38,7 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
                 title="Nenhum modelo de contrato cadastrado"
                 description="Cadastre um modelo Word para preencher os dados desta cliente e gerar PDF e DOCX."
                 action={
-                  <Button asChild>
-                    <Link href="/app/documentos">
-                      <Plus /> Cadastrar modelo
-                    </Link>
-                  </Button>
+                  <UploadTemplateDialog trigger={<Button><Plus /> Cadastrar modelo</Button>} />
                 }
               />
             ) : (
@@ -49,7 +47,7 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
                   <div key={template.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                     <span className="font-medium">{template.name}</span>
                     <Button asChild size="sm">
-                      <Link href={`/app/documentos/${template.id}/gerar?clienteId=${customerId}`}>
+                      <Link href={`/app/clientes/${customerId}/contratos/${template.id}/novo`}>
                         <Plus /> Preencher contrato
                       </Link>
                     </Button>

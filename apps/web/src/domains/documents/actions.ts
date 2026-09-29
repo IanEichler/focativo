@@ -23,7 +23,6 @@ import { signingClient } from "@/domains/signatures/client";
 import { downloadSignedContractAction, createSignatureLinkAction } from "@/domains/signatures/actions";
 import { signingReadiness } from "@/domains/signatures/security";
 
-const DOCUMENTS_PATH = "/app/documentos";
 
 function denied(context: TenantContext, event: string): ActionState<never> {
   logger.warn({ event, status: "denied", tenant_id: context.tenant.id, user_id: context.user.id });
@@ -88,7 +87,7 @@ export async function uploadDocumentTemplateAction(
     return { status: "error", message: toUserMessage(error) };
   }
 
-  revalidatePath(DOCUMENTS_PATH);
+  revalidatePath("/app/clientes", "layout");
   return { status: "success", message: "Modelo cadastrado." };
 }
 
@@ -102,7 +101,7 @@ export async function archiveDocumentTemplateAction(templateId: string): Promise
   const { error } = await supabase.rpc("document_template_archive", { p_template_id: templateId });
   if (error) return { status: "error", message: toUserMessage(error) };
 
-  revalidatePath(DOCUMENTS_PATH);
+  revalidatePath("/app/clientes", "layout");
   return { status: "success", message: "Modelo arquivado." };
 }
 
