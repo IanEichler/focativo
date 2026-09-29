@@ -27,6 +27,12 @@ pnpm --filter @estoque-ia/jobs-service --fail-if-no-match typecheck
 node --env-file=/etc/estoque-ia/deploy.env packages/database/scripts/deploy-migrations.mjs
 
 activated=false
+start_release() {
+  # PM2 reload retains an existing process's cwd/script. Recreate definitions
+  # so all three processes actually use this release's absolute paths.
+  pm2 delete estoque-ia-web estoque-ia-whatsapp estoque-ia-jobs >/dev/null 2>&1 || true
+  pm2 start "$1/deploy/ecosystem.config.cjs" --env production --update-env
+}
 rollback() {
   code=$?
   trap - EXIT
@@ -34,7 +40,7 @@ rollback() {
     echo "Release failed health checks; restoring $previous" >&2
     export APP_RELEASE_SHA
     APP_RELEASE_SHA=$(cat "$previous/.release-sha" 2>/dev/null || git -C "$previous" rev-parse HEAD)
-    pm2 startOrReload "$previous/deploy/ecosystem.config.cjs" --env production --update-env || true
+    start_release "$previous" || true
     ln -sfn "$previous" "$base/current"
     pm2 save || true
   fi
@@ -42,7 +48,7 @@ rollback() {
 }
 trap rollback EXIT
 activated=true
-pm2 startOrReload "$release/deploy/ecosystem.config.cjs" --env production --update-env
+start_release "$release"
 healthy=false
 for attempt in $(seq 1 30); do
   if curl --fail --silent --max-time 5 http://127.0.0.1:3000/api/health |
