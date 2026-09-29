@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { SwitchField, TextareaField } from "@/components/forms/fields";
 import { fieldError, FormMessage, SubmitButton } from "@/components/forms/form-feedback";
-import { FormSheet, SheetFormLayout } from "@/components/forms/form-sheet";
+import { FormDialog, DialogFormLayout } from "@/components/forms/form-dialog";
 import { TextField } from "@/components/forms/text-field";
 import { useActionFeedback } from "@/components/forms/use-action-feedback";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { saveServiceAction } from "../actions";
 import type { ProfessionalOption, ServiceRow } from "../queries";
 import type { ServiceField } from "../schemas";
 
-export function ServiceFormSheet({
+export function ServiceFormDialog({
   trigger,
   service,
   professionals,
@@ -24,9 +24,14 @@ export function ServiceFormSheet({
   professionals: ProfessionalOption[];
 }) {
   return (
-    <FormSheet trigger={trigger} title={service ? "Editar serviço" : "Novo serviço"} description={service?.name}>
+    <FormDialog
+      size="lg"
+      trigger={trigger}
+      title={service ? "Editar serviço" : "Novo serviço"}
+      description={service?.name}
+    >
       {(close) => <ServiceForm service={service} professionals={professionals} onDone={close} />}
-    </FormSheet>
+    </FormDialog>
   );
 }
 
@@ -58,10 +63,10 @@ function ServiceForm({
   }
 
   return (
-    <form action={action} className="flex min-h-0 flex-1 flex-col" noValidate>
+    <form action={action} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl" noValidate>
       {service && <input type="hidden" name="id" value={service.id} />}
       <input type="hidden" name="professionalUserIds" value={JSON.stringify([...selectedProfessionals])} />
-      <SheetFormLayout
+      <DialogFormLayout
         footer={
           <>
             <Button type="button" variant="ghost" onClick={onDone}>
@@ -92,9 +97,10 @@ function ServiceForm({
           <TextField
             label="Preço"
             name="price"
+            required
             inputMode="decimal"
             placeholder="0,00"
-            defaultValue={pick("price", toDecimalInput(service?.price))}
+            defaultValue={pick("price", toDecimalInput(service?.price ?? 0))}
             error={fieldError(state, "price")}
           />
         </div>
@@ -144,7 +150,7 @@ function ServiceForm({
           description="A IA nunca finaliza esse agendamento sozinha na primeira vez — escala para um atendente confirmar antes."
         />
         {service && <SwitchField label="Serviço ativo" name="isActive" defaultChecked={service.isActive} />}
-      </SheetFormLayout>
+      </DialogFormLayout>
     </form>
   );
 }

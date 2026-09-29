@@ -1,6 +1,6 @@
 import PizZip from "pizzip";
 import { describe, expect, it } from "vitest";
-import { extractPlaceholders } from "./template-parser";
+import { extractPlaceholders, templateDelimiters } from "./template-parser";
 
 function buildDocxBuffer(bodyXml: string): Buffer {
   const zip = new PizZip();
@@ -15,6 +15,17 @@ describe("extractPlaceholders", () => {
   it("finds simple placeholders in plain text", () => {
     const buffer = buildDocxBuffer("<w:p><w:r><w:t>Nome: {{nome}}, CPF: {{cpf}}</w:t></w:r></w:p>");
     expect(extractPlaceholders(buffer)).toEqual(["nome", "cpf"]);
+  });
+
+  it("finds single-brace placeholders in the supplied contract format", () => {
+    const buffer = buildDocxBuffer("<w:p><w:r><w:t>Nome: {cliente_nome}, CPF: {cliente_cpf}</w:t></w:r></w:p>");
+    expect(extractPlaceholders(buffer)).toEqual(["cliente_nome", "cliente_cpf"]);
+    expect(templateDelimiters(buffer)).toEqual({ start: "{", end: "}" });
+  });
+
+  it("keeps double-brace models compatible with the document renderer", () => {
+    const buffer = buildDocxBuffer("<w:p><w:r><w:t>{{nome}}</w:t></w:r></w:p>");
+    expect(templateDelimiters(buffer)).toEqual({ start: "{{", end: "}}" });
   });
 
   it("reconstructs a placeholder split across separate XML runs (Word spellcheck gotcha)", () => {

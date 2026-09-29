@@ -22,31 +22,41 @@ import {
 import { CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_TONES, MESSAGE_STATUS_LABELS } from "../labels";
 import type { ConversationDetail, MessageRow } from "../queries";
 import type { SendMessageField } from "../schemas";
+import { AiTypingIndicator } from "./ai-typing-indicator";
 
 export function ChatPanel({
   conversation,
   messages,
   canWrite,
+  stageControl,
 }: {
   conversation: ConversationDetail;
   messages: MessageRow[];
   canWrite: boolean;
+  stageControl?: React.ReactNode;
 }) {
   const [state, action] = useActionState<ActionState<SendMessageField>, FormData>(sendMessageAction, IDLE);
   const [pending, startTransition] = useTransition();
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const followMessagesRef = useRef(true);
   const [content, setContent] = useState("");
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    if (followMessagesRef.current) listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages.length]);
 
-  useActionFeedback(state, { onSuccess: () => setContent("") });
+  useActionFeedback(state, {
+    onSuccess: () => {
+      setContent("");
+      followMessagesRef.current = true;
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    },
+  });
 
   useEffect(() => {
-    if (!conversation.customerAvatarUrl) void refreshCustomerAvatarAction(conversation.customerId);
-  }, [conversation.customerId, conversation.customerAvatarUrl]);
+    void refreshCustomerAvatarAction(conversation.customerId);
+  }, [conversation.customerId]);
 
   function runTransition(fn: (id: string) => Promise<unknown>) {
     startTransition(async () => {
@@ -55,23 +65,23 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Avatar>
             {conversation.customerAvatarUrl && <AvatarImage src={conversation.customerAvatarUrl} alt="" />}
             <AvatarFallback>{initials(conversation.customerName)}</AvatarFallback>
           </Avatar>
-          <div>
-            <p className="text-body font-medium">{conversation.customerName}</p>
+          <div className="min-w-0">
+            <p className="truncate text-body font-medium">{conversation.customerName}</p>
             <StatusBadge tone={CONVERSATION_STATUS_TONES[conversation.status]}>
               {CONVERSATION_STATUS_LABELS[conversation.status]}
               {conversation.responsibleName ? ` · ${conversation.responsibleName}` : ""}
             </StatusBadge>
           </div>
         </div>
-        {conversation.status !== "CLOSED" && (
-          <div className="flex items-center gap-2">
+        {canWrite && conversation.status !== "CLOSED" && (
+          <div className="flex flex-wrap items-center gap-2">
             {conversation.status !== "HUMAN_ACTIVE" && (
               <Button
                 size="sm"
@@ -103,17 +113,28 @@ export function ChatPanel({
           </div>
         )}
       </header>
+      {stageControl}
 
       <ConfirmDialog
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         title="Finalizar atendimento?"
-        description={`A conversa com ${conversation.customerName} vai para "Finalizados". Se o cliente escrever de novo, o atendimento reabre automaticamente.`}
+        description={`A conversa com ${conversation.customerName} vai para "Finalizados". Na próxima mensagem, começa um novo atendimento com a IA, se ela estiver ativada e configurada.`}
         confirmLabel="Finalizar"
         onConfirm={() => closeConversationAction(conversation.id)}
       />
 
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        ref={listRef}
+        onScroll={() => {
+          const list = listRef.current;
+          if (list) followMessagesRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+        }}
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+        role="region"
+        aria-label="Mensagens da conversa"
+        tabIndex={0}
+      >
         <ol className="flex flex-col gap-3">
           {messages.map((message) => {
             const outbound = message.direction === "OUTBOUND";
@@ -121,7 +142,7 @@ export function ChatPanel({
               <li key={message.id} className={cn("flex flex-col", outbound ? "items-end" : "items-start")}>
                 <div
                   className={cn(
-                    "max-w-[75%] rounded-lg px-3 py-2 text-body",
+                    "max-w-[85%] rounded-lg px-3 py-2 text-body wrap-anywhere whitespace-pre-wrap sm:max-w-[75%]",
                     outbound ? "bg-brand-600 text-white" : "bg-secondary text-foreground",
                   )}
                 >
@@ -141,16 +162,23 @@ export function ChatPanel({
         </ol>
       </div>
 
+      <AiTypingIndicator
+        key={`${conversation.id}:${conversation.status}`}
+        conversationId={conversation.id}
+        active={conversation.status === "AI_ACTIVE"}
+      />
+
       {canWrite ? (
-        <form action={action} className="flex items-end gap-2 border-t border-border p-3">
+        <form action={action} className="flex shrink-0 items-end gap-2 border-t border-border p-3">
           <input type="hidden" name="conversationId" value={conversation.id} />
           <textarea
             name="content"
             rows={1}
             placeholder="Escreva uma mensagem…"
+            aria-label="Mensagem"
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            className="max-h-32 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="max-h-32 min-w-0 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <Button type="submit" disabled={!content.trim()}>
             Enviar

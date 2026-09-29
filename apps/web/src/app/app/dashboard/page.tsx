@@ -17,14 +17,12 @@ import { StatusBadge } from "@/components/data/status-badge";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTodayAgendaSummary } from "@/domains/agenda/queries";
 import { getInventorySummary } from "@/domains/inventory/queries";
 import { getSalesByDay, getTopProducts } from "@/domains/reports/queries";
-import { OnboardingSteps } from "@/domains/tenants/components/onboarding-steps";
 import { requireTenantContext } from "@/domains/tenants/context";
-import { completedSteps } from "@/domains/tenants/onboarding";
-import { getSetupProgress, getTeamSummary, getTenantDetails } from "@/domains/tenants/queries";
+import { getTeamSummary, getTenantDetails } from "@/domains/tenants/queries";
 import { TENANT_SEGMENTS } from "@/domains/tenants/schemas";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 
@@ -45,10 +43,9 @@ export default async function DashboardPage() {
   const canSeeAgenda = context.can("agenda.read") && context.hasModule("agenda");
   const since = sinceDaysAgo(DASHBOARD_PERIOD_DAYS);
 
-  const [details, team, progress, inventory, salesByDay, topProducts, todayAgenda] = await Promise.all([
+  const [details, team, inventory, salesByDay, topProducts, todayAgenda] = await Promise.all([
     getTenantDetails(context),
     getTeamSummary(context),
-    getSetupProgress(context),
     canSeeInventory ? getInventorySummary(context) : Promise.resolve(null),
     canSeeCommercial ? getSalesByDay(context, since) : Promise.resolve([]),
     canSeeCommercial ? getTopProducts(context, since, 5) : Promise.resolve([]),
@@ -60,15 +57,6 @@ export default async function DashboardPage() {
   const avgTicket = salesCount > 0 ? revenue / salesCount : 0;
 
   const firstName = context.user.fullName.split(" ")[0];
-  const completed = completedSteps({
-    hasCompany: true,
-    legalName: details.legalName,
-    document: details.document,
-    phone: details.phone,
-    productCount: progress.productCount,
-    stockedItemCount: progress.stockedItemCount,
-  });
-  const nextStep = (["company_details", "products", "stock"] as const).find((step) => !completed.has(step));
   const segment = TENANT_SEGMENTS.find((item) => item.value === details.segment)?.label ?? details.segment;
 
   return (
@@ -135,18 +123,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Primeiros passos</CardTitle>
-            <CardDescription>Conclua a configuração para começar a vender com atendimento assistido.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OnboardingSteps completed={completed} current={nextStep} />
-          </CardContent>
-        </Card>
-
-        <div className="flex flex-col gap-4">
+      <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Empresa</CardTitle>
@@ -198,7 +175,6 @@ export default async function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
       </div>
 
       {canSeeCommercial && (

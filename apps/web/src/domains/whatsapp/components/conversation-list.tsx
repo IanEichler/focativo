@@ -9,13 +9,16 @@ import type { ConversationListItem } from "../queries";
 import { initials, formatRelative } from "@/lib/format";
 import { buildHref } from "@/lib/url";
 import { cn } from "@/lib/utils";
+import { ConversationContextMenu } from "./conversation-context-menu";
 
 export function ConversationList({
   conversations,
   emptyMessage = "Nenhuma conversa ainda.",
+  canWrite = false,
 }: {
   conversations: ConversationListItem[];
   emptyMessage?: string;
+  canWrite?: boolean;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -26,13 +29,16 @@ export function ConversationList({
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-y-auto">
+    <ul className="flex min-h-0 flex-1 flex-col divide-y divide-border overflow-y-auto overscroll-contain">
       {conversations.map((conversation) => {
         const active = conversation.id === activeId;
+        const href = buildHref(pathname, searchParams, { conversa: conversation.id });
         return (
           <li key={conversation.id}>
+            <ConversationContextMenu conversation={conversation} canWrite={canWrite} href={href}>
             <Link
-              href={buildHref(pathname, searchParams, { conversa: conversation.id })}
+              href={href}
+              scroll={false}
               className={cn(
                 "flex items-start gap-3 px-3 py-3 transition-colors hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none",
                 active && "bg-secondary",
@@ -68,6 +74,7 @@ export function ConversationList({
                 </div>
               </div>
             </Link>
+            </ConversationContextMenu>
           </li>
         );
       })}

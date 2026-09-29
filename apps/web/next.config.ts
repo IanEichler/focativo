@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Upload de imagem de produto (limite de 2 MB + overhead do multipart).
-      bodySizeLimit: "3mb",
+      // Modelos DOCX de até 10 MB, além do overhead do multipart.
+      bodySizeLimit: "11mb",
     },
   },
   async headers() {

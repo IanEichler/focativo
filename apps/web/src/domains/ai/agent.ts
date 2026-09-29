@@ -3,46 +3,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { getAIProvider } from "./get-provider";
 import { estimateCostUsd } from "./pricing";
+import { buildSystemPrompt, buildConversationHistory, splitIntoMessages, buildCalendarContext } from "./conversation";
 import type { AIContentBlock, AIMessage } from "./provider";
 import { buildAiTools } from "./tools";
 import { executeTool } from "./tool-executor";
 import { getWhatsAppProvider } from "@/domains/whatsapp/get-provider";
+import { replyPauseMs, startTypingPresence } from "./reply-delivery";
+import { createTurnQueue } from "./turn-queue";
+import { claimsCompletedBooking } from "./booking-claims";
 
-const MAX_TOOL_ITERATIONS = 4;
-const HISTORY_LIMIT = 20;
-
-const BASE_SYSTEM_PROMPT = `Você é a assistente de atendimento por WhatsApp desta empresa. Converse de forma
-natural, breve e cordial, como uma pessoa da equipe atenderia.
-
-Sempre leve em conta o que já foi dito nesta conversa antes de responder: nunca repita uma pergunta que o
-cliente já respondeu, nunca peça de novo uma informação que ele já deu, e não se apresente de novo se a
-conversa já estava em andamento.
-
-Uma saudação ("oi", "bom dia", "boa tarde") ou uma pergunta genérica não é motivo para chamar nenhuma tool —
-responda educadamente e pergunte como pode ajudar. Só use uma tool quando ela realmente resolver o que o
-cliente pediu (ex.: ele perguntou por um produto/serviço específico, preço, disponibilidade ou quer marcar
-algo).
-
-Você só conhece este negócio pelo que está nas instruções abaixo e pelo que as tools devolverem — nunca
-invente produto, serviço, preço, profissional, horário ou política. Se não tiver certeza do que o cliente
-precisa, pergunte antes de agir; se precisar de um dado que não tem, use a tool certa antes de responder.
-
-Nunca confirme uma reserva ou agendamento sem o cliente ter confirmado exatamente o que quer (item, horário,
-profissional, quando houver mais de um). Se a tool de agendamento devolver "pending_human_confirmation", NÃO
-diga que está confirmado — avise que um atendente vai revisar e confirmar em breve.
-
-Se o cliente pedir para falar com uma pessoa, reclamar ou parecer insatisfeito, use a tool de escalonamento em
-vez de insistir em resolver sozinha. NÃO escale só porque falta uma informação (data, horário, profissional
-escolhido) ou porque uma tool não achou o que precisava de primeira — nesses casos, pergunte a informação que
-falta ou tente de novo com o que o cliente já disse. Escalonamento é para quando o cliente pede um humano,
-reclama, ou quando você já tentou entender o pedido e continua sem conseguir resolver — não para qualquer
-travamento no meio do caminho.
-
-Escreva como alguém mandando mensagem de verdade no WhatsApp, não como um formulário: frases curtas, sem repetir
-o nome do cliente em toda mensagem (no máximo ocasionalmente), sem emoji em toda resposta (opcional e raro, nunca
-em série). Quebre ideias diferentes em parágrafos separados por linha em branco — isso vira mensagens separadas
-de verdade, então não abuse. Para destacar algo, use *um asterisco* de cada lado (é assim que o WhatsApp exibe
-negrito) — nunca **dois asteriscos**, isso aparece literalmente na tela do cliente em vez de formatar.`;
+const MAX_TOOL_ITERATIONS = 6;
+const HISTORY_LIMIT = 40;
+const queueTurn = createTurnQueue();
 
 /**
  * Um "turno" da IA: dispara depois que `whatsapp_receive_message` grava uma
@@ -52,35 +24,41 @@ negrito) — nunca **dois asteriscos**, isso aparece literalmente na tela do cli
  * pode escrever de novo ou um humano pode assumir pelo Inbox.
  */
 export async function runAiTurn(conversationId: string): Promise<void> {
+  return queueTurn(conversationId, (isCurrent) => runCurrentTurn(conversationId, isCurrent));
+}
+
+async function runCurrentTurn(conversationId: string, isCurrent: () => boolean): Promise<void> {
   const admin = createAdminClient();
 
   const { data: conversation } = await admin
     .from("conversations")
-    .select("tenant_id, customer_id, status")
+    .select("tenant_id, customer_id, status, ai_session_started_at")
     .eq("id", conversationId)
     .single();
   if (!conversation || conversation.status !== "AI_ACTIVE") return;
 
-  const [{ data: settings }, { data: limits }, { data: businessInfo }, { data: moduleFlagRows }] = await Promise.all([
-    admin
-      .from("tenant_ai_settings")
-      .select("enabled, system_prompt")
-      .eq("tenant_id", conversation.tenant_id)
-      .maybeSingle(),
-    // Modelo, limite de tokens e orçamento são decisão do admin master, não
-    // do tenant — tabela separada, nunca lida pelo dono da empresa.
-    admin
-      .from("tenant_ai_platform_limits")
-      .select("provider, model, max_tokens_per_reply, monthly_budget_cents")
-      .eq("tenant_id", conversation.tenant_id)
-      .maybeSingle(),
-    admin
-      .from("tenant_ai_business_info")
-      .select("business_description, general_policies, screening_flow")
-      .eq("tenant_id", conversation.tenant_id)
-      .maybeSingle(),
-    admin.from("tenant_module_flags").select("module_code, enabled").eq("tenant_id", conversation.tenant_id),
-  ]);
+  const [{ data: settings }, { data: limits }, { data: businessInfo }, { data: moduleFlagRows }, { data: tenant }] =
+    await Promise.all([
+      admin
+        .from("tenant_ai_settings")
+        .select("enabled, system_prompt")
+        .eq("tenant_id", conversation.tenant_id)
+        .maybeSingle(),
+      // Modelo, limite de tokens e orçamento são decisão do admin master, não
+      // do tenant — tabela separada, nunca lida pelo dono da empresa.
+      admin
+        .from("tenant_ai_platform_limits")
+        .select("provider, model, max_tokens_per_reply, monthly_budget_cents")
+        .eq("tenant_id", conversation.tenant_id)
+        .maybeSingle(),
+      admin
+        .from("tenant_ai_business_info")
+        .select("business_description, general_policies, screening_flow")
+        .eq("tenant_id", conversation.tenant_id)
+        .maybeSingle(),
+      admin.from("tenant_module_flags").select("module_code, enabled").eq("tenant_id", conversation.tenant_id),
+      admin.from("tenants").select("name, timezone").eq("id", conversation.tenant_id).single(),
+    ]);
   if (!settings?.enabled) return;
   const disabledModules = new Set((moduleFlagRows ?? []).filter((row) => !row.enabled).map((row) => row.module_code));
   // Módulo "ai" desligado pelo admin master tem a palavra final, mesmo com a
@@ -99,118 +77,259 @@ export async function runAiTurn(conversationId: string): Promise<void> {
     }
   }
 
-  const system = [
-    settings.system_prompt || BASE_SYSTEM_PROMPT,
-    buildBusinessInfoBlock(businessInfo),
-    await buildCustomerContext(admin, conversation.customer_id),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const system = buildSystemPrompt({
+    customInstructions: settings.system_prompt,
+    businessContext: [tenant?.name ? `Nome da empresa: ${tenant.name}.` : null, buildBusinessInfoBlock(businessInfo)]
+      .filter(Boolean)
+      .join("\n\n"),
+    customerContext: await buildCustomerContext(admin, conversation.customer_id),
+    calendarContext: buildCalendarContext(new Date(), tenant?.timezone || "America/Sao_Paulo"),
+  });
   const model = limits?.model || "claude-sonnet-5";
   const maxTokens = limits?.max_tokens_per_reply || 1024;
   const tools = buildAiTools({ catalog: !disabledModules.has("catalog"), agenda: !disabledModules.has("agenda") });
 
-  const messages = await loadHistory(admin, conversationId);
+  const messages = await loadHistory(admin, conversationId, conversation.ai_session_started_at);
   const provider = getAIProvider(limits?.provider ?? "anthropic");
 
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let finalText: string | null = null;
-
-  try {
-    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const result = await chatWithRetry(provider, { system, messages, tools, model, maxTokens });
-      totalInputTokens += result.inputTokens;
-      totalOutputTokens += result.outputTokens;
-
-      if (result.stopReason !== "tool_use") {
-        finalText = textFrom(result.content);
-        break;
-      }
-
-      messages.push({ role: "assistant", content: result.content });
-      const toolUses = result.content.filter(
-        (block): block is Extract<AIContentBlock, { type: "tool_use" }> => block.type === "tool_use",
-      );
-      const results = await Promise.all(
-        toolUses.map((toolUse) =>
-          executeTool(
-            admin,
-            { tenantId: conversation.tenant_id, conversationId },
-            toolUse.id,
-            toolUse.name,
-            toolUse.input,
-          ),
-        ),
-      );
-      messages.push({ role: "user_tool_results", results });
-
-      const escalated = toolUses.some((toolUse) => toolUse.name === "escalar_para_humano");
-      await admin.rpc("ai_upsert_conversation_state", {
-        p_conversation_id: conversationId,
-        p_turn_count: iteration + 1,
-        p_last_tool_used: toolUses[0]?.name,
-      });
-      if (escalated) break;
-    }
-  } catch (providerError) {
-    // Provedor de IA falhou mesmo depois da retentativa (rate limit, indisponibilidade
-    // temporária etc.) — nunca deixa o cliente sem resposta nenhuma: escala pra um
-    // atendente em vez de silêncio (mesmo tratamento já usado pro orçamento estourado).
+  const { data: recipient } = await admin
+    .from("customers")
+    .select("whatsapp, whatsapp_chat_id")
+    .eq("id", conversation.customer_id)
+    .eq("tenant_id", conversation.tenant_id)
+    .single();
+  const whatsapp = getWhatsAppProvider();
+  async function canContinue() {
+    if (!isCurrent()) return false;
+    const { data } = await admin
+      .from("conversations")
+      .select("status, ai_session_started_at")
+      .eq("id", conversationId)
+      .single();
+    return (
+      isCurrent() && data?.status === "AI_ACTIVE" && data.ai_session_started_at === conversation!.ai_session_started_at
+    );
+  }
+  if (!(await canContinue())) return;
+  // The keyword simulator is only suitable for the simulated WhatsApp transport.
+  // Missing credentials must never turn real customer replies into catalog searches.
+  if (provider.isDev && !whatsapp.isDev) {
+    const { error } = await admin.rpc("ai_escalate_conversation", {
+      p_conversation_id: conversationId,
+      p_reason:
+        "Atendimento automático indisponível: a chave do provedor de IA não está configurada. Configure a integração antes de devolver a conversa à IA.",
+    });
     logger.warn({
-      event: "ai.provider_failed",
+      event: "ai.credentials_missing",
       tenant_id: conversation.tenant_id,
       conversation_id: conversationId,
-      code: String(providerError),
-    });
-    await admin.rpc("ai_escalate_conversation", {
-      p_conversation_id: conversationId,
-      p_reason: "A IA teve uma falha técnica temporária.",
+      escalated: !error,
     });
     return;
   }
-
-  if (!provider.isDev && (totalInputTokens > 0 || totalOutputTokens > 0)) {
-    await admin.rpc("ai_log_usage", {
-      p_tenant_id: conversation.tenant_id,
-      p_conversation_id: conversationId,
-      p_model: model,
-      p_input_tokens: totalInputTokens,
-      p_output_tokens: totalOutputTokens,
-      p_cost_usd: estimateCostUsd(model, totalInputTokens, totalOutputTokens),
+  const typing = await startTypingPresence(async (active) => {
+    // Persist genuine work for the inbox independently of WhatsApp presence delivery.
+    let query = admin
+      .from("conversations")
+      .update({
+        ai_typing_until: active ? new Date(Date.now() + 20000).toISOString() : null,
+      })
+      .eq("id", conversationId)
+      .eq("status", "AI_ACTIVE");
+    query = conversation.ai_session_started_at
+      ? query.eq("ai_session_started_at", conversation.ai_session_started_at)
+      : query.is("ai_session_started_at", null);
+    const results = await Promise.allSettled([
+      query.then(({ error }) => {
+        if (error) throw new Error("typing_state_write_failed");
+      }),
+      recipient?.whatsapp || recipient?.whatsapp_chat_id
+        ? whatsapp.setTyping(conversation.tenant_id, recipient.whatsapp ?? "", active, recipient.whatsapp_chat_id)
+        : Promise.resolve(),
+    ]);
+    results.forEach((result, index) => {
+      if (result.status === "rejected")
+        logger.warn({
+          event: "ai.typing_failed",
+          conversation_id: conversationId,
+          destination: index === 0 ? "inbox" : "whatsapp",
+        });
     });
-  }
+  });
 
-  if (!finalText) return;
-  // Cliente pediu "mensagens em cascata" como uma pessoa de verdade manda no
-  // WhatsApp, em vez de um parágrafo único enorme — quebra por linha em
-  // branco (o jeito mais natural do próprio modelo já separar ideias) e
-  // manda cada pedaço como uma mensagem própria, com uma pausa curta entre
-  // elas pra não parecer um despejo instantâneo.
-  const chunks = splitIntoMessages(finalText);
-  for (let i = 0; i < chunks.length; i++) {
-    if (i > 0) await sleep(500);
-    await sendReply(admin, conversation.tenant_id, conversationId, chunks[i]!);
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  try {
+    let finalText: string | null = null;
+    let needsBookingProof = false;
+
+    try {
+      for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+        if (!(await canContinue())) return;
+        const result = await chatWithRetry(provider, {
+          system: needsBookingProof
+            ? `${system}\nVERIFICAÇÃO: nenhum agendamento foi criado nesta rodada. Não escreva que ficou marcado ou confirmado. Consulte consultar_disponibilidade e, se o cliente já autorizou a vaga válida, execute criar_agendamento. Caso contrário ofereça vagas válidas e aguarde a escolha.`
+            : system,
+          messages,
+          tools,
+          model,
+          maxTokens,
+        });
+        totalInputTokens += result.inputTokens;
+        totalOutputTokens += result.outputTokens;
+
+        if (result.stopReason !== "tool_use") {
+          finalText = textFrom(result.content);
+          if (
+            tools.some((tool) => tool.name === "criar_agendamento") &&
+            finalText &&
+            claimsCompletedBooking(finalText)
+          ) {
+            needsBookingProof = true;
+            finalText = "O agendamento ainda não foi concluído. Precisamos escolher um horário disponível na agenda.";
+            continue;
+          }
+          break;
+        }
+
+        messages.push({ role: "assistant", content: result.content });
+        const toolUses = result.content.filter(
+          (block): block is Extract<AIContentBlock, { type: "tool_use" }> => block.type === "tool_use",
+        );
+        if (!(await canContinue())) return;
+        const results = await Promise.all(
+          toolUses.map((toolUse) => {
+            const firstBooking = toolUses.find((tool) => tool.name === "criar_agendamento");
+            if (
+              firstBooking &&
+              (toolUse.name === "escalar_para_humano" ||
+                (toolUse.name === "criar_agendamento" && toolUse.id !== firstBooking.id))
+            ) {
+              return Promise.resolve({
+                toolUseId: toolUse.id,
+                isError: true,
+                content:
+                  "Conclua apenas um agendamento confirmado por vez. Não transfira o mesmo pedido enquanto cria o agendamento.",
+              });
+            }
+            if (!tools.some((tool) => tool.name === toolUse.name)) {
+              return Promise.resolve({
+                toolUseId: toolUse.id,
+                isError: true,
+                content:
+                  "Esta ferramenta não está habilitada para esta empresa. Use apenas as ferramentas disponíveis e o contexto da conversa.",
+              });
+            }
+            return executeTool(
+              admin,
+              { tenantId: conversation.tenant_id, conversationId },
+              toolUse.id,
+              toolUse.name,
+              toolUse.input,
+            );
+          }),
+        );
+        messages.push({ role: "user_tool_results", results });
+
+        const booked = results.find(
+          (result, index) =>
+            !result.isError &&
+            toolUses[index]?.name === "criar_agendamento" &&
+            JSON.parse(result.content).appointment_id,
+        );
+        if (booked) {
+          const receipt = JSON.parse(booked.content);
+          finalText = receipt.confirmation_text || "Seu agendamento foi realizado.";
+          break;
+        }
+
+        const handoff = results.find((result, index) => {
+          if (result.isError || !["criar_agendamento", "escalar_para_humano"].includes(toolUses[index]!.name))
+            return false;
+          try {
+            const outcome = JSON.parse(result.content);
+            return outcome.pending_human_confirmation === true || outcome.escalated === true;
+          } catch {
+            return false;
+          }
+        });
+        await admin.rpc("ai_upsert_conversation_state", {
+          p_conversation_id: conversationId,
+          p_turn_count: iteration + 1,
+          p_last_tool_used: toolUses[0]?.name,
+        });
+        if (handoff) {
+          // A successful handoff changes the status before the next model iteration.
+          // Acknowledge once, without letting the model continue running as a human.
+          const { data: latest } = await admin
+            .from("conversations")
+            .select("status, responsible_user_id, ai_session_started_at")
+            .eq("id", conversationId)
+            .single();
+          if (
+            isCurrent() &&
+            latest?.status === "HUMAN_ACTIVE" &&
+            !latest.responsible_user_id &&
+            latest.ai_session_started_at === conversation.ai_session_started_at
+          ) {
+            const pending = JSON.parse(handoff.content).pending_human_confirmation === true;
+            await sendReply(
+              admin,
+              conversation.tenant_id,
+              conversationId,
+              pending
+                ? "Encaminhei seu pedido à equipe, que vai confirmar o horário por aqui. O agendamento ainda não está confirmado."
+                : "Encaminhei a conversa à equipe para continuar seu atendimento por aqui.",
+            );
+          }
+          return;
+        }
+      }
+    } catch (providerError) {
+      // Provedor de IA falhou mesmo depois da retentativa (rate limit, indisponibilidade
+      // temporária etc.) — nunca deixa o cliente sem resposta nenhuma: escala pra um
+      // atendente em vez de silêncio (mesmo tratamento já usado pro orçamento estourado).
+      logger.warn({
+        event: "ai.provider_failed",
+        tenant_id: conversation.tenant_id,
+        conversation_id: conversationId,
+        code: String(providerError),
+      });
+      if (!(await canContinue())) return;
+      await admin.rpc("ai_escalate_conversation", {
+        p_conversation_id: conversationId,
+        p_reason: "A IA teve uma falha técnica temporária.",
+      });
+      return;
+    }
+
+    if (!finalText) return;
+    // Send each idea separately and stop if the customer adds context or a human takes over.
+    const chunks = splitIntoMessages(finalText);
+    for (let i = 0; i < chunks.length; i++) {
+      if (!(await canContinue())) break;
+      await typing.pulse();
+      if (i > 0) await sleep(replyPauseMs(chunks[i]!));
+      if (!(await canContinue())) break;
+      if (!(await sendReply(admin, conversation.tenant_id, conversationId, chunks[i]!))) break;
+    }
+  } finally {
+    await typing.stop();
+    if (!provider.isDev && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+      await admin.rpc("ai_log_usage", {
+        p_tenant_id: conversation.tenant_id,
+        p_conversation_id: conversationId,
+        p_model: model,
+        p_input_tokens: totalInputTokens,
+        p_output_tokens: totalOutputTokens,
+        p_cost_usd: estimateCostUsd(model, totalInputTokens, totalOutputTokens),
+      });
+    }
   }
 }
-
-const MAX_MESSAGE_CHUNKS = 5;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function splitIntoMessages(text: string): string[] {
-  const parts = text
-    .split(/\n{2,}/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length <= MAX_MESSAGE_CHUNKS) return parts.length > 0 ? parts : [text.trim()];
-  // Muitos pedaços: preserva as primeiras quebras naturais e rejunta o resto
-  // num último bloco, em vez de estourar em uma enxurrada de mensagens.
-  const head = parts.slice(0, MAX_MESSAGE_CHUNKS - 1);
-  const tail = parts.slice(MAX_MESSAGE_CHUNKS - 1).join("\n\n");
-  return [...head, tail];
 }
 
 async function sendReply(
@@ -225,7 +344,7 @@ async function sendReply(
   });
   if (error || !messageId) {
     logger.warn({ event: "ai.message_send", status: "error", tenant_id: tenantId, code: error?.message });
-    return;
+    return false;
   }
 
   const { data: conversation } = await admin
@@ -235,9 +354,9 @@ async function sendReply(
     .single();
   const to = conversation?.customer?.whatsapp;
   const chatId = conversation?.customer?.whatsapp_chat_id;
-  if (!to) {
+  if (!to && !chatId) {
     await admin.rpc("message_mark_failed", { p_message_id: messageId, p_reason: "Cliente sem WhatsApp cadastrado" });
-    return;
+    return false;
   }
 
   try {
@@ -247,30 +366,32 @@ async function sendReply(
     // "No LID for user" pra contatos migrados pro "@lid" — mesmo problema já
     // resolvido pro envio manual do atendente (domains/whatsapp/actions.ts),
     // só faltava aplicar aqui também.
-    const sent = await provider.sendText(tenantId, to, text, chatId);
+    const sent = await provider.sendText(tenantId, to ?? "", text, chatId);
     await admin.rpc("message_mark_sent", { p_message_id: messageId, p_external_message_id: sent.externalMessageId });
+    return true;
   } catch (sendError) {
     logger.warn({ event: "ai.provider_send", status: "error", tenant_id: tenantId, code: String(sendError) });
     await admin.rpc("message_mark_failed", { p_message_id: messageId, p_reason: "Falha ao enviar pelo WhatsApp" });
+    return false;
   }
 }
 
-async function loadHistory(admin: ReturnType<typeof createAdminClient>, conversationId: string): Promise<AIMessage[]> {
-  const { data } = await admin
+async function loadHistory(
+  admin: ReturnType<typeof createAdminClient>,
+  conversationId: string,
+  startedAt: string | null,
+): Promise<AIMessage[]> {
+  let query = admin
     .from("messages")
-    .select("direction, content, media_type")
+    .select("direction, content, media_type, status")
     .eq("conversation_id", conversationId)
+    .or("direction.eq.INBOUND,status.in.(SENT,DELIVERED,READ)")
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
+  if (startedAt) query = query.gte("created_at", startedAt);
+  const { data } = await query;
 
-  return (data ?? [])
-    .reverse()
-    .filter((row) => row.content)
-    .map((row): AIMessage =>
-      row.direction === "INBOUND"
-        ? { role: "user", content: row.content! }
-        : { role: "assistant", content: [{ type: "text", text: row.content! }] },
-    );
+  return buildConversationHistory((data ?? []).reverse());
 }
 
 async function buildCustomerContext(admin: ReturnType<typeof createAdminClient>, customerId: string): Promise<string> {

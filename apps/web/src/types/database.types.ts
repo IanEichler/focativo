@@ -490,8 +490,173 @@ export type Database = {
           },
         ]
       }
+      contract_signature_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          metadata: Json
+          signature_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          metadata?: Json
+          signature_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          metadata?: Json
+          signature_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signature_events_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "contract_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_signatures: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_id: string
+          document_id: string
+          document_name: string
+          evidence: Json | null
+          evidence_seal: string | null
+          expires_at: string | null
+          id: string
+          original_path: string
+          original_sha256: string
+          otp_attempts: number
+          otp_expires_at: string | null
+          otp_hash: string | null
+          otp_sends: number
+          otp_sent_at: string | null
+          session_expires_at: string | null
+          session_hash: string | null
+          signed_at: string | null
+          signed_path: string | null
+          signed_sha256: string | null
+          signer_document: string
+          signer_email: string
+          signer_name: string
+          status: string
+          tenant_id: string
+          token_cipher: string | null
+          token_hash: string | null
+          total_attempts: number
+          verified_at: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_id: string
+          document_id: string
+          document_name: string
+          evidence?: Json | null
+          evidence_seal?: string | null
+          expires_at?: string | null
+          id?: string
+          original_path: string
+          original_sha256: string
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          otp_sends?: number
+          otp_sent_at?: string | null
+          session_expires_at?: string | null
+          session_hash?: string | null
+          signed_at?: string | null
+          signed_path?: string | null
+          signed_sha256?: string | null
+          signer_document?: string
+          signer_email?: string
+          signer_name: string
+          status?: string
+          tenant_id: string
+          token_cipher?: string | null
+          token_hash?: string | null
+          total_attempts?: number
+          verified_at?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          document_id?: string
+          document_name?: string
+          evidence?: Json | null
+          evidence_seal?: string | null
+          expires_at?: string | null
+          id?: string
+          original_path?: string
+          original_sha256?: string
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          otp_sends?: number
+          otp_sent_at?: string | null
+          session_expires_at?: string | null
+          session_hash?: string | null
+          signed_at?: string | null
+          signed_path?: string | null
+          signed_sha256?: string | null
+          signer_document?: string
+          signer_email?: string
+          signer_name?: string
+          status?: string
+          tenant_id?: string
+          token_cipher?: string | null
+          token_hash?: string | null
+          total_attempts?: number
+          verified_at?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signatures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "customer_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
+          ai_session_started_at: string | null
+          ai_typing_until: string | null
           created_at: string
           customer_id: string
           id: string
@@ -504,6 +669,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_session_started_at?: string | null
+          ai_typing_until?: string | null
           created_at?: string
           customer_id: string
           id?: string
@@ -516,6 +683,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_session_started_at?: string | null
+          ai_typing_until?: string | null
           created_at?: string
           customer_id?: string
           id?: string
@@ -797,9 +966,11 @@ export type Database = {
       }
       customers: {
         Row: {
+          address: string | null
           archived_at: string | null
           avatar_url: string | null
           birthday: string | null
+          city_state: string | null
           created_at: string
           created_by: string | null
           document: string | null
@@ -809,7 +980,10 @@ export type Database = {
           notes: string | null
           origin: string | null
           phone: string | null
+          postal_code: string | null
+          profession: string | null
           responsible_user_id: string | null
+          rg: string | null
           tags: string[]
           tenant_id: string
           updated_at: string
@@ -817,9 +991,11 @@ export type Database = {
           whatsapp_chat_id: string | null
         }
         Insert: {
+          address?: string | null
           archived_at?: string | null
           avatar_url?: string | null
           birthday?: string | null
+          city_state?: string | null
           created_at?: string
           created_by?: string | null
           document?: string | null
@@ -829,7 +1005,10 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          postal_code?: string | null
+          profession?: string | null
           responsible_user_id?: string | null
+          rg?: string | null
           tags?: string[]
           tenant_id: string
           updated_at?: string
@@ -837,9 +1016,11 @@ export type Database = {
           whatsapp_chat_id?: string | null
         }
         Update: {
+          address?: string | null
           archived_at?: string | null
           avatar_url?: string | null
           birthday?: string | null
+          city_state?: string | null
           created_at?: string
           created_by?: string | null
           document?: string | null
@@ -849,7 +1030,10 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          postal_code?: string | null
+          profession?: string | null
           responsible_user_id?: string | null
+          rg?: string | null
           tags?: string[]
           tenant_id?: string
           updated_at?: string
@@ -3288,6 +3472,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      ai_agenda_availability: {
+        Args: {
+          p_conversation_id: string
+          p_service_id: string
+          p_date: string
+          p_professional_user_id?: string
+        }
+        Returns: Json
+      }
       ai_agenda_book: {
         Args: {
           p_conversation_id: string
@@ -3684,6 +3877,13 @@ export type Database = {
         }
         Returns: string
       }
+      customer_fill_missing_from_contract: {
+        Args: {
+          p_customer_id: string
+          p_values: Json
+        }
+        Returns: number
+      }
       customer_purge: {
         Args: {
           p_customer_id: string
@@ -3723,6 +3923,12 @@ export type Database = {
             sales_count: number
             by_method: Json
           }[]
+      }
+      get_my_app_context: {
+        Args: {
+          p_preferred_tenant?: string
+        }
+        Returns: Json
       }
       get_my_permissions: {
         Args: {
@@ -4042,6 +4248,32 @@ export type Database = {
         }
         Returns: undefined
       }
+      signature_complete: {
+        Args: {
+          p_token_hash: string
+          p_session_hash: string
+          p_signed_path: string
+          p_signed_sha256: string
+          p_evidence: Json
+          p_seal: string
+        }
+        Returns: Json
+      }
+      signature_issue_code: {
+        Args: {
+          p_token_hash: string
+          p_otp_hash: string
+        }
+        Returns: Json
+      }
+      signature_verify_code: {
+        Args: {
+          p_token_hash: string
+          p_otp_hash: string
+          p_session_hash: string
+        }
+        Returns: Json
+      }
       update_tenant_user_role: {
         Args: {
           p_membership_id: string
@@ -4060,7 +4292,7 @@ export type Database = {
       whatsapp_receive_message: {
         Args: {
           p_tenant_id: string
-          p_whatsapp_number: string
+          p_whatsapp_number: string | null
           p_content?: string
           p_external_message_id?: string
           p_sender_name?: string

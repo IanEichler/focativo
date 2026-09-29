@@ -7,6 +7,7 @@ import type { OpportunityCard } from "@/domains/crm/queries";
 import type { ReservationListItem } from "@/domains/reservations/queries";
 import type { SaleListItem } from "@/domains/sales/queries";
 import { formatDate, formatMoney, initials } from "@/lib/format";
+import { contactPhone } from "../contact-identity";
 
 export function CustomerPanel({
   customer,
@@ -27,7 +28,11 @@ export function CustomerPanel({
           <AvatarFallback>{initials(customer.name)}</AvatarFallback>
         </Avatar>
         <p className="text-body font-semibold">{customer.name}</p>
-        <p className="text-small text-muted-foreground">{customer.phone ?? customer.whatsapp ?? "Sem telefone"}</p>
+        <p className="text-small text-muted-foreground">
+          {contactPhone(customer.whatsapp, customer.whatsappChatId) ??
+            contactPhone(customer.phone, customer.whatsappChatId) ??
+            "Telefone ainda não informado pelo WhatsApp"}
+        </p>
         {customer.email && <p className="text-small text-muted-foreground">{customer.email}</p>}
         <div className="mt-2 flex flex-wrap gap-1">
           {customer.tags.map((tag) => (

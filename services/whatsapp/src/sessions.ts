@@ -2,8 +2,10 @@ import fs from "node:fs";
 import QRCode from "qrcode";
 import pkg, { type Message } from "whatsapp-web.js";
 import { config } from "./config";
-import { ensureCountryCode, fromChatId, isGroupChatId, toChatId } from "./phone";
+import { fromChatId, toChatId } from "./phone";
+import { resolveContactPhone, resolveContactPhoto } from "./contact-info";
 import { postToApp } from "./webhook";
+import { sendTypingState } from "./typing";
 
 const { Client, LocalAuth } = pkg;
 type WWebClient = InstanceType<typeof Client>;
@@ -32,13 +34,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * getContactLidAndPhone falha de forma intermitente para o MESMO contato
- * (confirmado ao vivo, em produção: funciona numa mensagem e falha na
- * seguinte) — não é um contato "sem LID", é o cache interno da lib ainda não
- * pronto no instante exato em que o evento de mensagem dispara. Tenta mais
- * algumas vezes com um respiro curto antes de desistir e cair no fallback.
- */
+/** Retry transient gaps in the WhatsApp contact cache. */
 async function resolveLidPhoneWithRetry(
   client: WWebClient,
   lidChatId: string,
@@ -47,43 +43,28 @@ async function resolveLidPhoneWithRetry(
 ): Promise<string | null> {
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (attempt > 0) await sleep(delayMs);
-    const lookup = await client.getContactLidAndPhone([lidChatId]).catch(() => []);
-    if (lookup[0]?.pn) return fromChatId(lookup[0].pn);
+    const phone = await resolveContactPhone(client, lidChatId);
+    if (phone) return phone;
   }
   return null;
 }
 
-/**
- * Quando nem o retry na hora resolve, o primeiro contato de um cliente novo
- * nasce com o número de fallback (dígitos crus do pseudo-ID) — e sem uma
- * segunda mensagem desse contato, nada corrigia isso depois. Uma única
- * tentativa ~12s mais tarde (versão antiga) não bastava: confirmado ao vivo
- * em produção que o cache interno da lib pra um contato "@lid" totalmente
- * novo pode demorar bem mais que isso pra ficar pronto. Em vez de adivinhar
- * um atraso fixo, insiste em rodadas com espaçamento crescente por alguns
- * minutos — cada rodada só reagenda a próxima se a anterior ainda não
- * resolveu nada melhor — e desiste de vez só depois da última rodada.
- * Nunca bloqueia a entrega da mensagem original, que já foi postada antes
- * desta chamada.
- */
+/** Resolve missing phones without storing the opaque ID as a number. */
 const CORRECTION_RETRY_DELAYS_MS = [12_000, 20_000, 40_000, 80_000, 160_000];
 
 function scheduleDelayedCorrection(
   tenantId: string,
   client: WWebClient,
   lidChatId: string,
-  badNumber: string,
+  badNumber: string | null,
   round = 0,
 ): void {
   if (round >= CORRECTION_RETRY_DELAYS_MS.length) return;
   setTimeout(() => {
     void (async () => {
-      const better = await resolveLidPhoneWithRetry(client, lidChatId, 3, 1500);
-      const fixed = better ? ensureCountryCode(better) : null;
+      const fixed = await resolveLidPhoneWithRetry(client, lidChatId, 3, 1500);
       if (fixed && fixed !== badNumber) {
-        console.warn(
-          `[whatsapp-service] número corrigido em segundo plano (chatId=${lidChatId}, rodada=${round}): ${fixed}`,
-        );
+        console.warn(`[whatsapp-service] telefone resolvido em segundo plano (rodada=${round})`);
         await postToApp({ event: "chat_id_resolved", tenantId, whatsappChatId: lidChatId, whatsappNumber: fixed });
         return;
       }
@@ -150,36 +131,16 @@ export async function connectSession(tenantId: string): Promise<void> {
   client.on("message", (message: Message) => {
     void (async () => {
       if (message.fromMe) return;
-      // Mensagem de grupo: message.from é o ID do GRUPO, nunca o do remetente
-      // individual (quem mandou de fato fica em message.author, nunca lido
-      // aqui) — tratar isso como telefone de cliente produz lixo, e todo
-      // membro do grupo cairia no mesmo "cliente" (confirmado ao vivo em
-      // produção). Este app é de atendimento individual; grupo nunca vira
-      // cliente/conversa.
-      if (isGroupChatId(message.from)) return;
-      // Prioriza o número real resolvido pela lib: desde a migração do WhatsApp
-      // para IDs "@lid" (privacidade), message.from pode ser um pseudo-ID sem
-      // relação com o telefone — extrair dígitos dele produz lixo. Para a
-      // maioria dos contatos, contact.number já resolve certo (caminho
-      // rápido); alguns contatos "@lid" nunca preenchem contact.number
-      // (confirmado ao vivo — não é questão de tempo/retry), mas
-      // getContactLidAndPhone, a API dedicada da lib pra essa conversão,
-      // resolve o telefone real mesmo assim.
+      if (!/^\d+@(?:c\.us|lid)$/.test(message.from)) return;
       const contact = await message.getContact().catch(() => null);
-      let resolvedNumber = contact?.number || null;
-      if (!resolvedNumber) {
-        resolvedNumber = await resolveLidPhoneWithRetry(client, message.from);
-      }
-      const whatsappNumber = ensureCountryCode(resolvedNumber || fromChatId(message.from));
-      if (!resolvedNumber) {
-        console.warn(
-          `[whatsapp-service] recebimento sem número resolvido (chatId=${message.from}), usando fallback=${whatsappNumber} — correção em segundo plano agendada`,
-        );
-      }
+      // contact.number can contain the LID itself. Never use it as a phone.
+      const whatsappNumber = fromChatId(message.from) || (await resolveLidPhoneWithRetry(client, message.from));
+      const profilePicUrl = await resolveContactPhoto(client, message.from, whatsappNumber);
       await postToApp({
         event: "message",
         tenantId,
         whatsappNumber,
+        profilePicUrl,
         // Guardado à parte do telefone e reusado para responder: reconstruir
         // um endereço a partir só do telefone (toChatId/getNumberId) falha
         // silenciosamente ("No LID for user") para contatos migrados para
@@ -192,7 +153,7 @@ export async function connectSession(tenantId: string): Promise<void> {
         mediaType: message.hasMedia ? message.type : undefined,
       });
 
-      if (!resolvedNumber) {
+      if (!whatsappNumber) {
         scheduleDelayedCorrection(tenantId, client, message.from, whatsappNumber);
       }
     })();
@@ -233,6 +194,18 @@ export async function disconnectSession(tenantId: string): Promise<void> {
   await session.client.logout().catch(() => session.client.destroy());
 }
 
+/** Stops browser workers during a restart while keeping their LocalAuth files. */
+export async function stopSessions(): Promise<void> {
+  const active = [...sessions.values()];
+  sessions.clear();
+  await Promise.allSettled(
+    active.map(async ({ client }) => {
+      client.removeAllListeners();
+      await client.destroy();
+    }),
+  );
+}
+
 function requireConnectedClient(tenantId: string): WWebClient {
   const session = sessions.get(tenantId);
   if (!session || session.state.status !== "CONNECTED") {
@@ -271,6 +244,12 @@ export async function sendText(tenantId: string, to: string, text: string, chatI
   return externalIdOf(sent);
 }
 
+export async function setTyping(tenantId: string, to: string, typing: boolean, chatId?: string): Promise<void> {
+  const client = requireConnectedClient(tenantId);
+  const target = chatId || (await resolveChatId(client, to));
+  await sendTypingState(client, target, typing);
+}
+
 export async function sendMedia(
   tenantId: string,
   to: string,
@@ -296,11 +275,11 @@ export async function getContactInfo(
   tenantId: string,
   phone: string,
   chatId?: string,
-): Promise<{ name?: string; profilePicUrl?: string } | null> {
+): Promise<{ name?: string; profilePicUrl?: string; phoneNumber: string | null }> {
   const client = requireConnectedClient(tenantId);
   const target = chatId || (await resolveChatId(client, phone));
   const contact = await client.getContactById(target).catch(() => null);
-  if (!contact) return null;
-  const profilePicUrl = await contact.getProfilePicUrl().catch(() => undefined);
-  return { name: contact.pushname || contact.name || undefined, profilePicUrl };
+  const phoneNumber = await resolveLidPhoneWithRetry(client, target);
+  const profilePicUrl = await resolveContactPhoto(client, target, phoneNumber);
+  return { name: contact?.pushname || contact?.name || undefined, profilePicUrl, phoneNumber };
 }

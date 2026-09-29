@@ -40,6 +40,7 @@ export async function getDocumentTemplate(
     .select("id, name, file_path, fields, created_at")
     .eq("tenant_id", context.tenant.id)
     .eq("id", templateId)
+    .eq("is_active", true)
     .maybeSingle();
   if (!data) return null;
 

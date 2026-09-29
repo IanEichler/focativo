@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { contactPhone } from "@/domains/whatsapp/contact-identity";
 import { runAiTurn } from "@/domains/ai/agent";
 import { getServerEnv } from "@/lib/env.server";
 import { logger } from "@/lib/logger";
@@ -23,7 +24,8 @@ interface WhatsAppWebhookPayload {
   qrCode?: string;
   phoneNumber?: string;
   reason?: string;
-  whatsappNumber?: string;
+  whatsappNumber?: string | null;
+  profilePicUrl?: string;
   whatsappChatId?: string;
   content?: string;
   externalMessageId?: string;
@@ -62,12 +64,16 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   if (event === "message") {
-    if (!payload.whatsappNumber) return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     // Segunda camada contra mensagem de grupo (a primeira é o serviço de
     // WhatsApp, que já nem deveria mandar isso) — nunca confiar só na origem.
     if (payload.whatsappChatId?.endsWith("@g.us")) {
       logger.info({ event: "webhook.whatsapp", status: "ignored_group", tenant_id: tenantId });
       return NextResponse.json({ ok: true });
+    }
+
+    const phone = contactPhone(payload.whatsappNumber, payload.whatsappChatId);
+    if (!phone && !/^\d+@(?:lid|c\.us)$/.test(payload.whatsappChatId ?? "")) {
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     }
 
     // whatsapp_receive_message é idempotente por external_message_id (uma
@@ -90,7 +96,7 @@ export async function POST(request: Request) {
 
     const { data: messageId, error } = await admin.rpc("whatsapp_receive_message", {
       p_tenant_id: tenantId,
-      p_whatsapp_number: payload.whatsappNumber,
+      p_whatsapp_number: phone,
       p_content: payload.content ?? undefined,
       p_external_message_id: payload.externalMessageId ?? undefined,
       p_sender_name: payload.senderName ?? undefined,
@@ -101,6 +107,15 @@ export async function POST(request: Request) {
     if (error) {
       logger.warn({ event: "webhook.whatsapp", status: "error", code: error.message, tenant_id: tenantId });
       return NextResponse.json({ error: error.message }, { status: 422 });
+    }
+    if (payload.profilePicUrl && payload.whatsappChatId) {
+      const { error: photoError } = await admin
+        .from("customers")
+        .update({ avatar_url: payload.profilePicUrl })
+        .eq("tenant_id", tenantId)
+        .eq("whatsapp_chat_id", payload.whatsappChatId)
+        .is("archived_at", null);
+      if (photoError) logger.warn({ event: "whatsapp.avatar_refresh", status: "error", code: photoError.code });
     }
     logger.info({ event: "webhook.whatsapp", status: "ok", tenant_id: tenantId, webhook_event: event });
 
@@ -117,13 +132,14 @@ export async function POST(request: Request) {
   }
 
   if (event === "chat_id_resolved") {
-    if (!payload.whatsappChatId || !payload.whatsappNumber) {
+    const phone = contactPhone(payload.whatsappNumber, payload.whatsappChatId);
+    if (!payload.whatsappChatId || !phone) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     }
     const { error } = await admin.rpc("whatsapp_correct_number", {
       p_tenant_id: tenantId,
       p_whatsapp_chat_id: payload.whatsappChatId,
-      p_whatsapp_number: payload.whatsappNumber,
+      p_whatsapp_number: phone,
     });
     if (error) {
       logger.warn({ event: "webhook.whatsapp", status: "error", code: error.message, tenant_id: tenantId });

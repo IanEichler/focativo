@@ -1,5 +1,7 @@
 "use server";
 
+import type { GenerateDocumentState } from "./state";
+
 import { revalidatePath } from "next/cache";
 import { getCustomerDetail } from "@/domains/customers/queries";
 import { requireTenantContext, type TenantContext } from "@/domains/tenants/context";
@@ -9,10 +11,16 @@ import { CUSTOMER_DOCUMENTS_BUCKET, DOCUMENT_TEMPLATES_BUCKET, DOCX_MAX_BYTES, D
 import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, validationError } from "@/lib/validation";
 import { mapKnownFields } from "./field-mapping";
+import { contractFieldError } from "./field-format";
+import { customerProfileValues } from "./customer-profile-fields";
+import { convertDocxToPdf } from "./convert-to-pdf";
 import { fillTemplate } from "./fill-template";
 import { getDocumentTemplate, getTenantFieldsForDocument } from "./queries";
 import { generateDocumentSchema, uploadTemplateSchema, type UploadTemplateField } from "./schemas";
 import { extractPlaceholders } from "./template-parser";
+import { saveSigningSnapshot } from "@/domains/signatures/snapshot";
+import { createSignatureLinkAction } from "@/domains/signatures/actions";
+import { signingReadiness } from "@/domains/signatures/security";
 
 const DOCUMENTS_PATH = "/app/documentos";
 
@@ -26,7 +34,9 @@ export async function uploadDocumentTemplateAction(
   formData: FormData,
 ): Promise<ActionState<UploadTemplateField>> {
   const context = await requireTenantContext();
-  if (!context.can("documents.write")) return denied(context, "document_template.upload");
+  if (!context.hasModule("documents") || !context.can("documents.write")) {
+    return denied(context, "document_template.upload");
+  }
 
   const input = formDataToObject(formData);
   const parsed = uploadTemplateSchema.safeParse(input);
@@ -83,7 +93,9 @@ export async function uploadDocumentTemplateAction(
 
 export async function archiveDocumentTemplateAction(templateId: string): Promise<ActionState> {
   const context = await requireTenantContext();
-  if (!context.can("documents.write")) return denied(context, "document_template.archive");
+  if (!context.hasModule("documents") || !context.can("documents.write")) {
+    return denied(context, "document_template.archive");
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("document_template_archive", { p_template_id: templateId });
@@ -121,6 +133,11 @@ async function computeFieldPreview(
       email: customer.email,
       document: customer.document,
       birthday: customer.birthday,
+      rg: customer.rg,
+      profession: customer.profession,
+      address: customer.address,
+      city_state: customer.city_state,
+      postal_code: customer.postal_code,
     },
     tenantFields,
   );
@@ -131,38 +148,54 @@ export async function previewDocumentFieldsAction(
   customerId: string,
 ): Promise<FieldPreview | { error: string }> {
   const context = await requireTenantContext();
-  if (!context.can("documents.read")) return { error: "Sem permissão." };
+  if (!context.hasModule("documents") || !context.can("documents.read")) return { error: "Sem permissão." };
   return computeFieldPreview(context, templateId, customerId);
 }
-
-export type GenerateDocumentState =
-  | { status: "idle" }
-  | { status: "error"; message: string }
-  | { status: "success"; fileBase64: string; fileName: string };
-
-export const GENERATE_IDLE: GenerateDocumentState = { status: "idle" };
 
 export async function generateDocumentAction(
   _prev: GenerateDocumentState,
   formData: FormData,
 ): Promise<GenerateDocumentState> {
   const context = await requireTenantContext();
-  if (!context.can("documents.write")) return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  if (!context.hasModule("documents") || !context.can("documents.write")) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
 
   const parsed = generateDocumentSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) return { status: "error", message: "Selecione o modelo e o cliente." };
   const { templateId, customerId, saveToProfile } = parsed.data;
 
-  const [template, preview] = await Promise.all([
+  const [template, preview, customer] = await Promise.all([
     getDocumentTemplate(context, templateId),
     computeFieldPreview(context, templateId, customerId),
+    getCustomerDetail(context, customerId),
   ]);
   if (!template) return { status: "error", message: "Modelo não encontrado." };
   if ("error" in preview) return { status: "error", message: preview.error };
+  if (!customer) return { status: "error", message: "Cliente não encontrado." };
 
-  const data: Record<string, string> = { ...preview.autoFilled };
-  for (const field of preview.remaining) {
-    data[field] = String(formData.get(`field_${field}`) ?? "");
+  const data: Record<string, string> = {};
+  for (const field of template.fields) {
+    const value = String(formData.get(`field_${field}`) ?? preview.autoFilled[field] ?? "").trim();
+    if (value.length > 2000) return { status: "error", message: `O campo ${field} está muito longo.` };
+    const fieldError = contractFieldError(field, value);
+    if (fieldError) return { status: "error", message: `${field.replaceAll("_", " ")}: ${fieldError}` };
+    data[field] = value;
+  }
+  if (template.fields.includes("data_assinatura") && !data.data_assinatura) data.data_assinatura = "____/____/______";
+  if (template.fields.includes("data_assinatura_extenso") && !data.data_assinatura_extenso) {
+    data.data_assinatura_extenso = "____ de __________ de ______";
+  }
+  let profileValues: Record<string, string> = {};
+  if (context.can("customers.write")) {
+    try {
+      profileValues = customerProfileValues(data, customer);
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Confira os dados pessoais da cliente.",
+      };
+    }
   }
 
   const supabase = await createClient();
@@ -180,8 +213,10 @@ export async function generateDocumentAction(
   }
 
   let outputBuffer: Buffer;
+  let pdfBuffer: Buffer;
   try {
     outputBuffer = fillTemplate(Buffer.from(await templateFile.arrayBuffer()), data);
+    pdfBuffer = await convertDocxToPdf(outputBuffer);
   } catch (renderError) {
     logger.warn({
       event: "document.generate",
@@ -189,43 +224,136 @@ export async function generateDocumentAction(
       tenant_id: context.tenant.id,
       code: String(renderError),
     });
-    return { status: "error", message: "Não foi possível preencher esse modelo. Confira os campos do documento." };
+    return {
+      status: "error",
+      message: "Não foi possível gerar o contrato em DOCX e PDF. Confira o modelo e o conversor de PDF do servidor.",
+    };
   }
 
   const fileName = `${template.name}.docx`;
+  let signatureDocumentId: string | undefined;
+  let signatureUrl: string | undefined;
+  let signatureWarning: string | undefined;
 
   if (saveToProfile) {
     const path = `${context.tenant.id}/${customerId}/${crypto.randomUUID()}.docx`;
     const { error: uploadError } = await supabase.storage
       .from(CUSTOMER_DOCUMENTS_BUCKET)
       .upload(path, outputBuffer, { contentType: DOCX_MIME_TYPE, upsert: false });
-    if (!uploadError) {
-      const { error: rpcError } = await supabase.rpc("customer_document_create", {
-        p_customer_id: customerId,
-        p_template_id: templateId,
-        p_name: fileName,
-        p_file_path: path,
+    if (uploadError) {
+      logger.warn({
+        event: "document.generate_save",
+        status: "error",
+        tenant_id: context.tenant.id,
+        code: uploadError.name,
       });
-      if (rpcError) {
-        await supabase.storage.from(CUSTOMER_DOCUMENTS_BUCKET).remove([path]);
-        logger.warn({
-          event: "document.generate_save",
-          status: "error",
-          tenant_id: context.tenant.id,
-          code: rpcError.message,
-        });
-      } else {
-        revalidatePath(`/app/clientes/${customerId}`);
+      return { status: "error", message: "Não foi possível salvar o contrato no perfil da cliente." };
+    }
+    const { data: savedDocumentId, error: rpcError } = await supabase.rpc("customer_document_create", {
+      p_customer_id: customerId,
+      p_template_id: templateId,
+      p_name: fileName,
+      p_file_path: path,
+    });
+    if (rpcError) {
+      await supabase.storage.from(CUSTOMER_DOCUMENTS_BUCKET).remove([path]);
+      logger.warn({
+        event: "document.generate_save",
+        status: "error",
+        tenant_id: context.tenant.id,
+        code: rpcError.message,
+      });
+      return { status: "error", message: "Não foi possível salvar o contrato no perfil da cliente." };
+    }
+    if (savedDocumentId) {
+      try {
+        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer);
+        signatureDocumentId = savedDocumentId;
+        if (!signingReadiness()) {
+          const link = await createSignatureLinkAction(savedDocumentId);
+          if (link.status === "success") signatureUrl = link.url;
+          else signatureWarning = link.message;
+        }
+      } catch {
+        signatureWarning = "O contrato foi salvo, mas não foi possível preparar a assinatura eletrônica. Os downloads continuam disponíveis.";
       }
+    }
+    revalidatePath(`/app/clientes/${customerId}`);
+  }
+
+  let profileMessage: string | undefined;
+  let profileWarning = false;
+  if (!context.can("customers.write")) {
+    profileMessage = "O contrato foi gerado, mas seu acesso não permite completar o cadastro da cliente.";
+    profileWarning = true;
+  } else if (Object.keys(profileValues).length) {
+    const { data: updatedCount, error: profileError } = await supabase.rpc("customer_fill_missing_from_contract", {
+      p_customer_id: customerId,
+      p_values: profileValues,
+    });
+    if (profileError) {
+      logger.warn({ event: "document.customer_profile_fill", tenant_id: context.tenant.id, code: profileError.code });
+      profileMessage = `Contrato gerado. Não foi possível completar o perfil da cliente: ${toUserMessage(profileError)}`;
+      profileWarning = true;
+    } else if (updatedCount) {
+      profileMessage = "Os dados pessoais que estavam vazios foram salvos no perfil da cliente.";
+      revalidatePath(`/app/clientes/${customerId}`);
+      revalidatePath("/app/clientes");
+      revalidatePath("/app/atendimento", "layout");
     }
   }
 
-  return { status: "success", fileBase64: outputBuffer.toString("base64"), fileName };
+  return {
+    status: "success",
+    docxBase64: outputBuffer.toString("base64"),
+    pdfBase64: pdfBuffer.toString("base64"),
+    fileName,
+    profileMessage,
+    profileWarning,
+    signatureDocumentId,
+    signatureUrl,
+    signatureWarning,
+  };
+}
+
+export async function getCustomerDocumentPdfAction(
+  documentId: string,
+): Promise<{ status: "success"; fileBase64: string; fileName: string } | { status: "error" }> {
+  const context = await requireTenantContext();
+  if (!context.can("documents.read") || !context.hasModule("documents")) return { status: "error" };
+
+  const supabase = await createClient();
+  const { data: document } = await supabase
+    .from("customer_documents")
+    .select("name, file_path")
+    .eq("tenant_id", context.tenant.id)
+    .eq("id", documentId)
+    .maybeSingle();
+  if (!document) return { status: "error" };
+
+  const { data: file, error } = await supabase.storage.from(CUSTOMER_DOCUMENTS_BUCKET).download(document.file_path);
+  if (error || !file) return { status: "error" };
+  try {
+    const pdf = await convertDocxToPdf(Buffer.from(await file.arrayBuffer()));
+    return {
+      status: "success",
+      fileBase64: pdf.toString("base64"),
+      fileName: document.name.replace(/\.docx$/i, ".pdf"),
+    };
+  } catch (conversionError) {
+    logger.warn({
+      event: "document.download_pdf",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: String(conversionError),
+    });
+    return { status: "error" };
+  }
 }
 
 export async function getCustomerDocumentDownloadUrlAction(documentId: string): Promise<string | null> {
   const context = await requireTenantContext();
-  if (!context.can("documents.read")) return null;
+  if (!context.can("documents.read") || !context.hasModule("documents")) return null;
 
   const supabase = await createClient();
   const { data: doc } = await supabase
@@ -236,7 +364,9 @@ export async function getCustomerDocumentDownloadUrlAction(documentId: string): 
     .maybeSingle();
   if (!doc) return null;
 
-  const { data, error } = await supabase.storage.from(CUSTOMER_DOCUMENTS_BUCKET).createSignedUrl(doc.file_path, 60);
+  const { data, error } = await supabase.storage
+    .from(CUSTOMER_DOCUMENTS_BUCKET)
+    .createSignedUrl(doc.file_path, 60, { download: true });
   if (error || !data) return null;
   return data.signedUrl;
 }

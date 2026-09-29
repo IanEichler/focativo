@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AIToolResult } from "./provider";
 import type { Database } from "@/types/database.types";
+import { z } from "zod";
+import { appointmentServiceLabel, EVALUATION_PREFIX } from "@/domains/agenda/attendance";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -35,6 +37,19 @@ export async function executeTool(
         return { toolUseId, content: JSON.stringify(await listProfessionals(admin, context.tenantId)) };
       case "consultar_horario_atendimento":
         return { toolUseId, content: JSON.stringify(await listBusinessHours(admin, context.tenantId)) };
+      case "consultar_disponibilidade": {
+        const parsed = z
+          .object({ service_id: z.uuid(), data: z.iso.date(), professional_user_id: z.uuid().optional() })
+          .parse(input);
+        const { data, error } = await admin.rpc("ai_agenda_availability", {
+          p_conversation_id: context.conversationId,
+          p_service_id: parsed.service_id,
+          p_date: parsed.data,
+          p_professional_user_id: parsed.professional_user_id,
+        });
+        if (error) throw new Error(error.message);
+        return { toolUseId, content: JSON.stringify(data) };
+      }
       case "consultar_perguntas_frequentes":
         return { toolUseId, content: JSON.stringify(await listFaq(admin, context.tenantId)) };
       case "criar_agendamento":
@@ -121,10 +136,12 @@ async function listProfessionals(admin: AdminClient, tenantId: string) {
     .eq("tenant_id", tenantId)
     .eq("status", "ACTIVE");
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
-    professional_user_id: row.user_id,
-    name: row.profile?.full_name || "Profissional",
-  }));
+  return (data ?? [])
+    .filter((row) => row.profile?.full_name?.trim())
+    .map((row) => ({
+      professional_user_id: row.user_id,
+      name: row.profile!.full_name!.trim(),
+    }));
 }
 
 const DAY_LABELS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -155,6 +172,9 @@ async function listFaq(admin: AdminClient, tenantId: string) {
 }
 
 async function bookAppointment(admin: AdminClient, conversationId: string, input: Record<string, unknown>) {
+  const kind = z.enum(["avaliacao", "procedimento"]).default("procedimento").parse(input.tipo_atendimento);
+  const rawNotes = typeof input.observacoes === "string" ? input.observacoes.trim() : "";
+  const notes = kind === "avaliacao" ? `${EVALUATION_PREFIX} ${rawNotes}`.trim() : rawNotes;
   if (
     typeof input.service_id !== "string" ||
     typeof input.professional_user_id !== "string" ||
@@ -163,14 +183,17 @@ async function bookAppointment(admin: AdminClient, conversationId: string, input
     throw new Error("dados incompletos para o agendamento");
   }
   const startsAt = new Date(input.data_hora);
-  if (Number.isNaN(startsAt.getTime())) throw new Error("data_hora inválida");
+  if (Number.isNaN(startsAt.getTime()) || !/(Z|[+-]\d{2}:\d{2})$/.test(input.data_hora))
+    throw new Error(
+      "data_hora inválida: use o starts_at exato retornado por consultar_disponibilidade, com fuso horário.",
+    );
 
   const { data, error } = await admin.rpc("ai_agenda_book", {
     p_conversation_id: conversationId,
     p_service_id: input.service_id,
     p_professional_user_id: input.professional_user_id,
     p_starts_at: startsAt.toISOString(),
-    p_notes: typeof input.observacoes === "string" ? input.observacoes : undefined,
+    p_notes: notes || undefined,
   });
   if (error) {
     // ai_agenda_book só recusa — nunca escreve nada na mesma chamada que
@@ -179,15 +202,60 @@ async function bookAppointment(admin: AdminClient, conversationId: string, input
     // marcador de "pendente" e escala pro humano é este código aqui, em
     // chamadas separadas que de fato commitam.
     if (error.message === "human_confirmation_required") {
-      await admin.rpc("ai_upsert_conversation_state", {
+      const { error: stateError } = await admin.rpc("ai_upsert_conversation_state", {
         p_conversation_id: conversationId,
         p_turn_count: 0,
-        p_draft_items: JSON.stringify([{ type: "appointment_pending", human_cleared: false }]),
+        p_draft_items: [
+          {
+            type: "appointment_pending",
+            human_cleared: false,
+            service_id: input.service_id,
+            professional_user_id: input.professional_user_id,
+            starts_at: startsAt.toISOString(),
+            notes: typeof input.observacoes === "string" ? input.observacoes : null,
+          },
+        ],
       });
-      await escalate(admin, conversationId, { motivo: "Agendamento pendente de confirmação humana antes de marcar." });
+      if (stateError) throw new Error(stateError.message);
+      await escalate(admin, conversationId, {
+        motivo: `Pedido de agendamento para ${input.data_hora}, pendente de confirmação humana. Detalhes preservados no estado da conversa. ${typeof input.observacoes === "string" ? input.observacoes : ""}`,
+      });
       return { pending_human_confirmation: true };
     }
-    throw new Error(error.message);
+    const reasons: Record<string, string> = {
+      outside_business_hours:
+        "Esse horário fica fora do expediente ou não comporta a duração do serviço. Consulte consultar_disponibilidade e ofereça outra vaga; não confirme nem transfira para humano.",
+      slot_unavailable:
+        "Esse horário já está ocupado. Consulte consultar_disponibilidade novamente e ofereça outra vaga, sem transferir para humano.",
+      professional_unavailable:
+        "A profissional está indisponível nesse dia. Consulte outra data, preservando as preferências da cliente.",
+      hours_not_configured:
+        "Os horários de funcionamento ainda não foram cadastrados. Não há vaga autorizada para confirmar.",
+      invalid_date: "A data não é válida para agendar. Consulte uma data futura.",
+    };
+    throw new Error(reasons[error.message] ?? error.message);
   }
-  return { appointment_id: data };
+  if (!data) throw new Error("O agendamento não foi gravado. Não confirme um horário.");
+  const { data: receipt } = await admin
+    .from("agenda_appointments")
+    .select(
+      "starts_at, notes, service:agenda_services(name), professional:profiles!agenda_appointments_professional_user_id_fkey(full_name), tenant:tenants(timezone)",
+    )
+    .eq("id", data)
+    .maybeSingle();
+  const when = receipt
+    ? new Intl.DateTimeFormat("pt-BR", {
+        timeZone: receipt.tenant?.timezone || "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(receipt.starts_at))
+    : null;
+  return {
+    appointment_id: data,
+    confirmation_text: when
+      ? `Agendamento confirmado: ${appointmentServiceLabel(receipt!.service?.name ?? "atendimento", receipt!.notes)}, ${when}${receipt!.professional?.full_name ? `, com ${receipt!.professional.full_name}` : ""}.`
+      : "Seu agendamento foi realizado.",
+  };
 }

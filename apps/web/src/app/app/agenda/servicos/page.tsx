@@ -1,4 +1,4 @@
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Pencil, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
 import { MoneyValue } from "@/components/data/money-value";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessHoursCard } from "@/domains/agenda/components/business-hours-card";
 import { ProfessionalExceptionsCard } from "@/domains/agenda/components/professional-exceptions-card";
-import { ServiceFormSheet } from "@/domains/agenda/components/service-form";
+import { ServiceFormDialog } from "@/domains/agenda/components/service-form";
 import { getBusinessHours, getProfessionalExceptions, listServices, type ServiceRow } from "@/domains/agenda/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { listTenantMembers } from "@/domains/users/queries";
@@ -43,46 +43,32 @@ export default async function AgendaServicesPage() {
     {
       id: "name",
       header: "Serviço",
+      className: "whitespace-normal",
       cell: (service) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{service.name}</span>
+        <div className="flex min-w-0 flex-col gap-2 py-1">
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0 font-medium wrap-anywhere">{service.name}</span>
+            <ServiceFormDialog
+              professionals={professionals}
+              service={service}
+              trigger={
+                <Button variant="outline" size="sm" className="shrink-0" aria-label={`Editar serviço: ${service.name}`}>
+                  <Pencil /> Editar serviço
+                </Button>
+              }
+            />
+          </div>
           {service.description && (
-            <span className="truncate text-small text-muted-foreground">{service.description}</span>
+            <p className="text-small wrap-anywhere whitespace-pre-line text-muted-foreground">{service.description}</p>
           )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-small">
+            <span className="text-muted-foreground">{formatQuantity(service.durationMinutes, "min")}</span>
+            <MoneyValue value={service.price} />
+            <StatusBadge tone={service.isActive ? "success" : "neutral"}>
+              {service.isActive ? "Ativo" : "Inativo"}
+            </StatusBadge>
+          </div>
         </div>
-      ),
-    },
-    {
-      id: "duration",
-      header: "Duração",
-      cell: (service) => (
-        <span className="text-muted-foreground">{formatQuantity(service.durationMinutes, "min")}</span>
-      ),
-    },
-    { id: "price", header: "Preço", align: "right", cell: (service) => <MoneyValue value={service.price} /> },
-    {
-      id: "status",
-      header: "Situação",
-      cell: (service) => (
-        <StatusBadge tone={service.isActive ? "success" : "neutral"}>
-          {service.isActive ? "Ativo" : "Inativo"}
-        </StatusBadge>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      align: "right",
-      cell: (service) => (
-        <ServiceFormSheet
-          professionals={professionals}
-          service={service}
-          trigger={
-            <Button variant="ghost" size="sm">
-              Editar
-            </Button>
-          }
-        />
       ),
     },
   ];
@@ -102,7 +88,7 @@ export default async function AgendaServicesPage() {
 
         <TabsContent value="servicos" className="flex flex-col gap-4">
           <div className="flex justify-end">
-            <ServiceFormSheet
+            <ServiceFormDialog
               professionals={professionals}
               trigger={
                 <Button>
@@ -112,6 +98,7 @@ export default async function AgendaServicesPage() {
             />
           </div>
           <DataTable
+            className="[&_table]:table-fixed"
             caption="Serviços"
             columns={columns}
             rows={services}
@@ -123,7 +110,7 @@ export default async function AgendaServicesPage() {
                 title="Nenhum serviço cadastrado"
                 description="Cadastre os serviços que podem ser agendados pelos clientes."
                 action={
-                  <ServiceFormSheet
+                  <ServiceFormDialog
                     professionals={professionals}
                     trigger={
                       <Button>

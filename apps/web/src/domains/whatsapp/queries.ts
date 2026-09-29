@@ -62,13 +62,13 @@ export async function listConversations(
   let query = supabase
     .from("conversations")
     .select(
-      "id, customer_id, status, unread_count, last_message_at, last_message_preview, customer:customers(name, avatar_url), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
+      "id, customer_id, status, unread_count, last_message_at, last_message_preview, customer:customers!inner(name, avatar_url), responsible:profiles!conversations_responsible_user_id_fkey(full_name)",
     )
     .eq("tenant_id", context.tenant.id);
 
   query = params.closed ? query.eq("status", "CLOSED") : query.neq("status", "CLOSED");
   if (params.unreadOnly) query = query.gt("unread_count", 0);
-  if (params.query) query = query.ilike("customer.name", `%${params.query}%`);
+  if (params.query) query = query.ilike("customer.name", `%${params.query.replace(/[\\%_]/g, (char) => `\\${char}`)}%`);
 
   const { data, error } = await query.order("last_message_at", { ascending: false, nullsFirst: false });
   if (error) throw new Error(`listConversations failed: ${error.code}`);

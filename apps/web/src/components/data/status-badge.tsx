@@ -11,6 +11,7 @@ const statusBadgeVariants = cva(
         warning: "bg-warning-soft text-warning",
         danger: "bg-danger-soft text-danger",
         info: "bg-info-soft text-info",
+        violet: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
         brand: "bg-brand-50 text-brand-700 dark:bg-brand-900/60 dark:text-brand-300",
       },
     },

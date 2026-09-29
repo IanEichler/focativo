@@ -118,7 +118,7 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
   });
 
   it("matches an existing customer by whatsapp_chat_id even when the resolved number is wrong or unstable, instead of creating a duplicate", async () => {
-    const chatId = "555111222@lid";
+    const chatId = "30447375491177@lid";
     const [first] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
       p_tenant_id: tenantId,
       p_whatsapp_number: "30447375491177", // resolução de LID falhou: caiu no fallback (dígitos crus)
@@ -150,7 +150,7 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     // degradar o telefone bom que já está salvo.
     await db.admin.rpc("whatsapp_receive_message", {
       p_tenant_id: tenantId,
-      p_whatsapp_number: "99988877766655",
+      p_whatsapp_number: "30447375491177",
       p_content: "Oi de novo de novo",
       p_external_message_id: "wa-dedupe-3",
       p_whatsapp_chat_id: chatId,
@@ -186,8 +186,8 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
     expect(customer!.whatsapp).toBe("5511988884444");
   });
 
-  it("whatsapp_correct_number never downgrades an already-good number, and does nothing for an unknown chat id", async () => {
-    const chatId = "888333222@lid";
+  it("whatsapp_correct_number rejects a LID and does nothing for an unknown chat id", async () => {
+    const chatId = "99988877766655@lid";
     await db.admin.rpc("whatsapp_receive_message", {
       p_tenant_id: tenantId,
       p_whatsapp_number: "5511922223333",
@@ -196,11 +196,13 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       p_whatsapp_chat_id: chatId,
     });
 
-    await db.admin.rpc("whatsapp_correct_number", {
-      p_tenant_id: tenantId,
-      p_whatsapp_chat_id: chatId,
-      p_whatsapp_number: "99988877766655", // parece pior (mais dígitos) — não deve trocar
-    });
+    await expect(
+      db.admin.rpc("whatsapp_correct_number", {
+        p_tenant_id: tenantId,
+        p_whatsapp_chat_id: chatId,
+        p_whatsapp_number: "99988877766655",
+      }),
+    ).rejects.toThrow("invalid_whatsapp_number");
     const [customer] = await db.admin.query<{ whatsapp: string }>(
       "select whatsapp from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
       [tenantId, chatId],
@@ -218,6 +220,51 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       [tenantId, "999999999@lid"],
     );
     expect(orphan).toHaveLength(0);
+  });
+
+  it("receives and replies to an unresolved LID, then repairs a phone-sized legacy ID", async () => {
+    const chatId = "12345678901@lid";
+    const args = {
+      p_tenant_id: tenantId,
+      p_whatsapp_number: null,
+      p_whatsapp_chat_id: chatId,
+      p_content: "Oi",
+      p_external_message_id: "unresolved-lid",
+    };
+    const first = await db.service.rpc("whatsapp_receive_message", args);
+    expect(await db.service.rpc("whatsapp_receive_message", args)).toEqual(first);
+    const [customer] = await db.admin.query<{ id: string; whatsapp: string | null; name: string }>(
+      "select id, whatsapp, name from public.customers where tenant_id = $1 and whatsapp_chat_id = $2",
+      [tenantId, chatId],
+    );
+    expect(customer!.whatsapp).toBeNull();
+    expect(customer!.name).toBe("Contato WhatsApp");
+    const [conversation] = await db.admin.query<{ id: string }>(
+      "select id from public.conversations where customer_id = $1",
+      [customer!.id],
+    );
+    await db.as(sellerId).rpc("message_send", { p_conversation_id: conversation!.id, p_content: "Olá" });
+    await db.admin.query("update public.customers set whatsapp = $1, phone = $1 where id = $2", [
+      "12345678901",
+      customer!.id,
+    ]);
+    await db.service.rpc("whatsapp_correct_number", {
+      p_tenant_id: tenantId,
+      p_whatsapp_chat_id: chatId,
+      p_whatsapp_number: "14155552671",
+    });
+    const [fixed] = await db.admin.query("select whatsapp, phone from public.customers where id = $1", [customer!.id]);
+    expect(fixed).toEqual({ whatsapp: "14155552671", phone: "14155552671" });
+  });
+
+  it("does not allow authenticated callers to correct another tenant's contacts", async () => {
+    await expect(
+      db.as(ownerId).rpc("whatsapp_correct_number", {
+        p_tenant_id: tenantId,
+        p_whatsapp_chat_id: "12345678901@lid",
+        p_whatsapp_number: "14155552671",
+      }),
+    ).rejects.toThrow("permission denied");
   });
 
   it("reuses the same conversation for a customer who writes again, accumulating unread count", async () => {
@@ -480,6 +527,15 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       ["11833332222", aiTenant.tenantId],
     );
 
+    await db.as(aiTenant.ownerId).rpc("conversation_assume", { p_conversation_id: conversation!.id });
+    await db.admin.query(
+      "update public.conversations set ai_typing_until = now() + interval '20 seconds' where id = $1",
+      [conversation!.id],
+    );
+    await db.admin.query(
+      'insert into public.ai_conversation_states (conversation_id, tenant_id, draft_items) values ($1, $2, \'[{"type":"appointment_pending","human_cleared":true}]\')',
+      [conversation!.id, aiTenant.tenantId],
+    );
     await db.as(aiTenant.ownerId).rpc("conversation_close", { p_conversation_id: conversation!.id });
     await db.admin.rpc("whatsapp_receive_message", {
       p_tenant_id: aiTenant.tenantId,
@@ -488,10 +544,29 @@ describe("WhatsApp inbox: recebimento, envio e handoff humano", () => {
       p_external_message_id: `wa-ai-2-${Date.now()}`,
     });
 
-    const [row] = await db.admin.query<{ status: string }>("select status from public.conversations where id = $1", [
-      conversation!.id,
-    ]);
+    const [row] = await db.admin.query<{
+      status: string;
+      responsible_user_id: string | null;
+      ai_typing_until: Date | null;
+      ai_session_started_at: Date | null;
+    }>(
+      "select status, responsible_user_id, ai_typing_until, ai_session_started_at from public.conversations where id = $1",
+      [conversation!.id],
+    );
     expect(row!.status).toBe("AI_ACTIVE");
+    expect(row!.responsible_user_id).toBeNull();
+    expect(row!.ai_typing_until).toBeNull();
+    expect(row!.ai_session_started_at).not.toBeNull();
+    expect(
+      await db.admin.query("select 1 from public.ai_conversation_states where conversation_id = $1", [
+        conversation!.id,
+      ]),
+    ).toHaveLength(0);
+    const freshMessages = await db.admin.query<{ content: string }>(
+      "select m.content from public.messages m join public.conversations c on c.id = m.conversation_id where c.id = $1 and m.created_at >= c.ai_session_started_at",
+      [conversation!.id],
+    );
+    expect(freshMessages.map((m) => m.content)).toEqual(["Voltei também"]);
   });
 
   it("never resets the status of a conversation that is not closed when a new message arrives", async () => {

@@ -35,16 +35,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { FormDialog, DialogFormLayout } from "@/components/forms/form-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -172,7 +163,7 @@ export function InteractiveShowcase() {
       </section>
 
       <section className="flex flex-col gap-5">
-        <SectionHeader title="Sobreposições" description="Dropdown, popover, tooltip, dialog, drawer e toast." />
+        <SectionHeader title="Sobreposições" description="Dropdown, popover, tooltip, modal central e toast." />
         <Card>
           <CardContent className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
@@ -226,26 +217,18 @@ export function InteractiveShowcase() {
               </DialogContent>
             </Dialog>
 
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline">Drawer</Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Novo cliente</SheetTitle>
-                  <SheetDescription>Drawers são usados para criar e editar sem sair da tela.</SheetDescription>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 px-4">
+            <FormDialog
+              title="Novo cliente"
+              description="Formulários abrem no centro da tela, com rolagem interna."
+              trigger={<Button variant="outline">Formulário central</Button>}
+            >
+              {(close) => (
+                <DialogFormLayout footer={<Button onClick={close}>Salvar</Button>}>
                   <TextField label="Nome" name="ds-customer" />
                   <TextField label="WhatsApp" name="ds-phone" type="tel" />
-                </div>
-                <SheetFooter>
-                  <SheetClose asChild>
-                    <Button>Salvar</Button>
-                  </SheetClose>
-                </SheetFooter>
-              </SheetContent>
-            </Sheet>
+                </DialogFormLayout>
+              )}
+            </FormDialog>
 
             <Button variant="outline" onClick={() => toast.success("Reserva criada.")}>
               Toast de sucesso

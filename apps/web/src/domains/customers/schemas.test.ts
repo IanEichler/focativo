@@ -2,7 +2,32 @@ import { describe, expect, it } from "vitest";
 import { customerSchema } from "./schemas";
 
 describe("customerSchema", () => {
-  it("requires a phone", () => {
+  it("allows editing a WhatsApp contact whose phone has not been resolved", () => {
+    const result = customerSchema.safeParse({
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "Cliente do WhatsApp",
+      phone: "",
+      whatsapp: "",
+      notes: "Observação atualizada",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.phone).toBeNull();
+      expect(result.data.whatsapp).toBeNull();
+    }
+  });
+
+  it("still rejects an invalid phone when editing", () => {
+    expect(
+      customerSchema.safeParse({
+        id: "11111111-1111-4111-8111-111111111111",
+        name: "Cliente",
+        phone: "123",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires the WhatsApp contact", () => {
     const result = customerSchema.safeParse({ name: "Cliente Sem Telefone", email: "cliente@example.com" });
     expect(result.success).toBe(false);
   });
@@ -20,7 +45,7 @@ describe("customerSchema", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.phone).toBe("11988887777");
+      expect(result.data.phone).toBe("11977776666");
       expect(result.data.whatsapp).toBe("11977776666");
     }
   });
@@ -30,10 +55,10 @@ describe("customerSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("whatsapp stays optional even though phone is required", () => {
+  it("uses a legacy phone as the unified WhatsApp contact", () => {
     const result = customerSchema.safeParse({ name: "Cliente Sem WhatsApp", phone: "11988887777" });
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data.whatsapp).toBeNull();
+    if (result.success) expect(result.data.whatsapp).toBe("11988887777");
   });
 
   it("normalizes the __none__ sentinel to null for origin", () => {
@@ -46,4 +71,10 @@ describe("customerSchema", () => {
     const result = customerSchema.safeParse({ name: "Cliente Origem", phone: "11988887777", origin: "marte" });
     expect(result.success).toBe(false);
   });
+});
+
+it("creates a customer with only the unified WhatsApp field, preserving the country code", () => {
+  const result = customerSchema.parse({ name: "Ian", whatsapp: "+55 (66) 9212-4334" });
+  expect(result.whatsapp).toBe("556692124334");
+  expect(result.phone).toBe(result.whatsapp);
 });

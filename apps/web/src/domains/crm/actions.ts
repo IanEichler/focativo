@@ -17,6 +17,7 @@ function forbidden<Field extends string = never>(): ActionState<Field> {
 
 function revalidate(customerId?: string) {
   revalidatePath(CRM_PATH);
+  revalidatePath("/app/atendimento");
   if (customerId) revalidatePath(`/app/clientes/${customerId}`);
 }
 
@@ -100,7 +101,7 @@ export async function moveOpportunityAction(
   lostReason?: string,
 ) {
   const context = await requireTenantContext();
-  if (!context.can("crm.write")) return forbidden();
+  if (!context.hasModule("crm") || !context.can("crm.write")) return forbidden();
   if (!z.uuid().safeParse(opportunityId).success || !z.uuid().safeParse(stageId).success) return forbidden();
 
   const supabase = await createClient();

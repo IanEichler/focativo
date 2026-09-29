@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { requiredDecimal } from "@/lib/decimal";
 
 const optionalText = (max: number, message: string) =>
   z
@@ -13,7 +14,7 @@ export const serviceSchema = z.object({
   name: z.string().trim().min(2, "Mínimo de 2 caracteres.").max(160, "Máximo de 160 caracteres."),
   description: optionalText(2000, "Descrição muito longa."),
   durationMinutes: z.coerce.number().int().min(5, "Mínimo de 5 minutos.").max(480, "Máximo de 8 horas."),
-  price: z.coerce.number().min(0, "Não pode ser negativo."),
+  price: requiredDecimal({ label: "Preço", min: 0, max: 9_999_999_999.99, scale: 2 }),
   // Sem .default(true): o switch só existe no form de edição, então o campo
   // ausente aqui vira false corretamente (o create nem lê isActive — a RPC
   // de criação sempre nasce ativa; só o update lê este campo).

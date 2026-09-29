@@ -17,12 +17,14 @@ export class ServiceWhatsAppProvider implements WhatsAppProvider {
     private readonly secret: string,
   ) {}
 
-  private async call<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  private async call<T>(path: string, body: Record<string, unknown>, timeoutMs = 60000): Promise<T> {
     const payload = JSON.stringify(body);
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-service-signature": signWebhookBody(payload, this.secret) },
       body: payload,
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
@@ -40,7 +42,11 @@ export class ServiceWhatsAppProvider implements WhatsAppProvider {
   }
 
   async getConnectionStatus(tenantId: string): Promise<ConnectionInfo> {
-    return this.call(`/sessions/${tenantId}/status`, {});
+    return this.call(`/sessions/${tenantId}/status`, {}, 8000);
+  }
+
+  async setTyping(tenantId: string, to: string, typing: boolean, chatId?: string | null): Promise<void> {
+    await this.call(`/sessions/${tenantId}/typing`, { to, typing, chatId: chatId ?? undefined }, 4000);
   }
 
   async sendText(tenantId: string, to: string, text: string, chatId?: string | null): Promise<SendResult> {

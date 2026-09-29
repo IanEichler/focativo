@@ -324,11 +324,12 @@ export interface VariantOption {
 
 export async function lookupVariants(context: TenantContext, query: string): Promise<VariantOption[]> {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("catalog_lookup_variants", {
+  const { data, error } = await supabase.rpc("catalog_lookup_variants", {
     p_tenant_id: context.tenant.id,
     p_query: query || undefined,
     p_limit: 20,
   });
+  if (error) throw new Error(`lookupVariants failed: ${error.code}`);
   return (data ?? []).map((row) => ({
     variantId: row.variant_id,
     productId: row.product_id,

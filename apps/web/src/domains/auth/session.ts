@@ -16,23 +16,28 @@ export interface CurrentUser {
  * Identidade verificada (JWT validado via getClaims) + perfil.
  * Memoizado por requisição.
  */
-export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+export const getVerifiedIdentity = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
   if (error || !userId) return null;
+  return { id: userId, email: typeof data.claims.email === "string" ? data.claims.email : null };
+});
+
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  const identity = await getVerifiedIdentity();
+  if (!identity) return null;
+  const supabase = await createClient();
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, email, avatar_url, nav_order")
-    .eq("id", userId)
+    .eq("id", identity.id)
     .maybeSingle();
 
-  const claimEmail = typeof data.claims.email === "string" ? data.claims.email : null;
-
   return {
-    id: userId,
-    email: profile?.email ?? claimEmail,
+    id: identity.id,
+    email: profile?.email ?? identity.email,
     fullName: profile?.full_name ?? "",
     avatarUrl: profile?.avatar_url ?? null,
     navOrder: (profile?.nav_order as string[] | null) ?? null,
@@ -48,7 +53,7 @@ export async function requireUser(nextPath?: string): Promise<CurrentUser> {
 }
 
 export const isSuperAdmin = cache(async (): Promise<boolean> => {
-  const user = await getCurrentUser();
+  const user = await getVerifiedIdentity();
   if (!user) return false;
   const supabase = await createClient();
   const { data } = await supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();

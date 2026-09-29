@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { FormDialog } from "@/components/forms/form-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type { MemberPermissionDTO } from "@/domains/users/queries";
 import { PERMISSION_GROUPS, PERMISSION_LABELS, type Permission } from "@/lib/permissions";
@@ -24,23 +24,14 @@ export function AdminMemberPermissionsSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
-        <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle className="text-section">Permissões de {memberName}</SheetTitle>
-          <SheetDescription>
-            Ligue ou desligue permissões específicas. O que não for tocado continua seguindo o papel do usuário.
-          </SheetDescription>
-        </SheetHeader>
-        {open && (
-          <AdminMemberPermissionsForm
-            membershipId={membershipId}
-            tenantId={tenantId}
-            onDone={() => onOpenChange(false)}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Permissões de ${memberName}`}
+      description="Ligue ou desligue permissões específicas. O que não for tocado continua seguindo o papel do usuário."
+    >
+      {(close) => <AdminMemberPermissionsForm membershipId={membershipId} tenantId={tenantId} onDone={close} />}
+    </FormDialog>
   );
 }
 
@@ -106,7 +97,7 @@ function AdminMemberPermissionsForm({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
         <div className="flex flex-col gap-6">
           {PERMISSION_GROUPS.map((group) => (
             <div key={group.module} className="flex flex-col gap-2">
@@ -130,7 +121,7 @@ function AdminMemberPermissionsForm({
           ))}
         </div>
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-6 py-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-card px-6 py-4">
         <Button type="button" variant="ghost" onClick={onDone} disabled={saving}>
           Cancelar
         </Button>

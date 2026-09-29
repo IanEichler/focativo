@@ -27,7 +27,7 @@ export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
 };
 
 export const CONVERSATION_STATUS_TONES: Record<ConversationStatus, StatusTone> = {
-  AI_ACTIVE: "brand",
+  AI_ACTIVE: "violet",
   HUMAN_ACTIVE: "info",
   PAUSED: "neutral",
   CLOSED: "success",

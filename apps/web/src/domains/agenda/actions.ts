@@ -171,14 +171,12 @@ export async function saveBusinessHoursAction(hours: unknown): Promise<ActionSta
   const supabase = await createClient();
   const { error } = await supabase.rpc("agenda_business_hours_set", {
     p_tenant_id: context.tenant.id,
-    p_hours: JSON.stringify(
-      parsed.data.map((day) => ({
-        day_of_week: day.dayOfWeek,
-        opens_at: day.opensAt,
-        closes_at: day.closesAt,
-        is_closed: day.isClosed,
-      })),
-    ),
+    p_hours: parsed.data.map((day) => ({
+      day_of_week: day.dayOfWeek,
+      opens_at: day.opensAt,
+      closes_at: day.closesAt,
+      is_closed: day.isClosed,
+    })),
   });
   if (error) return { status: "error", message: toUserMessage(error) };
   revalidatePath(`${AGENDA_PATH}/servicos`);

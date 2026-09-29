@@ -1,14 +1,14 @@
 "use client";
 
+import { searchUrl, useSearchResults } from "@/components/data/use-search-results";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { searchCustomersAction } from "../actions";
 import type { CustomerOption } from "../queries";
 
 export function CustomerPicker({
@@ -22,17 +22,12 @@ export function CustomerPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<CustomerOption[]>([]);
-  const [loading, startTransition] = useTransition();
   const labelId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => {
-      startTransition(async () => setOptions(await searchCustomersAction(query)));
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [query, open]);
+  const {
+    items: options,
+    loading,
+    error: searchError,
+  } = useSearchResults<CustomerOption>(searchUrl("customers", query), open, query ? 180 : 0);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -70,7 +65,7 @@ export function CustomerPicker({
                   <Spinner /> Buscando…
                 </div>
               )}
-              <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+              {!loading && <CommandEmpty>{searchError ?? "Nenhum cliente encontrado."}</CommandEmpty>}
               <CommandGroup>
                 {options.map((option) => (
                   <CommandItem

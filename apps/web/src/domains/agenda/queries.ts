@@ -1,4 +1,5 @@
 import "server-only";
+import { appointmentServiceLabel } from "./attendance";
 import type { TenantContext } from "@/domains/tenants/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Enums } from "@/types/database.types";
@@ -90,7 +91,7 @@ export async function listAppointments(
       id: row.id,
       customerId: row.customer_id,
       customerName: row.customer?.name ?? "",
-      serviceName: row.service?.name ?? "",
+      serviceName: appointmentServiceLabel(row.service?.name ?? "", row.notes),
       professionalUserId: row.professional_user_id,
       professionalName: row.professional?.full_name || "Profissional",
       startsAt: row.starts_at,

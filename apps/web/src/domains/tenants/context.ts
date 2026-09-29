@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
-import { getCurrentUser, isSuperAdmin, type CurrentUser } from "@/domains/auth/session";
+import { getCurrentUser, getVerifiedIdentity, isSuperAdmin, type CurrentUser } from "@/domains/auth/session";
 import type { ModuleCode } from "@/lib/modules";
 import { hasPermission, type Permission, type RoleCode } from "@/lib/permissions";
 import { ROUTES } from "@/lib/routes";
@@ -40,49 +40,44 @@ const uuid = z.uuid();
  * relida do banco (RLS) a cada requisição e um valor forjado é ignorado.
  */
 export const getTenantContext = cache(async (): Promise<TenantContext | null> => {
-  const user = await getCurrentUser();
-  if (!user) return null;
-
-  const supabase = await createClient();
-  const { data: rows, error } = await supabase
-    .from("tenant_users")
-    .select("id, role_code, tenant:tenants!inner(id, name, slug, status, segment), role:roles!inner(name, rank)")
-    .eq("user_id", user.id)
-    .eq("status", "ACTIVE")
-    .order("created_at", { ascending: true });
-
-  if (error || !rows?.length) return null;
-
-  const memberships = rows.map((row) => ({
-    membershipId: row.id,
-    summary: {
-      id: row.tenant.id,
-      name: row.tenant.name,
-      slug: row.tenant.slug,
-      status: row.tenant.status,
-      segment: row.tenant.segment,
-      roleCode: row.role_code as RoleCode,
-      roleName: row.role.name,
-    } satisfies TenantSummary,
-  }));
-
+  const identity = await getVerifiedIdentity();
+  if (!identity) return null;
   const preferred = (await cookies()).get(ACTIVE_TENANT_COOKIE)?.value;
   const preferredId = uuid.safeParse(preferred).success ? preferred : undefined;
-  const active = memberships.find((m) => m.summary.id === preferredId) ?? memberships[0]!;
-
-  const [{ data: permissionRows }, { data: moduleFlagRows }] = await Promise.all([
-    supabase.rpc("get_my_permissions", { p_tenant_id: active.summary.id }),
-    supabase.from("tenant_module_flags").select("module_code, enabled").eq("tenant_id", active.summary.id),
-  ]);
-  const permissions: ReadonlySet<string> = new Set(permissionRows ?? []);
-  const disabledModules = new Set((moduleFlagRows ?? []).filter((row) => !row.enabled).map((row) => row.module_code));
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_app_context", { p_preferred_tenant: preferredId });
+  if (error) throw new Error(`get_my_app_context failed: ${error.code}`);
+  if (!data) return null;
+  const snapshot = data as unknown as {
+    memberships: (TenantSummary & { membershipId: string })[];
+    activeId: string;
+    profile: {
+      fullName: string | null;
+      email: string | null;
+      avatarUrl: string | null;
+      navOrder: string[] | null;
+    } | null;
+    permissions: string[];
+    disabledModules: string[];
+  };
+  const active = snapshot.memberships.find((membership) => membership.id === snapshot.activeId);
+  if (!active) return null;
+  const user: CurrentUser = {
+    id: identity.id,
+    email: snapshot.profile?.email ?? identity.email,
+    fullName: snapshot.profile?.fullName ?? "",
+    avatarUrl: snapshot.profile?.avatarUrl ?? null,
+    navOrder: snapshot.profile?.navOrder ?? null,
+  };
+  const permissions: ReadonlySet<string> = new Set(snapshot.permissions ?? []);
+  const disabledModules = new Set(snapshot.disabledModules);
 
   return {
     user,
-    tenant: active.summary,
+    tenant: active,
     membershipId: active.membershipId,
     permissions,
-    memberships: memberships.map((m) => m.summary),
+    memberships: snapshot.memberships,
     can: (permission) => hasPermission(permissions, permission),
     hasModule: (module) => !disabledModules.has(module),
   };
@@ -95,10 +90,9 @@ export const getTenantContext = cache(async (): Promise<TenantContext | null> =>
  * onboarding de "crie sua empresa" — ele não é um cliente da plataforma.
  */
 export async function requireTenantContext(): Promise<TenantContext> {
-  const user = await getCurrentUser();
-  if (!user) redirect(ROUTES.login);
   const context = await getTenantContext();
   if (!context) {
+    if (!(await getCurrentUser())) redirect(ROUTES.login);
     if (await isSuperAdmin()) redirect(ROUTES.admin);
     redirect(ROUTES.onboarding);
   }

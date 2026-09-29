@@ -29,11 +29,11 @@ export function AiSettingsForm({ settings }: { settings: AiSettings }) {
       />
 
       <TextareaField
-        label="Prompt de sistema (opcional)"
+        label="Orientações da empresa (opcional)"
         name="systemPrompt"
         rows={5}
         maxLength={4000}
-        placeholder="Ex.: Você é a assistente da Loja X. Fale de forma simpática e objetiva…"
+        placeholder="Ex.: Use o nome da clínica na primeira saudação e explique que a avaliação é feita pela profissional. O atendimento já usa respostas curtas, acolhedoras e profissionais."
         defaultValue={pick("systemPrompt", settings.systemPrompt) as string | undefined}
         error={fieldError(state, "systemPrompt")}
       />

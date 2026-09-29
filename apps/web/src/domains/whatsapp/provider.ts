@@ -19,6 +19,7 @@ export interface ConnectionInfo {
 }
 
 export interface ContactInfo {
+  phoneNumber?: string | null;
   name?: string;
   profilePicUrl?: string;
 }
@@ -29,6 +30,7 @@ export interface WhatsAppProvider {
   requestConnection(tenantId: string): Promise<void>;
   disconnect(tenantId: string): Promise<void>;
   getConnectionStatus(tenantId: string): Promise<ConnectionInfo>;
+  setTyping(tenantId: string, to: string, typing: boolean, chatId?: string | null): Promise<void>;
   /**
    * `chatId`: ID de chat bruto capturado no recebimento (message.from), quando
    * disponível — usado em vez de reconstruir o endereço a partir do telefone,

@@ -1,3 +1,6 @@
+import { formatContractField, normalizeFieldName } from "./field-format";
+export { normalizeFieldName } from "./field-format";
+
 export interface CustomerFieldsInput {
   name: string;
   phone: string | null;
@@ -6,6 +9,11 @@ export interface CustomerFieldsInput {
   document: string | null;
   /** ISO (yyyy-mm-dd) ou null. */
   birthday: string | null;
+  rg?: string | null;
+  profession?: string | null;
+  address?: string | null;
+  city_state?: string | null;
+  postal_code?: string | null;
 }
 
 export interface TenantFieldsInput {
@@ -23,10 +31,6 @@ export interface MappedFields {
   remaining: string[];
 }
 
-function normalize(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
-
 function formatDate(iso: string): string {
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
@@ -35,21 +39,36 @@ function formatDate(iso: string): string {
 const CUSTOMER_ALIASES: Record<string, (customer: CustomerFieldsInput) => string | null> = {
   nome: (c) => c.name,
   nome_cliente: (c) => c.name,
+  cliente_nome: (c) => c.name,
   cliente: (c) => c.name,
   cpf: (c) => c.document,
+  cliente_cpf: (c) => c.document,
   cnpj: (c) => c.document,
   documento: (c) => c.document,
   cpf_cnpj: (c) => c.document,
-  telefone: (c) => c.phone ?? c.whatsapp,
-  celular: (c) => c.phone ?? c.whatsapp,
+  telefone: (c) => c.whatsapp ?? c.phone,
+  cliente_telefone: (c) => c.whatsapp ?? c.phone,
+  celular: (c) => c.whatsapp ?? c.phone,
   whatsapp: (c) => c.whatsapp ?? c.phone,
-  fone: (c) => c.phone ?? c.whatsapp,
-  contato: (c) => c.phone ?? c.whatsapp,
+  fone: (c) => c.whatsapp ?? c.phone,
+  contato: (c) => c.whatsapp ?? c.phone,
   email: (c) => c.email,
+  cliente_email: (c) => c.email,
   e_mail: (c) => c.email,
   nascimento: (c) => (c.birthday ? formatDate(c.birthday) : null),
   data_nascimento: (c) => (c.birthday ? formatDate(c.birthday) : null),
+  cliente_data_nascimento: (c) => (c.birthday ? formatDate(c.birthday) : null),
   aniversario: (c) => (c.birthday ? formatDate(c.birthday) : null),
+  rg: (c) => c.rg ?? null,
+  cliente_rg: (c) => c.rg ?? null,
+  profissao: (c) => c.profession ?? null,
+  cliente_profissao: (c) => c.profession ?? null,
+  endereco: (c) => c.address ?? null,
+  cliente_endereco: (c) => c.address ?? null,
+  cidade_uf: (c) => c.city_state ?? null,
+  cliente_cidade_uf: (c) => c.city_state ?? null,
+  cep: (c) => c.postal_code ?? null,
+  cliente_cep: (c) => c.postal_code ?? null,
 };
 
 const TENANT_ALIASES: Record<string, (tenant: TenantFieldsInput) => string | null> = {
@@ -85,10 +104,10 @@ export function mapKnownFields(
   const remaining: string[] = [];
 
   for (const placeholder of placeholders) {
-    const key = normalize(placeholder);
+    const key = normalizeFieldName(placeholder);
     const value = CUSTOMER_ALIASES[key]?.(customer) ?? TENANT_ALIASES[key]?.(tenant) ?? SYSTEM_ALIASES[key]?.() ?? null;
     if (value) {
-      autoFilled[placeholder] = value;
+      autoFilled[placeholder] = formatContractField(placeholder, value);
     } else {
       remaining.push(placeholder);
     }

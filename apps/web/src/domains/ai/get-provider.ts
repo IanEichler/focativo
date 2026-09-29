@@ -11,8 +11,8 @@ const cache = new Map<string, AIProvider>();
 /**
  * Escolhido por tenant (tenant_ai_platform_limits.provider, admin master —
  * ver Fase 2 da separação modelo/limites). Sem a chave correspondente
- * configurada no servidor, qualquer provider cai pro DEV (seção 95: nunca
- * falha por falta de credencial) — mesma regra que já valia só pra Anthropic.
+ * configurada no servidor, retorna DEV para a simulação local. O agente
+ * bloqueia esse simulador no transporte real e encaminha para a equipe.
  */
 export function getAIProvider(providerCode: string = "anthropic"): AIProvider {
   const cached = cache.get(providerCode);

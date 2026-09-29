@@ -22,7 +22,7 @@ import { TimelineTab } from "./timeline-tab";
 
 export const metadata: Metadata = { title: "Cliente" };
 
-const TABS = ["geral", "timeline", "oportunidades", "compras", "documentos"] as const;
+const TABS = ["geral", "timeline", "oportunidades", "compras", "contratos", "documentos"] as const;
 
 export default async function CustomerDetailPage({ params, searchParams }: PageProps<"/app/clientes/[id]">) {
   const context = await requireTenantContext();
@@ -76,6 +76,11 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
                   email: customer.email,
                   document: customer.document,
                   birthday: customer.birthday,
+                  rg: customer.rg,
+                  profession: customer.profession,
+                  address: customer.address,
+                  city_state: customer.city_state,
+                  postal_code: customer.postal_code,
                   notes: customer.notes,
                   tags: customer.tags,
                   origin: customer.origin,
@@ -95,13 +100,13 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
 
       <TabNav
         label="Seções do cliente"
-        active={tab}
+        active={tab === "documentos" ? "contratos" : tab}
         items={[
           { id: "geral", label: "Visão geral", href: base },
           { id: "timeline", label: "Timeline", href: `${base}?aba=timeline` },
           { id: "oportunidades", label: "Oportunidades", href: `${base}?aba=oportunidades` },
           { id: "compras", label: "Compras", href: `${base}?aba=compras` },
-          { id: "documentos", label: "Documentos", href: `${base}?aba=documentos` },
+          { id: "contratos", label: "Contratos", href: `${base}?aba=contratos` },
         ]}
       />
 
@@ -111,7 +116,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
         <OpportunitiesTab context={context} customer={customer} responsibles={responsibles} />
       )}
       {tab === "compras" && <PurchasesTab context={context} customerId={customer.id} />}
-      {tab === "documentos" && <DocumentsTab context={context} customerId={customer.id} />}
+      {(tab === "contratos" || tab === "documentos") && <DocumentsTab context={context} customerId={customer.id} />}
     </PageContainer>
   );
 }

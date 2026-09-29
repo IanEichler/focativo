@@ -40,9 +40,12 @@ export function FormDialog({
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
-        className={cn("flex max-h-[85vh] w-full flex-col gap-0 p-0", size === "lg" ? "sm:max-w-2xl" : "sm:max-w-lg")}
+        className={cn(
+          "flex max-h-[85dvh] w-full flex-col gap-0 overflow-hidden p-0",
+          size === "lg" ? "sm:max-w-2xl" : "sm:max-w-lg",
+        )}
       >
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-5 pr-12">
           <DialogTitle className="text-section">{title}</DialogTitle>
           {description ? (
             <DialogDescription>{description}</DialogDescription>
@@ -60,10 +63,12 @@ export function FormDialog({
 export function DialogFormLayout({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) {
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
         <div className="flex flex-col gap-5">{children}</div>
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-6 py-4">{footer}</div>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-card px-6 py-4">
+        {footer}
+      </div>
     </>
   );
 }

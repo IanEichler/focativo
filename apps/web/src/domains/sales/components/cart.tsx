@@ -1,8 +1,8 @@
 "use client";
 
+import { searchUrl, useSearchResults } from "@/components/data/use-search-results";
 import { Check, ChevronsUpDown, Minus, Plus, X } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
-import { structuredSearchAction } from "@/domains/catalog/actions/search";
+import { useState } from "react";
 import type { SearchResultItem } from "@/domains/catalog/search";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -24,16 +24,11 @@ export interface CartLine {
 function ProductPickerButton({ onPick }: { onPick: (item: SearchResultItem) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [loading, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => {
-      startTransition(async () => setResults(await structuredSearchAction({ query, inStockOnly: true })));
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [query, open]);
+  const {
+    items: results,
+    loading,
+    error: searchError,
+  } = useSearchResults<SearchResultItem>(searchUrl("products", query, { inStock: "true" }), open, query ? 180 : 0);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -59,7 +54,7 @@ function ProductPickerButton({ onPick }: { onPick: (item: SearchResultItem) => v
                 <Spinner /> Buscando…
               </div>
             )}
-            <CommandEmpty>Nenhum produto com estoque disponível.</CommandEmpty>
+            {!loading && <CommandEmpty>{searchError ?? "Nenhum produto com estoque disponível."}</CommandEmpty>}
             <CommandGroup>
               {results.map((item) => (
                 <CommandItem

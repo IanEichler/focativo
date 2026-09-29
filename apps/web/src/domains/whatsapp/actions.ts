@@ -9,9 +9,13 @@ import { getServerEnv } from "@/lib/env.server";
 import { toUserMessage, type ActionState } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { contactPhone } from "./contact-identity";
 import { formDataToObject, validationError } from "@/lib/validation";
 import { signWebhookBody } from "@/lib/webhook-signature";
 import { getWhatsAppProvider } from "./get-provider";
+import type { ConnectionInfo } from "./provider";
+import { getWhatsAppAccount } from "./queries";
 import {
   sendMessageSchema,
   simulateIncomingMessageSchema,
@@ -49,13 +53,46 @@ async function postWebhookEvent(payload: Record<string, unknown>): Promise<Simpl
   }
 }
 
-/** Inicia a conexão: pede o QR ao provider e, no DEV, já simula o evento via webhook real. */
+/** Consulta a sessão real para atualizar o QR e a confirmação sem depender de recarregar a página. */
+export async function getWhatsAppConnectionAction(): Promise<
+  { status: "success"; connection: ConnectionInfo } | { status: "error"; message: string }
+> {
+  const context = await requireTenantContext();
+  if (!context.can("tenant.update") || !context.hasModule("whatsapp")) {
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  }
+  try {
+    const provider = getWhatsAppProvider();
+    if (provider.isDev) {
+      const account = await getWhatsAppAccount(context);
+      return {
+        status: "success",
+        connection: {
+          status: account.status,
+          qrCode: account.qrCode ?? undefined,
+          phoneNumber: account.phoneNumber ?? undefined,
+          errorMessage: account.errorMessage ?? undefined,
+        },
+      };
+    }
+    return { status: "success", connection: await provider.getConnectionStatus(context.tenant.id) };
+  } catch {
+    return { status: "error", message: "Não foi possível verificar a conexão. Tentando novamente…" };
+  }
+}
+
+/** Inicia a conexão: pede o QR ao provider e, no DEV, simula o evento via webhook. */
 export async function connectWhatsAppAction(): Promise<SimpleResult> {
   const context = await requireTenantContext();
-  if (!context.can("tenant.update")) return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  if (!context.can("tenant.update") || !context.hasModule("whatsapp"))
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
 
   const provider = getWhatsAppProvider();
-  await provider.requestConnection(context.tenant.id);
+  try {
+    await provider.requestConnection(context.tenant.id);
+  } catch {
+    return { status: "error", message: "Não foi possível iniciar a conexão. Tente novamente em instantes." };
+  }
 
   if (provider.isDev) {
     const result = await postWebhookEvent({
@@ -72,10 +109,15 @@ export async function connectWhatsAppAction(): Promise<SimpleResult> {
 
 export async function disconnectWhatsAppAction(): Promise<SimpleResult> {
   const context = await requireTenantContext();
-  if (!context.can("tenant.update")) return { status: "error", message: toUserMessage({ message: "forbidden" }) };
+  if (!context.can("tenant.update") || !context.hasModule("whatsapp"))
+    return { status: "error", message: toUserMessage({ message: "forbidden" }) };
 
   const provider = getWhatsAppProvider();
-  await provider.disconnect(context.tenant.id);
+  try {
+    await provider.disconnect(context.tenant.id);
+  } catch {
+    return { status: "error", message: "Não foi possível desconectar. Tente novamente em instantes." };
+  }
 
   if (provider.isDev) {
     const result = await postWebhookEvent({ event: "disconnected", tenantId: context.tenant.id });
@@ -164,12 +206,12 @@ export async function sendMessageAction(
   const to = conversation?.customer?.whatsapp;
   const chatId = conversation?.customer?.whatsapp_chat_id;
 
-  if (!to) {
+  if (!to && !chatId) {
     await supabase.rpc("message_mark_failed", { p_message_id: messageId, p_reason: "Cliente sem WhatsApp cadastrado" });
   } else {
     try {
       const provider = getWhatsAppProvider();
-      const sent = await provider.sendText(context.tenant.id, to, content, chatId);
+      const sent = await provider.sendText(context.tenant.id, to ?? "", content, chatId);
       await supabase.rpc("message_mark_sent", {
         p_message_id: messageId,
         p_external_message_id: sent.externalMessageId,
@@ -228,10 +270,10 @@ export async function markReadAction(conversationId: string) {
   return transition("conversation_mark_read", "whatsapp.read", conversationId);
 }
 
-/** Busca a foto de perfil no WhatsApp e guarda no cliente (só quando ainda não tem uma salva). */
+/** Refresh the identity and the expiring photo URL whenever a conversation opens. */
 export async function refreshCustomerAvatarAction(customerId: string): Promise<SimpleResult> {
   const context = await requireTenantContext();
-  if (!context.can("whatsapp.read") || !z.uuid().safeParse(customerId).success) {
+  if (!context.hasModule("whatsapp") || !context.can("whatsapp.read") || !z.uuid().safeParse(customerId).success) {
     return { status: "error", message: toUserMessage({ message: "forbidden" }) };
   }
 
@@ -241,19 +283,33 @@ export async function refreshCustomerAvatarAction(customerId: string): Promise<S
     .select("whatsapp, whatsapp_chat_id, avatar_url")
     .eq("id", customerId)
     .eq("tenant_id", context.tenant.id)
+    .is("archived_at", null)
     .maybeSingle();
-  if (!customer?.whatsapp || customer.avatar_url) return { status: "success" };
+  if (!customer || (!customer.whatsapp && !customer.whatsapp_chat_id)) return { status: "success" };
 
   try {
     const provider = getWhatsAppProvider();
-    const contact = await provider.getContact(context.tenant.id, customer.whatsapp, customer.whatsapp_chat_id);
-    if (!contact?.profilePicUrl) return { status: "success" };
-
-    await supabase
-      .from("customers")
-      .update({ avatar_url: contact.profilePicUrl })
-      .eq("id", customerId)
-      .eq("tenant_id", context.tenant.id);
+    const contact = await provider.getContact(context.tenant.id, customer.whatsapp ?? "", customer.whatsapp_chat_id);
+    if (!contact) return { status: "success" };
+    // The reader is authorized above; only provider-supplied fields are written with service role.
+    const admin = createAdminClient();
+    const phone = contactPhone(contact.phoneNumber, customer.whatsapp_chat_id);
+    if (phone && customer.whatsapp_chat_id && phone !== customer.whatsapp) {
+      const { error } = await admin.rpc("whatsapp_correct_number", {
+        p_tenant_id: context.tenant.id,
+        p_whatsapp_chat_id: customer.whatsapp_chat_id,
+        p_whatsapp_number: phone,
+      });
+      if (error) logger.warn({ event: "whatsapp.phone_refresh", status: "error", code: error.code });
+    }
+    if (contact.profilePicUrl && contact.profilePicUrl !== customer.avatar_url) {
+      const { error } = await admin
+        .from("customers")
+        .update({ avatar_url: contact.profilePicUrl })
+        .eq("id", customerId)
+        .eq("tenant_id", context.tenant.id);
+      if (error) throw error;
+    }
     revalidateInbox();
   } catch (error) {
     logger.warn({
@@ -262,6 +318,7 @@ export async function refreshCustomerAvatarAction(customerId: string): Promise<S
       tenant_id: context.tenant.id,
       code: String(error),
     });
+    return { status: "error", message: "Não foi possível atualizar o contato no WhatsApp." };
   }
   return { status: "success" };
 }

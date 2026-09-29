@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { appointmentSchema, serviceSchema } from "./schemas";
 
 describe("serviceSchema", () => {
+  it.each([
+    ["299,90", 299.9],
+    ["1.245,00", 1245],
+    ["299.90", 299.9],
+    ["0,00", 0],
+  ])("accepts the price %s when editing a service", (price, expected) => {
+    const result = serviceSchema.safeParse({
+      id: "123e4567-e89b-12d3-a456-426614174000",
+      name: "Consulta",
+      durationMinutes: "30",
+      price,
+      isActive: "on",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.price).toBe(expected);
+  });
   it("accepts a minimal valid service", () => {
     const result = serviceSchema.safeParse({ name: "Consulta", durationMinutes: "30", price: "150" });
     expect(result.success).toBe(true);

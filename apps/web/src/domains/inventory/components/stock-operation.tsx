@@ -1,5 +1,6 @@
 "use client";
 
+import { searchUrl, useSearchResults } from "@/components/data/use-search-results";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { DecimalField, TextareaField } from "@/components/forms/fields";
@@ -16,13 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  adjustStockAction,
-  registerEntryAction,
-  registerLossAction,
-  searchVariantsAction,
-  variantLotsAction,
-} from "../actions";
+import { adjustStockAction, registerEntryAction, registerLossAction, variantLotsAction } from "../actions";
 import { formatQuantity } from "@/lib/format";
 import { EXPIRY_STATUS } from "../labels";
 import type { VariantOption } from "../queries";
@@ -62,16 +57,11 @@ export function VariantPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<VariantOption[]>([]);
-  const [loading, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => {
-      startTransition(async () => setOptions(await searchVariantsAction(query)));
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [query, open]);
+  const {
+    items: options,
+    loading,
+    error: searchError,
+  } = useSearchResults<VariantOption>(searchUrl("inventory", query), open, query ? 180 : 0);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -113,7 +103,7 @@ export function VariantPicker({
                   <Spinner /> Buscando…
                 </div>
               )}
-              <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+              {!loading && <CommandEmpty>{searchError ?? "Nenhum produto encontrado."}</CommandEmpty>}
               <CommandGroup>
                 {options.map((option) => (
                   <CommandItem

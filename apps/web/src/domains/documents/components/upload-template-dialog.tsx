@@ -16,7 +16,7 @@ export function UploadTemplateDialog({ trigger }: { trigger: React.ReactNode }) 
     <FormDialog
       trigger={trigger}
       title="Novo modelo"
-      description="Envie um arquivo .docx com campos {{assim}} pra serem preenchidos depois."
+      description="Envie um arquivo .docx com campos {assim} ou {{assim}} para preencher depois."
     >
       {(close) => <UploadTemplateForm onDone={close} />}
     </FormDialog>
@@ -67,8 +67,8 @@ function UploadTemplateForm({ onDone }: { onDone: () => void }) {
             className="rounded-lg border border-input bg-card px-3 py-2 text-body file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-small file:font-medium"
           />
           <p className="text-small text-muted-foreground">
-            Use campos como <code>{"{{nome}}"}</code>, <code>{"{{cpf}}"}</code> no texto do documento — o sistema
-            descobre sozinho quais campos existem.
+            Use campos como <code>{"{cliente_nome}"}</code> e <code>{"{cliente_cpf}"}</code> no texto do documento — o
+            sistema descobre sozinho quais campos existem.
           </p>
         </div>
       </DialogFormLayout>

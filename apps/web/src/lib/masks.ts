@@ -1,8 +1,18 @@
 import { onlyDigits } from "./br-documents";
 
+export function maskPostalCode(raw: string): string {
+  const digits = onlyDigits(raw).slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+}
+
 /** Formata progressivamente enquanto o usuário digita — sempre a partir dos dígitos crus, nunca do texto já mascarado. */
 export function maskPhone(raw: string): string {
-  const digits = onlyDigits(raw).slice(0, 11);
+  const digits = onlyDigits(raw).slice(0, 15);
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return `+55 ${maskPhone(digits.slice(2))}`;
+  }
+  // Preserve country codes received from WhatsApp; never cut a valid international number to 11 digits.
+  if (raw.trimStart().startsWith("+") || digits.length > 11) return digits ? `+${digits}` : "";
   if (digits.length === 0) return "";
   const ddd = digits.slice(0, 2);
   const rest = digits.slice(2);

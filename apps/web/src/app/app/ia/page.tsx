@@ -7,6 +7,7 @@ import { UsageCard } from "@/domains/ai/components/usage-card";
 import { getAiBusinessInfo, getAiSettings, getAiUsageMonthToDate } from "@/domains/ai/queries";
 import { getAIProvider } from "@/domains/ai/get-provider";
 import { requireTenantContext } from "@/domains/tenants/context";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Assistente de IA" };
 
@@ -21,12 +22,14 @@ export default async function AiSettingsPage() {
     );
   }
 
-  const [settings, businessInfo, costUsd] = await Promise.all([
+  const [settings, businessInfo, costUsd, { data: limits, error: limitsError }] = await Promise.all([
     getAiSettings(context),
     getAiBusinessInfo(context),
     getAiUsageMonthToDate(context),
+    createAdminClient().from("tenant_ai_platform_limits").select("provider").eq("tenant_id", context.tenant.id).maybeSingle(),
   ]);
-  const provider = getAIProvider();
+  if (limitsError) throw new Error("Não foi possível verificar a configuração da IA.");
+  const provider = getAIProvider(limits?.provider ?? "anthropic");
 
   return (
     <PageContainer>

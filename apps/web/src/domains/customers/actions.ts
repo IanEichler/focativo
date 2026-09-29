@@ -47,10 +47,14 @@ export async function saveCustomerAction(
     email: data.email,
     document: data.document,
     birthday: data.birthday,
+    rg: data.rg,
+    profession: data.profession,
+    address: data.address,
+    city_state: data.city_state,
+    postal_code: data.postal_code,
     notes: data.notes,
     tags: parseTags(data.tags),
     origin: data.origin,
-    archived_at: data.archived ? new Date().toISOString() : null,
   };
 
   const supabase = await createClient();
@@ -66,7 +70,12 @@ export async function saveCustomerAction(
     logger.warn({ event: "customer.save", status: "error", tenant_id: context.tenant.id, code: error?.code });
     return {
       status: "error",
-      message: error ? toUserMessage(error) : toUserMessage({ message: "forbidden" }),
+      message:
+        error?.code === "23514" && error.message.includes("customers_needs_contact")
+          ? "Informe o WhatsApp ou e-mail para manter um meio de contato com a cliente."
+          : error
+            ? toUserMessage(error)
+            : toUserMessage({ message: "forbidden" }),
       values: safeFormValues(input),
     };
   }
@@ -74,6 +83,7 @@ export async function saveCustomerAction(
   logger.info({ event: "customer.save", status: "ok", tenant_id: context.tenant.id, user_id: context.user.id });
   revalidatePath(CUSTOMERS_PATH);
   revalidatePath(`${CUSTOMERS_PATH}/${row.id}`);
+  revalidatePath("/app/atendimento", "layout");
   return { status: "success", message: data.id ? "Cliente atualizado." : "Cliente cadastrado.", id: row.id };
 }
 

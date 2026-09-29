@@ -1,8 +1,8 @@
 "use client";
 
+import { searchUrl, useSearchResults } from "@/components/data/use-search-results";
 import { Check, X } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
-import { structuredSearchAction } from "@/domains/catalog/actions/search";
+import { useState } from "react";
 import type { SearchRequirement, SearchResultItem } from "@/domains/catalog/search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,21 +47,18 @@ export function ProductPicker({
 }) {
   const [query, setQuery] = useState("");
   const [activeChips, setActiveChips] = useState<string[]>([]);
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [loading, startTransition] = useTransition();
-
-  useEffect(() => {
-    const requirements = QUICK_REQUIREMENTS.filter((chip) => activeChips.includes(chip.label)).map(
-      (chip) => chip.requirement,
-    );
-    const timer = setTimeout(() => {
-      startTransition(async () => {
-        const rows = await structuredSearchAction({ query, requirements, inStockOnly: false });
-        setResults(rows);
-      });
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [query, activeChips]);
+  const requirements = QUICK_REQUIREMENTS.filter((chip) => activeChips.includes(chip.label)).map(
+    (chip) => chip.requirement,
+  );
+  const {
+    items: results,
+    loading,
+    error: searchError,
+  } = useSearchResults<SearchResultItem>(
+    searchUrl("products", query, { requirements: JSON.stringify(requirements) }),
+    true,
+    query ? 180 : 0,
+  );
 
   function toggle(item: SearchResultItem) {
     const exists = selected.find((p) => p.variantId === item.variantId);
@@ -124,7 +121,9 @@ export function ProductPicker({
           </div>
         )}
         {!loading && results.length === 0 && (
-          <p className="px-3 py-4 text-center text-small text-muted-foreground">Nenhum produto encontrado.</p>
+          <p className="px-3 py-4 text-center text-small text-muted-foreground">
+            {searchError ?? "Nenhum produto encontrado."}
+          </p>
         )}
         {results.map((item) => {
           const isSelected = selected.some((p) => p.variantId === item.variantId);

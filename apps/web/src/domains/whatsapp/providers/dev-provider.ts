@@ -45,6 +45,10 @@ export class DevWhatsAppProvider implements WhatsAppProvider {
     return { externalMessageId: `dev_${randomUUID()}` };
   }
 
+  async setTyping(): Promise<void> {
+    // Development provider has no remote chat presence.
+  }
+
   async sendImage(): Promise<SendResult> {
     return { externalMessageId: `dev_${randomUUID()}` };
   }

@@ -306,6 +306,10 @@ describe("agenda: catálogo de serviços, agendamentos e concorrência", () => {
   });
 
   describe("ai_agenda_book", () => {
+    beforeAll(async () => {
+      await db.admin.query("update tenant_module_flags set enabled=true where tenant_id=$1 and module_code='agenda'", [tenantId]);
+      await db.admin.query("insert into tenant_business_hours(tenant_id,day_of_week,opens_at,closes_at,is_closed) select $1,day,'00:00'::time,'23:59'::time,false from generate_series(0,6) day", [tenantId]);
+    });
     async function seedConversation(number: string) {
       const [row] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
         p_tenant_id: tenantId,

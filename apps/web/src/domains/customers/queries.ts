@@ -16,6 +16,7 @@ export interface CustomerListItem {
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
+  document: string | null;
   tags: string[];
   origin: string | null;
   responsibleName: string | null;
@@ -32,7 +33,7 @@ export async function listCustomers(
   let query = supabase
     .from("customers")
     .select(
-      "id, name, phone, whatsapp, email, tags, origin, avatar_url, archived_at, created_at, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
+      "id, name, phone, whatsapp, email, document, tags, origin, avatar_url, archived_at, created_at, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
       { count: "exact" },
     )
     .eq("tenant_id", context.tenant.id);
@@ -63,6 +64,7 @@ export async function listCustomers(
       phone: row.phone,
       whatsapp: row.whatsapp,
       email: row.email,
+      document: row.document,
       tags: row.tags ?? [],
       origin: row.origin,
       responsibleName: row.responsible?.full_name ?? null,
@@ -74,7 +76,12 @@ export async function listCustomers(
 }
 
 export interface CustomerDetail extends CustomerListItem {
-  document: string | null;
+  rg: string | null;
+  profession: string | null;
+  address: string | null;
+  city_state: string | null;
+  postal_code: string | null;
+  whatsappChatId: string | null;
   birthday: string | null;
   notes: string | null;
   responsibleUserId: string | null;
@@ -89,7 +96,7 @@ export async function getCustomerDetail(context: TenantContext, id: string): Pro
   const { data } = await supabase
     .from("customers")
     .select(
-      "id, name, phone, whatsapp, email, document, birthday, notes, tags, origin, avatar_url, archived_at, created_at, responsible_user_id, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
+      "id, name, phone, whatsapp, whatsapp_chat_id, email, document, birthday, rg, profession, address, city_state, postal_code, notes, tags, origin, avatar_url, archived_at, created_at, responsible_user_id, responsible:profiles!customers_responsible_user_id_fkey(full_name)",
     )
     .eq("tenant_id", context.tenant.id)
     .eq("id", id)
@@ -107,9 +114,15 @@ export async function getCustomerDetail(context: TenantContext, id: string): Pro
     name: data.name,
     phone: data.phone,
     whatsapp: data.whatsapp,
+    whatsappChatId: data.whatsapp_chat_id,
     email: data.email,
     document: data.document,
     birthday: data.birthday,
+    rg: data.rg,
+    profession: data.profession,
+    address: data.address,
+    city_state: data.city_state,
+    postal_code: data.postal_code,
     notes: data.notes,
     tags: data.tags ?? [],
     origin: data.origin,
@@ -189,6 +202,7 @@ export async function lookupCustomers(context: TenantContext, query: string): Pr
     }
     request = request.or(clauses.join(","));
   }
-  const { data } = await request;
+  const { data, error } = await request;
+  if (error) throw new Error(`lookupCustomers failed: ${error.code}`);
   return (data ?? []).map((row) => ({ id: row.id, name: row.name, phone: row.phone, whatsapp: row.whatsapp }));
 }

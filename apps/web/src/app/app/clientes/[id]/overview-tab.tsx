@@ -3,6 +3,7 @@ import { CustomerTimeline } from "@/domains/customers/components/customer-timeli
 import { timelineEventLabel } from "@/domains/customers/labels";
 import type { CustomerDetail, TimelineEventRow } from "@/domains/customers/queries";
 import { formatDate, formatMoney } from "@/lib/format";
+import { maskCpfCnpj, maskPhone, maskPostalCode } from "@/lib/masks";
 
 export function OverviewTab({ customer, timeline }: { customer: CustomerDetail; timeline: TimelineEventRow[] }) {
   return (
@@ -13,18 +14,26 @@ export function OverviewTab({ customer, timeline }: { customer: CustomerDetail; 
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
-            <dt className="text-muted-foreground">Telefone</dt>
-            <dd className="text-right">{customer.phone ?? "—"}</dd>
             <dt className="text-muted-foreground">WhatsApp</dt>
-            <dd className="text-right">{customer.whatsapp ?? "—"}</dd>
+            <dd className="text-right">{maskPhone(customer.whatsapp || customer.phone || "") || "—"}</dd>
             <dt className="text-muted-foreground">E-mail</dt>
             <dd className="truncate text-right">{customer.email ?? "—"}</dd>
             <dt className="text-muted-foreground">CPF/CNPJ</dt>
-            <dd className="text-right">{customer.document ?? "—"}</dd>
+            <dd className="text-right">{maskCpfCnpj(customer.document ?? "") || "—"}</dd>
             <dt className="text-muted-foreground">Aniversário</dt>
             <dd className="text-right">{customer.birthday ? formatDate(customer.birthday) : "—"}</dd>
             <dt className="text-muted-foreground">Cliente desde</dt>
             <dd className="text-right tabular">{formatDate(customer.createdAt)}</dd>
+            <dt className="text-muted-foreground">RG</dt>
+            <dd className="text-right wrap-anywhere">{customer.rg ?? "—"}</dd>
+            <dt className="text-muted-foreground">Profissão</dt>
+            <dd className="text-right wrap-anywhere">{customer.profession ?? "—"}</dd>
+            <dt className="text-muted-foreground">Endereço</dt>
+            <dd className="text-right wrap-anywhere">{customer.address ?? "—"}</dd>
+            <dt className="text-muted-foreground">Cidade / UF</dt>
+            <dd className="text-right wrap-anywhere">{customer.city_state ?? "—"}</dd>
+            <dt className="text-muted-foreground">CEP</dt>
+            <dd className="text-right">{maskPostalCode(customer.postal_code ?? "") || "—"}</dd>
           </dl>
           {customer.tags.length > 0 && (
             <p className="mt-3 flex flex-wrap gap-1.5 text-small text-muted-foreground">

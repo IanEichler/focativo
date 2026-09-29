@@ -1,7 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import Link from "next/link";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { useTransition } from "react";
 import { switchTenantAction } from "@/domains/tenants/actions";
 import {
@@ -9,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { initials } from "@/lib/format";
@@ -73,12 +71,6 @@ export function TenantSwitcher({ current, options }: { current: TenantOption; op
             {option.id === current.id && <Check className="size-4 text-primary" />}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/onboarding?nova=1">
-            <Plus /> Criar nova empresa
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

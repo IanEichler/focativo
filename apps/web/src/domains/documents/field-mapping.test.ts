@@ -21,19 +21,35 @@ const tenant: TenantFieldsInput = {
 describe("mapKnownFields", () => {
   it("auto-fills known customer fields regardless of accent/case in the placeholder", () => {
     const result = mapKnownFields(["Nome", "CPF", "Telefone"], customer, tenant);
-    expect(result.autoFilled).toEqual({ Nome: "Maria Silva", CPF: "12345678900", Telefone: "11988887777" });
+    expect(result.autoFilled).toEqual({ Nome: "Maria Silva", CPF: "123.456.789-00", Telefone: "(11) 98888-7777" });
     expect(result.remaining).toEqual([]);
   });
 
   it("falls back to whatsapp when phone is missing", () => {
     const customerNoPhone: CustomerFieldsInput = { ...customer, phone: null, whatsapp: "11977776666" };
     const result = mapKnownFields(["telefone"], customerNoPhone, tenant);
-    expect(result.autoFilled.telefone).toBe("11977776666");
+    expect(result.autoFilled.telefone).toBe("(11) 97777-6666");
   });
 
   it("auto-fills tenant/company fields", () => {
     const result = mapKnownFields(["empresa", "empresa_cnpj"], customer, tenant);
-    expect(result.autoFilled).toEqual({ empresa: "Daniela Forte Estética LTDA", empresa_cnpj: "11222333000144" });
+    expect(result.autoFilled).toEqual({ empresa: "Daniela Forte Estética LTDA", empresa_cnpj: "11.222.333/0001-44" });
+  });
+
+  it("recognizes the customer fields used by the aesthetic contract", () => {
+    const result = mapKnownFields(
+      ["cliente_nome", "cliente_cpf", "cliente_data_nascimento", "cliente_telefone", "cliente_email", "cliente_rg"],
+      customer,
+      tenant,
+    );
+    expect(result.autoFilled).toEqual({
+      cliente_nome: "Maria Silva",
+      cliente_cpf: "123.456.789-00",
+      cliente_data_nascimento: "20/05/1990",
+      cliente_telefone: "(11) 98888-7777",
+      cliente_email: "maria@example.com",
+    });
+    expect(result.remaining).toEqual(["cliente_rg"]);
   });
 
   it("formats a birthday placeholder as dd/mm/yyyy", () => {

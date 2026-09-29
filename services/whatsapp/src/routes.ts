@@ -8,6 +8,7 @@ import {
   getSessionState,
   sendMedia,
   sendText,
+  setTyping,
 } from "./sessions";
 import { verifySignature } from "./signature";
 
@@ -77,6 +78,27 @@ router.post("/sessions/:tenantId/send", async (req, res) => {
     res.json({ externalMessageId });
   } catch (error) {
     res.status(422).json({ error: String(error) });
+  }
+});
+
+router.post("/sessions/:tenantId/typing", async (req, res) => {
+  const { to, chatId, typing } = req.body ?? {};
+  const validChatId = typeof chatId === "string" && /^\d+@(?:c\.us|lid)$/.test(chatId);
+  if (
+    typeof typing !== "boolean" ||
+    typeof to !== "string" ||
+    (chatId != null && !validChatId) ||
+    (!validChatId && !/^\d{7,15}$/.test(to))
+  ) {
+    res.status(400).json({ error: "invalid_payload" });
+    return;
+  }
+  try {
+    await setTyping(req.params.tenantId, to, typing, validChatId ? chatId : undefined);
+    res.json({ ok: true });
+  } catch {
+    console.warn("[whatsapp-service] Não foi possível atualizar o estado de digitação.");
+    res.status(422).json({ error: "typing_unavailable" });
   }
 });
 

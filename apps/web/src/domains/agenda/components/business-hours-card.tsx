@@ -36,8 +36,11 @@ function buildInitialState(hours: BusinessHoursRow[]): DayState[] {
 export function BusinessHoursCard({ hours }: { hours: BusinessHoursRow[] }) {
   const [days, setDays] = useState<DayState[]>(() => buildInitialState(hours));
   const [pending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(hours.length === 7);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function update(dayOfWeek: number, patch: Partial<DayState>) {
+    setSaved(false);
     setDays((prev) => prev.map((d) => (d.dayOfWeek === dayOfWeek ? { ...d, ...patch } : d)));
   }
 
@@ -51,8 +54,14 @@ export function BusinessHoursCard({ hours }: { hours: BusinessHoursRow[] }) {
           isClosed: d.isClosed,
         })),
       );
-      if (result.status === "success") toast.success(result.message);
-      else if (result.status === "error") toast.error(result.message);
+      if (result.status === "success") {
+        setSaved(true);
+        setSaveError(null);
+        toast.success(result.message);
+      } else if (result.status === "error") {
+        setSaveError(result.message ?? "Não foi possível salvar.");
+        toast.error(result.message);
+      }
     });
   }
 
@@ -62,6 +71,16 @@ export function BusinessHoursCard({ hours }: { hours: BusinessHoursRow[] }) {
         <CardTitle>Horário de funcionamento</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <p role="status" className="text-small text-muted-foreground">
+          {saved
+            ? "Horários salvos. A IA usa estes horários para consultar vagas e agendar."
+            : "Há horários ainda não salvos. Clique em Salvar horário para aplicar os valores exibidos à agenda e à IA."}
+        </p>
+        {saveError && (
+          <p role="alert" className="text-small text-danger">
+            {saveError}
+          </p>
+        )}
         {days.map((day) => (
           <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-3">
             <span className="w-24 shrink-0 text-body font-medium">{DAY_LABELS[day.dayOfWeek]}</span>

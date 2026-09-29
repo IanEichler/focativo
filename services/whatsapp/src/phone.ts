@@ -11,7 +11,9 @@ export function toChatId(phone: string): string {
 
 /** Extrai só os dígitos de um chatId/número do WhatsApp (para exibir/gravar). */
 export function fromChatId(chatId: string): string {
-  return chatId.replace(/@c\.us$/, "").replace(/\D/g, "");
+  // LIDs are opaque identifiers, even when their length resembles a phone.
+  const match = /^(\d{10,15})@(?:c\.us|s\.whatsapp\.net)$/.exec(chatId);
+  return match?.[1] ?? "";
 }
 
 /**

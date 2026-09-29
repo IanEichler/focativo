@@ -99,7 +99,7 @@ export default async function DocumentosPage({ searchParams }: PageProps<"/app/d
             className="border-0"
             icon={<FileText />}
             title="Nenhum modelo cadastrado"
-            description="Envie um .docx com campos {{assim}} pra começar a gerar documentos preenchidos automaticamente."
+            description="Envie um .docx com campos {assim} para gerar contratos preenchidos automaticamente."
             action={
               canWrite ? (
                 <UploadTemplateDialog

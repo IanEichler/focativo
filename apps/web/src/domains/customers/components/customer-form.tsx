@@ -15,6 +15,7 @@ import { maskCpfCnpj, maskPhone } from "@/lib/masks";
 import { saveCustomerAction } from "../actions";
 import { CUSTOMER_ORIGINS } from "../labels";
 import type { CustomerField } from "../schemas";
+import { CustomerAddressFields } from "./customer-address-fields";
 
 const NONE = "__none__";
 
@@ -26,6 +27,11 @@ export interface CustomerFormValues {
   email: string | null;
   document: string | null;
   birthday: string | null;
+  rg?: string | null;
+  profession?: string | null;
+  address?: string | null;
+  city_state?: string | null;
+  postal_code?: string | null;
   notes: string | null;
   tags: string[];
   origin: string | null;
@@ -82,28 +88,17 @@ function CustomerForm({ customer, onDone }: { customer?: CustomerFormValues; onD
           defaultValue={pick("name", customer?.name)}
           error={fieldError(state, "name")}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <MaskedTextField
-            label="Telefone"
-            name="phone"
-            required
-            inputMode="numeric"
-            placeholder="(11) 98888-7777"
-            mask={maskPhone}
-            defaultValue={pick("phone", customer?.phone) as string | undefined}
-            error={fieldError(state, "phone")}
-          />
-          <MaskedTextField
-            label="WhatsApp"
-            name="whatsapp"
-            inputMode="numeric"
-            placeholder="(11) 98888-7777"
-            description="Opcional — usado para reconhecer a conversa no WhatsApp"
-            mask={maskPhone}
-            defaultValue={pick("whatsapp", customer?.whatsapp) as string | undefined}
-            error={fieldError(state, "whatsapp")}
-          />
-        </div>
+        <MaskedTextField
+          label="WhatsApp"
+          name="whatsapp"
+          required={!customer}
+          inputMode="tel"
+          placeholder="(66) 99999-9999"
+          description="Número usado para contato e atendimento pelo WhatsApp."
+          mask={maskPhone}
+          defaultValue={pick("whatsapp", customer?.whatsapp || customer?.phone) as string | undefined}
+          error={fieldError(state, "whatsapp")}
+        />
         <TextField
           label="E-mail"
           name="email"
@@ -129,6 +124,27 @@ function CustomerForm({ customer, onDone }: { customer?: CustomerFormValues; onD
             error={fieldError(state, "birthday")}
           />
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField label="RG" name="rg" defaultValue={pick("rg", customer?.rg)} error={fieldError(state, "rg")} />
+          <TextField
+            label="Profissão"
+            name="profession"
+            defaultValue={pick("profession", customer?.profession)}
+            error={fieldError(state, "profession")}
+          />
+        </div>
+        <CustomerAddressFields
+          initialValues={{
+            postal_code: pick("postal_code", customer?.postal_code) as string | undefined,
+            address: pick("address", customer?.address) as string | undefined,
+            city_state: pick("city_state", customer?.city_state) as string | undefined,
+          }}
+          errors={{
+            postal_code: fieldError(state, "postal_code"),
+            address: fieldError(state, "address"),
+            city_state: fieldError(state, "city_state"),
+          }}
+        />
         <SelectField
           label="Origem"
           name="origin"

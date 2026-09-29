@@ -14,6 +14,7 @@ import { originLabel, CUSTOMER_ORIGINS } from "@/domains/customers/labels";
 import { CUSTOMER_PAGE_SIZE, listCustomers, type CustomerListItem } from "@/domains/customers/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { initials } from "@/lib/format";
+import { maskCpfCnpj } from "@/lib/masks";
 import { buildHref, firstParam, parsePage } from "@/lib/url";
 
 export const metadata: Metadata = { title: "Clientes" };
@@ -73,6 +74,11 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
           </span>
         </Link>
       ),
+    },
+    {
+      id: "document",
+      header: "CPF/CNPJ",
+      cell: (customer) => <span className="whitespace-nowrap text-muted-foreground">{maskCpfCnpj(customer.document ?? "") || "—"}</span>,
     },
     { id: "contact", header: "Contato", hideBelow: "sm", cell: (customer) => <ContactCell customer={customer} /> },
     {

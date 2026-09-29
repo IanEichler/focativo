@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { Logo } from "@/components/brand/logo";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,6 +33,7 @@ export function AppShell({
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isInbox = usePathname() === "/app/atendimento";
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
@@ -60,7 +62,7 @@ export function AppShell({
         Pular para o conteúdo
       </a>
 
-      <div className="min-h-dvh bg-background">
+      <div className={cn("min-h-dvh bg-background", isInbox && "h-dvh overflow-hidden")}>
         <aside
           className={cn(
             "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out will-change-[width] contain-layout lg:flex",
@@ -89,12 +91,13 @@ export function AppShell({
         <div
           className={cn(
             "flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200 ease-out will-change-[padding] contain-layout",
+            isInbox && "h-dvh overflow-hidden",
             collapsed ? "lg:pl-sidebar-collapsed" : "lg:pl-sidebar",
           )}
         >
           {topbar}
           {banner}
-          <main id="conteudo" tabIndex={-1} className="flex-1 outline-none">
+          <main id="conteudo" tabIndex={-1} className={cn("flex-1 outline-none", isInbox && "min-h-0 overflow-hidden")}>
             {children}
           </main>
         </div>
