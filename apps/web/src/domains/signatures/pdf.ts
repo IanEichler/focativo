@@ -1,9 +1,10 @@
 import "server-only";
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from "pdf-lib";
 import { maskCpfCnpj } from "@/lib/masks";
+import { locationStatusLabels, type SignatureLocation } from "./location";
 
 export interface SignatureEvidence {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   requestId: string;
   documentName: string;
   originalSha256: string;
@@ -18,6 +19,7 @@ export interface SignatureEvidence {
   viewedAt: string;
   authentication: "email_otp" | "unique_link";
   ip: string | null;
+  location?: SignatureLocation;
   userAgent: string;
   signatureImageSha256: string | null;
 }
@@ -116,6 +118,13 @@ export async function appendSignatureReceipt(original: Uint8Array, evidence: Sig
   paragraph(`Documento disponibilizado (UTC): ${evidence.viewedAt}`);
   paragraph(`Aceite registrado (UTC): ${evidence.signedAt}`);
   paragraph(`IP do acesso: ${evidence.ip ?? "Não disponível (proxy não configurado)"}`);
+  if (evidence.location?.status === "captured") {
+    paragraph(`Localização informada pelo navegador: latitude ${evidence.location.latitude.toFixed(6)}, longitude ${evidence.location.longitude.toFixed(6)}.`);
+    paragraph(`Precisão informada: ${evidence.location.accuracyMeters.toFixed(1)} metros. Coleta (UTC): ${evidence.location.capturedAt}`);
+    paragraph("Origem: geolocalização do navegador com permissão. As coordenadas são fornecidas pelo dispositivo e não constituem verificação independente da localização ou identidade.");
+  } else if (evidence.location) {
+    paragraph(`Localização: ${locationStatusLabels[evidence.location.status]}.`);
+  }
   paragraph(`Navegador informado: ${evidence.userAgent.slice(0, 200) || "Não informado"}`);
   paragraph("Manifestação de vontade", true);
   paragraph(evidence.consentText);

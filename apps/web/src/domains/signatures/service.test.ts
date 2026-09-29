@@ -49,8 +49,31 @@ it("removes only the uncommitted candidate when revocation wins the race", async
 it("records a link signature without email, session cookie or a false verification claim", async () => {
   mock.row.session_hash = null; mock.row.verified_at = null;
   await signContract(token, input, new Headers());
-  expect(mock.rpc).toHaveBeenCalledWith("signature_complete_link", expect.objectContaining({ p_evidence: expect.objectContaining({ authentication: "unique_link", version: 2, signerEmail: "" }) }));
+  expect(mock.rpc).toHaveBeenCalledWith("signature_complete_link", expect.objectContaining({ p_evidence: expect.objectContaining({ authentication: "unique_link", version: 3, signerEmail: "" }) }));
   expect(mock.rpc.mock.calls[0][1].p_evidence).not.toHaveProperty("verifiedAt");
+});
+
+it("seals proxy IP and permitted browser coordinates in the same evidence sent to the PDF and database", async () => {
+  vi.stubEnv("SIGNING_TRUST_PROXY", "true");
+  const location = { status: "captured" as const, source: "browser_geolocation" as const, latitude: -15.6, longitude: -56.1, accuracyMeters: 30, capturedAt: "2026-09-29T20:00:00.000Z" };
+  await signContract(token, { ...input, location }, new Headers({ "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.1" }));
+  const payload = mock.rpc.mock.calls[0][1];
+  expect(payload.p_evidence).toMatchObject({ version: 3, ip: "203.0.113.7", location });
+  expect(mock.receipt).toHaveBeenCalledWith(expect.any(Buffer), payload.p_evidence, payload.p_seal, undefined);
+});
+
+it.each(["false", "true"])("does not trust forwarded-for alone (trust proxy=%s)", async trust => {
+  vi.stubEnv("SIGNING_TRUST_PROXY", trust);
+  await signContract(token, { ...input, location: { status: "denied" } }, new Headers({ "x-forwarded-for": "198.51.100.1", ...(trust === "false" ? { "x-real-ip": "203.0.113.7" } : {}) }));
+  expect(mock.rpc.mock.calls[0][1].p_evidence).toMatchObject({ ip: null, location: { status: "denied" } });
+});
+
+it("records IPv6 and rejects malformed real-IP headers", async () => {
+  vi.stubEnv("SIGNING_TRUST_PROXY", "true");
+  await signContract(token, input, new Headers({ "x-real-ip": "2001:db8::1" }));
+  expect(mock.rpc.mock.calls[0][1].p_evidence.ip).toBe("2001:db8::1");
+  await signContract(token, input, new Headers({ "x-real-ip": "203.0.113.7, 198.51.100.1" }));
+  expect(mock.rpc.mock.calls[1][1].p_evidence.ip).toBeNull();
 });
 it("rejects expired and revoked bearer links", async () => {
   mock.row.expires_at = "2000-01-01";

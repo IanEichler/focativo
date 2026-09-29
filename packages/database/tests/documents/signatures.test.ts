@@ -93,6 +93,15 @@ async function completeLink(id: string, token: string, changes = {}) {
   });
   return row!.signature_complete_link;
 }
+it.each(["captured", "denied"])("persists v3 IP and location evidence (%s) and keeps it immutable", async status => {
+  const r = await request();
+  await db.service.query("update public.contract_signatures set viewed_at=now() where id=$1", [r.id]);
+  const location = status === "captured" ? { status, source: "browser_geolocation", latitude: -15.6, longitude: -56.1, accuracyMeters: 30, capturedAt: "2026-09-29T20:00:00.000Z" } : { status };
+  expect(await completeLink(r.id, r.token, { version: 3, consentVersion: "2026-09-29-v3-location", ip: "203.0.113.7", location })).toEqual({ ok: true });
+  const [saved] = await db.service.query("select evidence from public.contract_signatures where id=$1", [r.id]);
+  expect(saved!.evidence).toMatchObject({ version: 3, ip: "203.0.113.7", location });
+  await expect(db.service.query("update public.contract_signatures set evidence='{}'::jsonb where id=$1", [r.id])).rejects.toThrow("signed_document_immutable");
+});
 it("signs by link without email verification but requires PDF access and accurate evidence", async () => {
   const r = await request();
   expect(await completeLink(r.id, r.token)).toEqual({ error: "review_required" });

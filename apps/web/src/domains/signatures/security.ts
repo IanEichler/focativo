@@ -3,8 +3,8 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 
 export const SIGNATURE_BUCKET = "contract-signatures";
 export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-export const CONSENT_VERSION = "2026-09-29-v2-link";
-export const CONSENT_TEXT = "Declaro ser a pessoa identificada neste contrato, li seu conteúdo e concordo em assiná-lo eletronicamente. Autorizo o registro do meu aceite, data, horário e informações técnicas deste acesso pelo link como evidências da minha manifestação de vontade.";
+export const CONSENT_VERSION = "2026-09-29-v3-location";
+export const CONSENT_TEXT = "Declaro ser a pessoa identificada neste contrato, li seu conteúdo e concordo em assiná-lo eletronicamente. Autorizo o registro do meu aceite, data, horário, endereço IP e informações do navegador como evidências da minha manifestação de vontade. Se eu permitir o acesso à localização no navegador, suas coordenadas e precisão também serão incluídas no comprovante da assinatura.";
 
 function key() {
   const value = process.env.SIGNING_SECRET;

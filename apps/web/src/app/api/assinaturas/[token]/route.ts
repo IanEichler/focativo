@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { CONSENT_TEXT, CONSENT_VERSION, publicSigningOrigin, TOKEN_PATTERN } from "@/domains/signatures/security";
 import { getSignature, canAccessDocument, signContract, signaturePdf, SigningError } from "@/domains/signatures/service";
+import { signatureLocationSchema } from "@/domains/signatures/location";
 
 export const runtime = "nodejs";
 const COOKIE = "signature_session";
 const headers = { "Cache-Control": "no-store, private", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff" };
 const bodySchema = z.object({ action: z.literal("sign"), name: z.string().min(2).max(160), accepted: z.literal(true), consentVersion: z.literal(CONSENT_VERSION),
-  signature: z.string().max(165000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional() });
+  signature: z.string().max(165000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional(), location: signatureLocationSchema.optional() });
 const messages: Record<string, string> = {
   unavailable: "Este link está expirado, cancelado ou indisponível. Solicite um novo link à clínica.",
   review_required: "Abra e confira o PDF antes de assinar.",
   consent_required: "Confira seu nome e confirme o aceite do contrato.", invalid_signature: "Não foi possível ler a assinatura desenhada.",
   integrity_error: "A integridade do documento não pôde ser confirmada. Contate a clínica.",
+  invalid_location: "Não foi possível validar os dados de localização. Tente assinar novamente.",
   too_large: "Solicitação muito grande.",
 };
 function failure(error: unknown) {

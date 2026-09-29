@@ -7,6 +7,7 @@ vi.mock("./service", () => ({ getSignature: mock.row, canAccessDocument: mock.ve
 }));
 vi.mock("./security", async importOriginal => ({ ...await importOriginal<object>(), publicSigningOrigin: () => "https://sign.example.test" }));
 import { GET, POST } from "@/app/api/assinaturas/[token]/route";
+import { CONSENT_VERSION } from "./security";
 const token = "a".repeat(43);
 const params = { params: Promise.resolve({ token }) };
 const url = `https://sign.example.test/api/assinaturas/${token}`;
@@ -29,11 +30,18 @@ it("rejects oversized bodies even without Content-Length", async () => {
   expect(response.status).toBe(413); expect(mock.send).not.toHaveBeenCalled();
 });
 it("accepts the explicit signature without a verification cookie", async () => {
-  const body = JSON.stringify({ action: "sign", name: "Private name", accepted: true, consentVersion: "2026-09-29-v2-link" });
+  const body = JSON.stringify({ action: "sign", name: "Private name", accepted: true, consentVersion: CONSENT_VERSION });
   const response = await POST(new NextRequest(url, { method: "POST", headers: { origin: "https://sign.example.test" }, body }), params);
   expect(response.status).toBe(200); expect(await response.json()).toEqual({ ok: true });
   expect(mock.sign).toHaveBeenCalledWith(token, JSON.parse(body), expect.any(Headers));
   expect(response.headers.get("set-cookie")).toBeNull();
+});
+
+it("rejects out-of-range coordinates before recording an acceptance", async () => {
+  const body = { action: "sign", name: "Private name", accepted: true, consentVersion: CONSENT_VERSION,
+    location: { status: "captured", source: "browser_geolocation", latitude: 91, longitude: 0, accuracyMeters: 10, capturedAt: new Date().toISOString() } };
+  const response = await POST(new NextRequest(url, { method: "POST", headers: { origin: "https://sign.example.test" }, body: JSON.stringify(body) }), params);
+  expect(response.status).toBe(400); expect(mock.sign).not.toHaveBeenCalled();
 });
 it("no longer exposes email code actions", async () => {
   for (const action of ["verify", "request_code"]) {

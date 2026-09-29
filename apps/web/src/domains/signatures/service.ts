@@ -5,6 +5,7 @@ import { signingClient, type SignatureRow } from "./client";
 import { appendSignatureReceipt, type SignatureEvidence } from "./pdf";
 import { CONSENT_TEXT, CONSENT_VERSION, hash, safeEqual, sealEvidence, SIGNATURE_BUCKET, TOKEN_PATTERN } from "./security";
 import type { Json } from "@/types/database.types";
+import { signatureLocationSchema, type SignatureLocation } from "./location";
 
 export class SigningError extends Error {
   constructor(public code: string, public status = 400) { super(code); }
@@ -48,7 +49,7 @@ export async function signaturePdf(row: SignatureRow, session: string | undefine
   }
   return bytes;
 }
-export async function signContract(token: string, input: { name: string; consentVersion: string; accepted: boolean; signature?: string }, headers: Headers) {
+export async function signContract(token: string, input: { name: string; consentVersion: string; accepted: boolean; signature?: string; location?: SignatureLocation }, headers: Headers) {
   const row = await getSignature(token);
   if (row.status !== "PENDING" || row.authentication_method !== "unique_link") throw new SigningError("unavailable", 409);
   if (!row.viewed_at) throw new SigningError("review_required", 400);
@@ -57,13 +58,17 @@ export async function signContract(token: string, input: { name: string; consent
   const drawing = input.signature ? Buffer.from(input.signature.replace(/^data:image\/png;base64,/, ""), "base64") : undefined;
   if (drawing && (drawing.length < 24 || drawing.length > 120000 || drawing.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
     drawing.toString("ascii", 12, 16) !== "IHDR" || drawing.readUInt32BE(16) > 2048 || drawing.readUInt32BE(20) > 2048)) throw new SigningError("invalid_signature");
-  const ipHeader = process.env.SIGNING_TRUST_PROXY === "true" ? headers.get("x-forwarded-for")?.split(",")[0]?.trim() : null;
+  // Nginx overwrites X-Real-IP with the socket peer; the first X-Forwarded-For entry is client-controlled.
+  const ipHeader = process.env.SIGNING_TRUST_PROXY === "true" ? headers.get("x-real-ip")?.trim() : null;
+  const locationResult = signatureLocationSchema.safeParse(input.location ?? { status: "not_requested" });
+  if (!locationResult.success) throw new SigningError("invalid_location");
   const evidence: SignatureEvidence = {
-    version: 2, requestId: row.id, documentName: row.document_name, originalSha256: row.original_sha256,
+    version: 3, requestId: row.id, documentName: row.document_name, originalSha256: row.original_sha256,
     signerName: row.signer_name, signerDocument: row.signer_document, signerEmail: row.signer_email,
     accepted: true, consentVersion: CONSENT_VERSION, consentText: CONSENT_TEXT,
     signedAt: new Date().toISOString(), viewedAt: row.viewed_at,
     authentication: "unique_link", ip: ipHeader && isIP(ipHeader) ? ipHeader : null,
+    location: locationResult.data,
     userAgent: (headers.get("user-agent") ?? "").slice(0, 500), signatureImageSha256: drawing ? hash(drawing) : null,
   };
   const seal = sealEvidence(evidence);

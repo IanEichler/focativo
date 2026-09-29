@@ -5,14 +5,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 vi.mock("server-only", () => ({}));
 import { appendSignatureReceipt, type SignatureEvidence } from "./pdf";
-import { CONSENT_TEXT, hash } from "./security";
+import { CONSENT_TEXT, CONSENT_VERSION, hash } from "./security";
 
 const evidence: SignatureEvidence = {
-    version: 2, requestId: "00000000-0000-4000-8000-000000000000", documentName: "TESTE - SEM VALIDADE.pdf",
+    version: 3, requestId: "00000000-0000-4000-8000-000000000000", documentName: "TESTE - SEM VALIDADE.pdf",
     originalSha256: "a".repeat(64), signerName: "Pessoa fictícia para teste", signerDocument: "00000000000",
-    signerEmail: "", accepted: true, consentVersion: "2026-09-29-v2-link", consentText: CONSENT_TEXT,
+    signerEmail: "", accepted: true, consentVersion: CONSENT_VERSION, consentText: CONSENT_TEXT,
     signedAt: "2026-09-29T20:00:00.000Z", viewedAt: "2026-09-29T19:59:00.000Z",
-    authentication: "unique_link", ip: null, userAgent: "Navegador de teste", signatureImageSha256: null,
+    authentication: "unique_link", ip: "203.0.113.7", userAgent: "Navegador de teste", signatureImageSha256: null,
+    location: { status: "captured", source: "browser_geolocation", latitude: -15.6, longitude: -56.1, accuracyMeters: 30, capturedAt: "2026-09-29T19:59:55.000Z" },
 };
 
 it("preserves original pages and appends the consent receipt without clipping long evidence", async () => {
