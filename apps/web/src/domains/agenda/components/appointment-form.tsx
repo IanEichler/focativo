@@ -21,11 +21,15 @@ export function AppointmentFormSheet({
   services,
   professionals,
   presetCustomer,
+  initialDate,
+  timeZone,
 }: {
   trigger: React.ReactNode;
   services: ServiceRow[];
   professionals: ProfessionalOption[];
   presetCustomer?: CustomerOption;
+  initialDate?: string;
+  timeZone?: string;
 }) {
   return (
     <FormSheet
@@ -39,6 +43,8 @@ export function AppointmentFormSheet({
           services={services}
           professionals={professionals}
           presetCustomer={presetCustomer}
+          initialDate={initialDate}
+          timeZone={timeZone}
           onDone={close}
         />
       )}
@@ -50,11 +56,15 @@ function AppointmentForm({
   services,
   professionals,
   presetCustomer,
+  initialDate,
+  timeZone,
   onDone,
 }: {
   services: ServiceRow[];
   professionals: ProfessionalOption[];
   presetCustomer?: CustomerOption;
+  initialDate?: string;
+  timeZone?: string;
   onDone: () => void;
 }) {
   const [state, action] = useActionState<ActionState<AppointmentField>, FormData>(createAppointmentAction, IDLE);
@@ -129,6 +139,8 @@ function AppointmentForm({
             label="Data e horário"
             name="startsAt"
             type="datetime-local"
+            defaultValue={initialDate ? `${initialDate}T09:00` : undefined}
+            description={timeZone ? `Horário da clínica (${timeZone}).` : "Use o horário local da clínica."}
             error={fieldError(state, "startsAt")}
           />
         </div>

@@ -1,34 +1,25 @@
-import { CalendarDays, CalendarPlus, Settings2 } from "lucide-react";
+import { CalendarPlus, Settings2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DataTable, type DataTableColumn } from "@/components/data/data-table";
-import { FilterBar, FilterSelect } from "@/components/data/filter-controls";
-import { StatusBadge } from "@/components/data/status-badge";
+import { redirect } from "next/navigation";
+import { Pagination } from "@/components/data/data-table";
 import { AccessDenied } from "@/components/feedback/access-denied";
-import { EmptyState } from "@/components/feedback/empty-state";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { agendaPeriod, calendarDate, validCalendarDate } from "@/domains/agenda/calendar";
+import { AgendaBoard } from "@/domains/agenda/components/agenda-board";
+import { AgendaToolbar } from "@/domains/agenda/components/agenda-toolbar";
 import { AppointmentFormSheet } from "@/domains/agenda/components/appointment-form";
 import { ContractSessionsPending } from "@/domains/agenda/components/contract-session-pending";
-import { AppointmentRowActions } from "@/domains/agenda/components/appointment-row-actions";
-import {
-  APPOINTMENT_STATUS_FILTERS,
-  APPOINTMENT_STATUS_LABELS,
-  APPOINTMENT_STATUS_TONES,
-  isAppointmentStatus,
-} from "@/domains/agenda/labels";
-import {
-  APPOINTMENT_PAGE_SIZE,
-  listAppointments,
-  listServices,
-  type AppointmentListItem,
-} from "@/domains/agenda/queries";
+import { isAppointmentStatus } from "@/domains/agenda/labels";
+import { listAppointments, listServices } from "@/domains/agenda/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
+import { getTenantDetails } from "@/domains/tenants/queries";
 import { listTenantMembers } from "@/domains/users/queries";
-import { formatDateTime } from "@/lib/format";
 import { buildHref, firstParam, parsePage } from "@/lib/url";
 
 export const metadata: Metadata = { title: "Agenda" };
+const PAGE_SIZE = 100;
 
 export default async function AgendaPage({ searchParams }: PageProps<"/app/agenda">) {
   const context = await requireTenantContext();
@@ -40,144 +31,124 @@ export default async function AgendaPage({ searchParams }: PageProps<"/app/agend
       </PageContainer>
     );
   }
-
   const params = await searchParams;
+  const canWrite = context.can("agenda.write");
+  const [tenant, services, members] = await Promise.all([
+    getTenantDetails(context),
+    canWrite ? listServices(context, { activeOnly: true }) : Promise.resolve([]),
+    listTenantMembers(context),
+  ]);
+  const timeZone = tenant.timezone;
+  const today = calendarDate(new Date(), timeZone);
+  const requestedDate = firstParam(params.data);
+  const date = validCalendarDate(requestedDate) ? requestedDate : today;
+  const view = firstParam(params.visao) === "week" ? "week" : "day";
+  const period = agendaPeriod(date, view, timeZone);
   const statusParam = firstParam(params.status);
   const status = statusParam && isAppointmentStatus(statusParam) ? statusParam : undefined;
+  const professionalParam = firstParam(params.profissional);
+  const professionalId = members.some((member) => member.userId === professionalParam) ? professionalParam : undefined;
   const page = parsePage(params.page);
-  const canWrite = context.can("agenda.write");
-
-  const [list, services, members] = await Promise.all([
-    listAppointments(context, { status, page }),
-    canWrite ? listServices(context, { activeOnly: true }) : Promise.resolve([]),
-    canWrite ? listTenantMembers(context) : Promise.resolve([]),
-  ]);
+  const list = await listAppointments(context, {
+    status,
+    professionalId,
+    from: period.from,
+    to: period.to,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  if (page > Math.max(1, Math.ceil(list.total / PAGE_SIZE))) {
+    redirect(buildHref("/app/agenda", params, { page: undefined }));
+  }
   const professionals = members
-    .filter((m) => m.status === "ACTIVE")
-    .map((m) => ({ userId: m.userId, fullName: m.fullName }));
-
-  const columns: DataTableColumn<AppointmentListItem>[] = [
-    {
-      id: "when",
-      header: "Quando",
-      cell: (appointment) => <span className="font-medium tabular">{formatDateTime(appointment.startsAt)}</span>,
-    },
-    {
-      id: "customer",
-      header: "Cliente",
-      cell: (appointment) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{appointment.customerName}</span>
-          <span className="text-small text-muted-foreground">{appointment.serviceName}</span>
-        </div>
-      ),
-    },
-    {
-      id: "professional",
-      header: "Profissional",
-      hideBelow: "md",
-      cell: (appointment) => <span className="text-muted-foreground">{appointment.professionalName}</span>,
-    },
-    {
-      id: "status",
-      header: "Situação",
-      cell: (appointment) => (
-        <StatusBadge tone={APPOINTMENT_STATUS_TONES[appointment.status]}>
-          {APPOINTMENT_STATUS_LABELS[appointment.status]}
-        </StatusBadge>
-      ),
-    },
-    ...(canWrite
-      ? [
-          {
-            id: "actions",
-            header: "",
-            align: "right" as const,
-            cell: (appointment: AppointmentListItem) => <AppointmentRowActions appointment={appointment} />,
-          },
-        ]
-      : []),
+    .filter((member) => member.status === "ACTIVE")
+    .map((member) => ({ userId: member.userId, fullName: member.fullName }));
+  const partial = list.total > list.rows.length;
+  const summary = [
+    { label: "Agendados", count: list.rows.filter((row) => row.status === "SCHEDULED").length, color: "bg-violet-400" },
+    { label: "Confirmados", count: list.rows.filter((row) => row.status === "CONFIRMED").length, color: "bg-info" },
+    { label: "Concluídos", count: list.rows.filter((row) => row.status === "COMPLETED").length, color: "bg-success" },
   ];
-
   return (
     <PageContainer>
       <PageHeader
         title="Agenda"
-        description="Serviços e agendamentos."
+        description="Organize os atendimentos e acompanhe cada sessão."
         actions={
-          <div className="flex items-center gap-2">
-            {canWrite && (
-              <AppointmentFormSheet
-                services={services}
-                professionals={professionals}
-                trigger={
-                  <Button>
-                    <CalendarPlus /> Novo agendamento
-                  </Button>
-                }
-              />
-            )}
-          </div>
-        }
-      />
-
-      <ContractSessionsPending context={context} services={services} professionals={professionals} />
-
-      <DataTable
-        caption="Agendamentos"
-        columns={columns}
-        rows={list.rows}
-        getRowKey={(appointment) => appointment.id}
-        toolbar={
-          <FilterBar>
-            <FilterSelect
-              param="status"
-              label="Situação"
-              allLabel="Todas"
-              options={APPOINTMENT_STATUS_FILTERS.map((value) => ({ value, label: APPOINTMENT_STATUS_LABELS[value] }))}
+          canWrite && (
+            <AppointmentFormSheet
+              services={services}
+              professionals={professionals}
+              initialDate={date}
+              timeZone={timeZone}
+              trigger={
+                <Button>
+                  <CalendarPlus /> Novo agendamento
+                </Button>
+              }
             />
-          </FilterBar>
+          )
         }
-        empty={
-          <EmptyState
-            className="border-0"
-            icon={<CalendarDays />}
-            title="Nenhum agendamento"
-            description={
-              services.length === 0 && canWrite
-                ? "Cadastre um serviço antes de criar o primeiro agendamento."
-                : "Crie um agendamento para começar."
-            }
-            action={
-              canWrite ? (
-                services.length === 0 ? (
-                  <Button variant="outline" asChild>
-                    <Link href="/app/agenda/servicos">
-                      <Settings2 /> Cadastrar serviço
-                    </Link>
-                  </Button>
-                ) : (
-                  <AppointmentFormSheet
-                    services={services}
-                    professionals={professionals}
-                    trigger={
-                      <Button>
-                        <CalendarPlus /> Novo agendamento
-                      </Button>
-                    }
-                  />
-                )
-              ) : undefined
-            }
-          />
-        }
-        pagination={{
-          page,
-          pageSize: APPOINTMENT_PAGE_SIZE,
-          total: list.total,
-          hrefFor: (target) => buildHref("/app/agenda", params, { page: target > 1 ? target : undefined }),
-        }}
       />
+      <ContractSessionsPending
+        context={context}
+        services={services}
+        professionals={professionals}
+        timeZone={timeZone}
+      />
+      <AgendaToolbar
+        date={date}
+        days={period.days}
+        today={today}
+        view={view}
+        params={params}
+        professionals={members.map((member) => ({ userId: member.userId, fullName: member.fullName }))}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3 text-small text-muted-foreground">
+        <p>
+          <span className="font-semibold text-foreground">{list.total}</span>{" "}
+          {list.total === 1 ? "atendimento" : "atendimentos"} no período{partial && " · resumo desta página"}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {summary.map((item) => (
+            <span key={item.label} className="inline-flex items-center gap-1.5">
+              <span className={`size-2 rounded-full ${item.color}`} />
+              {item.count} {item.label.toLowerCase()}
+            </span>
+          ))}
+        </div>
+      </div>
+      {canWrite && services.length === 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-small">
+          <p>Cadastre um serviço para criar novos agendamentos.</p>
+          <Button variant="outline" asChild>
+            <Link href="/app/agenda/servicos">
+              <Settings2 /> Cadastrar serviço
+            </Link>
+          </Button>
+        </div>
+      )}
+      <AgendaBoard
+        rows={list.rows}
+        days={period.days}
+        timeZone={timeZone}
+        today={today}
+        canWrite={canWrite}
+        canReadCustomer={context.can("customers.read")}
+        partial={partial}
+      />
+      {list.total > 0 && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={list.total}
+          hrefFor={(target) => buildHref("/app/agenda", params, { page: target > 1 ? target : undefined })}
+        />
+      )}
+      <p className="text-caption text-muted-foreground">
+        Horários no fuso da clínica: {timeZone}. As sessões com data e horário definidos no contrato entram na agenda
+        após a assinatura.
+      </p>
     </PageContainer>
   );
 }

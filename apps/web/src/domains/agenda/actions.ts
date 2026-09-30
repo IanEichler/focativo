@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTenantDetails } from "@/domains/tenants/queries";
+import { clinicDateTime } from "./calendar";
 import { z } from "zod";
 import { requireTenantContext } from "@/domains/tenants/context";
 import { toUserMessage, type ActionState } from "@/lib/errors";
@@ -97,9 +99,16 @@ export async function createAppointmentAction(
   if (!parsed.success) return validationError(parsed.error, input);
   const data = parsed.data;
 
-  const startsAt = new Date(data.startsAt);
-  if (Number.isNaN(startsAt.getTime())) {
-    return { status: "error", message: "Data e horário inválidos.", values: safeFormValues(input) };
+  let startsAt: Date;
+  try {
+    const tenant = await getTenantDetails(context);
+    startsAt = clinicDateTime(data.startsAt, tenant.timezone);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Confira a data e o horário.",
+      values: safeFormValues(input),
+    };
   }
 
   const supabase = await createClient();

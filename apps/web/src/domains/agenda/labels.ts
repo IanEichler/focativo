@@ -12,7 +12,7 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 export const APPOINTMENT_STATUS_TONES: Record<AppointmentStatus, StatusTone> = {
-  SCHEDULED: "neutral",
+  SCHEDULED: "violet",
   CONFIRMED: "info",
   COMPLETED: "success",
   CANCELED: "danger",
@@ -22,5 +22,5 @@ export const APPOINTMENT_STATUS_TONES: Record<AppointmentStatus, StatusTone> = {
 export const APPOINTMENT_STATUS_FILTERS = ["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"] as const;
 
 export function isAppointmentStatus(value: string): value is AppointmentStatus {
-  return value in APPOINTMENT_STATUS_LABELS;
+  return Object.hasOwn(APPOINTMENT_STATUS_LABELS, value);
 }

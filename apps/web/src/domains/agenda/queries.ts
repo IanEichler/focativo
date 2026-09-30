@@ -60,29 +60,42 @@ export interface AppointmentListItem {
   status: Enums<"appointment_status">;
   notes: string | null;
   canceledReason: string | null;
+  origin?: string | null;
 }
 
 export async function listAppointments(
   context: TenantContext,
-  params: { status?: string; from?: string; customerId?: string; page: number },
+  params: {
+    status?: string;
+    from?: string;
+    to?: string;
+    professionalId?: string;
+    customerId?: string;
+    page: number;
+    pageSize?: number;
+  },
 ): Promise<{ rows: AppointmentListItem[]; total: number }> {
   const supabase = await createClient();
   let query = supabase
     .from("agenda_appointments")
     .select(
-      "id, customer_id, professional_user_id, starts_at, ends_at, status, notes, canceled_reason, customer:customers(name), service:agenda_services(name), professional:profiles!agenda_appointments_professional_user_id_fkey(full_name)",
+      "id, customer_id, professional_user_id, starts_at, ends_at, status, notes, canceled_reason, origin, customer:customers(name), service:agenda_services(name), professional:profiles!agenda_appointments_professional_user_id_fkey(full_name)",
       { count: "exact" },
     )
     .eq("tenant_id", context.tenant.id);
 
   if (params.status) query = query.eq("status", params.status as Enums<"appointment_status">);
   if (params.from) query = query.gte("starts_at", params.from);
+  if (params.to) query = query.lt("starts_at", params.to);
+  if (params.professionalId) query = query.eq("professional_user_id", params.professionalId);
   if (params.customerId) query = query.eq("customer_id", params.customerId);
 
-  const from = (params.page - 1) * APPOINTMENT_PAGE_SIZE;
+  const pageSize = params.pageSize ?? APPOINTMENT_PAGE_SIZE;
+  const from = (params.page - 1) * pageSize;
   const { data, count, error } = await query
     .order("starts_at", { ascending: true })
-    .range(from, from + APPOINTMENT_PAGE_SIZE - 1);
+    .order("id", { ascending: true })
+    .range(from, from + pageSize - 1);
   if (error) throw new Error(`listAppointments failed: ${error.code}`);
 
   return {
@@ -99,6 +112,7 @@ export async function listAppointments(
       status: row.status,
       notes: row.notes,
       canceledReason: row.canceled_reason,
+      origin: row.origin,
     })),
   };
 }
