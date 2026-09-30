@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/constants";
 import { APP_NAV, filterNav, navCommands, reorderNav } from "@/components/layout/nav-config";
-import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 import { Topbar } from "@/components/layout/topbar";
 import { UserMenu } from "@/components/layout/user-menu";
 import { isSuperAdmin } from "@/domains/auth/session";
@@ -20,7 +19,6 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
   ]);
 
   const sections = reorderNav(filterNav(APP_NAV, context.permissions, context.hasModule), context.user.navOrder);
-  const current = { id: context.tenant.id, name: context.tenant.name, roleName: context.tenant.roleName };
 
   return (
     <AppShell
@@ -33,18 +31,7 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
           end={
             <>
               <NotificationsBell items={notifications} />
-              <UserMenu
-                name={context.user.fullName}
-                email={context.user.email}
-                isSuperAdmin={superAdmin}
-                area="app"
-                companyMenu={
-                  <TenantSwitcher
-                    current={current}
-                    options={context.memberships.map((m) => ({ id: m.id, name: m.name, roleName: m.roleName }))}
-                  />
-                }
-              />
+              <UserMenu name={context.user.fullName} email={context.user.email} isSuperAdmin={superAdmin} area="app" />
             </>
           }
         />
