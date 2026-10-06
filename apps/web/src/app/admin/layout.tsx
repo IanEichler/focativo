@@ -2,7 +2,7 @@ import { ShieldCheck } from "lucide-react";
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/constants";
-import { ADMIN_NAV, navCommands } from "@/components/layout/nav-config";
+import { ADMIN_NAV } from "@/components/layout/nav-config";
 import { Topbar } from "@/components/layout/topbar";
 import { UserMenu } from "@/components/layout/user-menu";
 import { requireSuperAdmin } from "@/domains/admin/guard";
@@ -29,7 +29,6 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       }
       topbar={
         <Topbar
-          commands={navCommands(ADMIN_NAV, "Administração")}
           context={
             <span className="inline-flex items-center gap-1.5 rounded-full bg-info-soft px-2.5 py-1 text-caption font-medium text-info">
               <ShieldCheck className="size-3.5" aria-hidden="true" /> Administração da plataforma

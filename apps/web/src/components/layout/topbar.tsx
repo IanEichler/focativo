@@ -2,16 +2,14 @@
 
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CommandPalette, type CommandPaletteItem } from "./command-palette";
 import { useShell } from "./shell-context";
 
 interface TopbarProps {
-  commands: CommandPaletteItem[];
   end?: React.ReactNode;
   context?: React.ReactNode;
 }
 
-export function Topbar({ commands, end, context }: TopbarProps) {
+export function Topbar({ end, context }: TopbarProps) {
   const { openMobile } = useShell();
 
   return (
@@ -20,10 +18,7 @@ export function Topbar({ commands, end, context }: TopbarProps) {
         <Menu />
       </Button>
       {context && <div className="hidden min-w-0 items-center gap-2 md:flex">{context}</div>}
-      <div className="ml-auto flex items-center gap-2">
-        <CommandPalette items={commands} />
-        {end}
-      </div>
+      <div className="ml-auto flex items-center gap-2">{end}</div>
     </header>
   );
 }

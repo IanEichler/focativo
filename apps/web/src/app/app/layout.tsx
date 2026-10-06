@@ -2,7 +2,7 @@ import { TriangleAlert } from "lucide-react";
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/constants";
-import { APP_NAV, filterNav, navCommands, reorderNav } from "@/components/layout/nav-config";
+import { APP_NAV, filterNav, reorderNav } from "@/components/layout/nav-config";
 import { Topbar } from "@/components/layout/topbar";
 import { UserMenu } from "@/components/layout/user-menu";
 import { isSuperAdmin } from "@/domains/auth/session";
@@ -27,7 +27,6 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
       defaultCollapsed={cookieStore.get(SIDEBAR_COOKIE)?.value === "1"}
       topbar={
         <Topbar
-          commands={navCommands(sections, "Navegação")}
           end={
             <>
               <NotificationsBell items={notifications} />

@@ -135,11 +135,3 @@ export function reorderNav(sections: NavSection[], order: string[] | null): NavS
     }),
   }));
 }
-
-export function navCommands(sections: NavSection[], group: string) {
-  return sections.flatMap((section) =>
-    section.items
-      .filter((item) => item.availability !== "soon")
-      .map((item) => ({ title: item.title, href: item.href, icon: item.icon, group: section.title ?? group })),
-  );
-}
