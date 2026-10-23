@@ -1218,6 +1218,7 @@ export type Database = {
       financial_entries: {
         Row: {
           amount: number
+          appointment_id: string | null
           canceled_reason: string | null
           category: string | null
           created_at: string
@@ -1240,6 +1241,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          appointment_id?: string | null
           canceled_reason?: string | null
           category?: string | null
           created_at?: string
@@ -1262,6 +1264,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          appointment_id?: string | null
           canceled_reason?: string | null
           category?: string | null
           created_at?: string
@@ -1283,6 +1286,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "financial_entries_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "agenda_appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financial_entries_created_by_fkey"
             columns: ["created_by"]

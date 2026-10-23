@@ -51,6 +51,8 @@ function EntryDescription({ entry, kind }: { entry: FinancialEntryRow; kind: Ent
   const details = [
     entry.installmentCount > 1 ? installmentLabel(entry) : null,
     entry.fromRecurring ? "Despesa fixa" : null,
+    entry.fromAppointment ? "Atendimento da agenda" : null,
+    entry.fromContract ? "Contrato assinado" : null,
     kind === "INCOME" ? null : entry.category,
     entry.paymentMethod,
   ].filter(Boolean);

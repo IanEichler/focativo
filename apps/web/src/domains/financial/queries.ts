@@ -30,6 +30,8 @@ export interface FinancialEntryRow {
   canceledReason: string | null;
   fromContract: boolean;
   fromRecurring: boolean;
+  /** Cobrança criada por um agendamento confirmado na Agenda. */
+  fromAppointment: boolean;
 }
 
 export interface CustomerFinancialSummary {
@@ -40,7 +42,7 @@ export interface CustomerFinancialSummary {
 }
 
 const ENTRY_COLUMNS =
-  "id, customer_id, description, category, amount, due_date, installment_number, installment_count, status, payment_method, paid_at, canceled_reason, signature_id, recurring_id";
+  "id, customer_id, description, category, amount, due_date, installment_number, installment_count, status, payment_method, paid_at, canceled_reason, signature_id, recurring_id, appointment_id";
 
 type EntryRecord = {
   id: string;
@@ -57,6 +59,7 @@ type EntryRecord = {
   canceled_reason: string | null;
   signature_id: string | null;
   recurring_id: string | null;
+  appointment_id: string | null;
   customer?: { name: string } | null;
 };
 
@@ -77,6 +80,7 @@ function toRow(row: EntryRecord): FinancialEntryRow {
     canceledReason: row.canceled_reason,
     fromContract: Boolean(row.signature_id),
     fromRecurring: Boolean(row.recurring_id),
+    fromAppointment: Boolean(row.appointment_id),
   };
 }
 

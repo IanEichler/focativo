@@ -204,6 +204,13 @@ export default function HelpPage() {
           <li>
             <strong>Novo lançamento</strong> funciona como no perfil da cliente, escolhendo a cliente no formulário.
           </li>
+          <li>
+            <strong>Atendimentos da Agenda</strong>: quando um agendamento é marcado como confirmado (ou concluído),
+            entra aqui uma cobrança com o preço do serviço, vencendo no dia do atendimento. Use{" "}
+            <strong>Marcar como pago</strong> para registrar que recebeu e a forma (Pix, cartão, dinheiro…). Se o
+            agendamento for cancelado ou a cliente faltar, a cobrança em aberto é cancelada sozinha. Sessões de
+            contrato e serviços sem preço não geram cobrança, porque já estão nas parcelas do contrato.
+          </li>
         </Ul>
         <P>
           <strong>Despesas</strong> são as contas a pagar, com os mesmos números e ações (marcar como pago, editar,

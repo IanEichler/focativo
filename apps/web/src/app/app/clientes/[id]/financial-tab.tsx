@@ -78,6 +78,7 @@ export async function FinancialTab({ context, customerId }: { context: TenantCon
                         <span className="text-caption text-muted-foreground">
                           {installmentLabel(entry)}
                           {entry.fromContract ? " · contrato assinado" : ""}
+                          {entry.fromAppointment ? " · atendimento da agenda" : ""}
                           {entry.paymentMethod ? ` · ${entry.paymentMethod}` : ""}
                         </span>
                       </span>
