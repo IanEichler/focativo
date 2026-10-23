@@ -45,6 +45,9 @@ try {
       throw error;
     }
   }
+  // Raw SQL (unlike `supabase db push`) does not refresh PostgREST's schema cache:
+  // without this, new tables/RPCs answer "not found" (PGRST202/42703) until a reload.
+  await db.query("notify pgrst, 'reload schema'");
   console.log('Database migrations are current.');
 } catch (error) {
   // SQL statements/errors can contain sensitive data; log only diagnostic identifiers.
