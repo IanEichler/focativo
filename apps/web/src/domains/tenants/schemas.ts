@@ -30,9 +30,9 @@ export function businessTypeForSegment(segment: string): "RETAIL" | "SERVICES" {
 }
 
 export const TIMEZONES = [
+  "America/Cuiaba",
   "America/Sao_Paulo",
   "America/Manaus",
-  "America/Cuiaba",
   "America/Belem",
   "America/Fortaleza",
   "America/Recife",

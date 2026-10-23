@@ -245,7 +245,7 @@ async function bookAppointment(admin: AdminClient, conversationId: string, input
     .maybeSingle();
   const when = receipt
     ? new Intl.DateTimeFormat("pt-BR", {
-        timeZone: receipt.tenant?.timezone || "America/Sao_Paulo",
+        timeZone: receipt.tenant?.timezone || "America/Cuiaba",
         day: "2-digit",
         month: "2-digit",
         hour: "2-digit",

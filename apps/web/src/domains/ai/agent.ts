@@ -85,7 +85,7 @@ async function runCurrentTurn(conversationId: string, isCurrent: () => boolean):
       .filter(Boolean)
       .join("\n\n"),
     customerContext: await buildCustomerContext(admin, conversation.customer_id),
-    calendarContext: buildCalendarContext(new Date(), tenant?.timezone || "America/Sao_Paulo"),
+    calendarContext: buildCalendarContext(new Date(), tenant?.timezone || "America/Cuiaba"),
   });
   const model = limits?.model || "claude-sonnet-5";
   const maxTokens = limits?.max_tokens_per_reply || 1024;

@@ -32,7 +32,7 @@ const dateFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
-  timeZone: "America/Sao_Paulo",
+  timeZone: "America/Cuiaba",
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
@@ -41,7 +41,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-  timeZone: "America/Sao_Paulo",
+  timeZone: "America/Cuiaba",
 });
 
 export function formatDate(value: string | Date | null | undefined): string {
