@@ -141,7 +141,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
               className="border-0"
               icon={<UserRoundPlus />}
               title="Nenhum cliente cadastrado"
-              description="Cadastre o primeiro cliente para começar o atendimento e o CRM."
+              description="Cadastre o primeiro cliente para começar a agendar e emitir contratos."
               action={
                 canWrite ? (
                   <CustomerFormSheet

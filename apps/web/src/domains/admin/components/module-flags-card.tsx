@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { TENANT_MODULES } from "@/lib/modules";
+import { RETIRED_MODULES, TENANT_MODULES } from "@/lib/modules";
 import { setModuleFlagAction } from "../actions";
 
 export function ModuleFlagsCard({ tenantId, disabledModules }: { tenantId: string; disabledModules: string[] }) {
@@ -34,7 +34,7 @@ export function ModuleFlagsCard({ tenantId, disabledModules }: { tenantId: strin
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col divide-y divide-border">
-          {TENANT_MODULES.map((module) => {
+          {TENANT_MODULES.filter((module) => !RETIRED_MODULES.has(module.code)).map((module) => {
             const enabled = !disabled.has(module.code);
             return (
               <li key={module.code} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">

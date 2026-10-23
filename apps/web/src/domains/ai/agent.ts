@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { RETIRED_MODULES } from "@/lib/modules";
 import { getAIProvider } from "./get-provider";
 import { estimateCostUsd } from "./pricing";
 import { buildSystemPrompt, buildConversationHistory, splitIntoMessages, buildCalendarContext } from "./conversation";
@@ -24,6 +25,7 @@ const queueTurn = createTurnQueue();
  * pode escrever de novo ou um humano pode assumir pelo Inbox.
  */
 export async function runAiTurn(conversationId: string): Promise<void> {
+  if (RETIRED_MODULES.has("ai")) return;
   return queueTurn(conversationId, (isCurrent) => runCurrentTurn(conversationId, isCurrent));
 }
 

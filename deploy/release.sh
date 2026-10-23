@@ -29,7 +29,8 @@ node --env-file=/etc/estoque-ia/deploy.env packages/database/scripts/deploy-migr
 activated=false
 start_release() {
   # PM2 reload retains an existing process's cwd/script. Recreate definitions
-  # so all three processes actually use this release's absolute paths.
+  # so every process actually uses this release's absolute paths. The retired
+  # WhatsApp service stays in the delete list so old releases' process is removed.
   pm2 delete estoque-ia-web estoque-ia-whatsapp estoque-ia-jobs >/dev/null 2>&1 || true
   pm2 start "$1/deploy/ecosystem.config.cjs" --env production --update-env
 }
@@ -52,8 +53,7 @@ start_release "$release"
 healthy=false
 for attempt in $(seq 1 30); do
   if curl --fail --silent --max-time 5 http://127.0.0.1:3000/api/health |
-    node -e 'let text="";process.stdin.on("data",c=>text+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(text);process.exit(r.ok&&r.commit===process.argv[1]?0:1)}catch{process.exit(1)}})' "$sha" &&
-    curl --fail --silent --max-time 5 http://127.0.0.1:4001/health >/dev/null; then
+    node -e 'let text="";process.stdin.on("data",c=>text+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(text);process.exit(r.ok&&r.commit===process.argv[1]?0:1)}catch{process.exit(1)}})' "$sha"; then
     healthy=true
     break
   fi
@@ -62,7 +62,7 @@ done
 [[ $healthy == true ]] || { echo 'Health check failed' >&2; exit 1; }
 curl --fail --silent --max-time 15 https://focativo.com/api/health |
   node -e 'let text="";process.stdin.on("data",c=>text+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(text);process.exit(r.ok&&r.commit===process.argv[1]?0:1)}catch{process.exit(1)}})' "$sha"
-pm2 jlist | node -e 'let text="";process.stdin.on("data",c=>text+=c);process.stdin.on("end",()=>{const apps=JSON.parse(text);process.exit(["estoque-ia-web","estoque-ia-whatsapp","estoque-ia-jobs"].every(name=>apps.some(p=>p.name===name&&p.pm2_env.status==="online"&&p.pm2_env.pm_cwd.startsWith(process.argv[1]+"/")))?0:1)})' "$release"
+pm2 jlist | node -e 'let text="";process.stdin.on("data",c=>text+=c);process.stdin.on("end",()=>{const apps=JSON.parse(text);process.exit(["estoque-ia-web","estoque-ia-jobs"].every(name=>apps.some(p=>p.name===name&&p.pm2_env.status==="online"&&p.pm2_env.pm_cwd.startsWith(process.argv[1]+"/")))?0:1)})' "$release"
 ln -sfn "$release" "$base/current"
 pm2 save
 echo "Deployment verified: $sha"

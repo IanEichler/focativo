@@ -6,17 +6,13 @@
  *   pm2 start deploy/ecosystem.config.cjs --env production
  *   pm2 save && pm2 startup
  *
- * Três processos: o app Next.js (estoque-ia-web), o serviço WhatsApp
- * (estoque-ia-whatsapp, Fase 6) e o serviço de jobs (estoque-ia-jobs, Fase 8)
- * — separados de propósito (seção 33): se qualquer um travar, os outros
- * continuam no ar.
+ * Dois processos: o app Next.js (estoque-ia-web) e o serviço de jobs
+ * (estoque-ia-jobs, Fase 8) — separados de propósito (seção 33): se um travar,
+ * o outro continua no ar. O serviço WhatsApp (services/whatsapp) foi
+ * aposentado junto com os módulos de atendimento e IA e não sobe mais.
  *
- * Variáveis sensíveis ficam em /etc/estoque-ia/web.env e
- * /etc/estoque-ia/whatsapp.env (chmod 600), carregadas abaixo — nunca
- * neste arquivo. pnpm-workspace.yaml marca `puppeteer: false` por padrão
- * (evita baixar ~300MB de Chromium em qualquer `pnpm install`); rode
- * `pnpm approve-builds` manualmente na VPS antes do primeiro deploy do
- * serviço WhatsApp.
+ * Variáveis sensíveis ficam em /etc/estoque-ia/web.env (chmod 600),
+ * carregadas abaixo — nunca neste arquivo.
  */
 const path = require("node:path");
 const fs = require("node:fs");
@@ -59,25 +55,6 @@ module.exports = {
         NODE_ENV: "production",
         ...loadEnvFile(ENV_FILE),
         APP_RELEASE_SHA: process.env.APP_RELEASE_SHA || "development",
-      },
-    },
-    {
-      // Fase 6: whatsapp-web.js + Chromium isolados num processo próprio — se o
-      // Chromium travar, estoque/CRM/vendas/financeiro continuam no ar (seção 33).
-      // Variáveis (MAIN_APP_URL, WHATSAPP_SERVICE_SECRET, SESSIONS_PATH) ficam no
-      // mesmo arquivo de env do app (chmod 600), nunca aqui.
-      name: "estoque-ia-whatsapp",
-      cwd: path.join(__dirname, "..", "services", "whatsapp"),
-      script: "src/index.ts",
-      node_args: "--import tsx",
-      instances: 1,
-      exec_mode: "fork",
-      max_memory_restart: "1G",
-      kill_timeout: 20000,
-      time: true,
-      env_production: {
-        NODE_ENV: "production",
-        ...loadEnvFile(process.env.ESTOQUE_IA_WHATSAPP_ENV_FILE || "/etc/estoque-ia/whatsapp.env"),
       },
     },
     {

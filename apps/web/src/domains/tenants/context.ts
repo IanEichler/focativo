@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 import { getCurrentUser, getVerifiedIdentity, isSuperAdmin, type CurrentUser } from "@/domains/auth/session";
-import type { ModuleCode } from "@/lib/modules";
+import { RETIRED_MODULES, type ModuleCode } from "@/lib/modules";
 import { hasPermission, type Permission, type RoleCode } from "@/lib/permissions";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -79,7 +79,7 @@ export const getTenantContext = cache(async (): Promise<TenantContext | null> =>
     permissions,
     memberships: snapshot.memberships,
     can: (permission) => hasPermission(permissions, permission),
-    hasModule: (module) => !disabledModules.has(module),
+    hasModule: (module) => !RETIRED_MODULES.has(module) && !disabledModules.has(module),
   };
 });
 

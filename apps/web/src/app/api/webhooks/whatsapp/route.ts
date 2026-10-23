@@ -3,6 +3,7 @@ import { contactPhone } from "@/domains/whatsapp/contact-identity";
 import { runAiTurn } from "@/domains/ai/agent";
 import { getServerEnv } from "@/lib/env.server";
 import { logger } from "@/lib/logger";
+import { RETIRED_MODULES } from "@/lib/modules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyWebhookSignature } from "@/lib/webhook-signature";
 import type { TablesInsert } from "@/types/database.types";
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
   const { event, tenantId } = payload;
   if (!event || !tenantId) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
+  // Módulo aposentado: nada que chegue do WhatsApp cria cliente, conversa ou
+  // oportunidade. Responde 200 para o serviço não ficar reentregando.
+  if (RETIRED_MODULES.has("whatsapp")) {
+    logger.info({ event: "webhook.whatsapp", status: "ignored_retired", tenant_id: tenantId, webhook_event: event });
+    return NextResponse.json({ ok: true });
   }
 
   const admin = createAdminClient();

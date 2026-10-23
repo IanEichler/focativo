@@ -18,6 +18,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/logger", () => ({ logger: { warn: vi.fn() } }));
+vi.mock("@/lib/modules", () => ({ RETIRED_MODULES: new Set() }));
 vi.mock("./pricing", () => ({ estimateCostUsd: () => 0 }));
 vi.mock("./tools", () => ({ buildAiTools: () => mock.tools }));
 vi.mock("./tool-executor", () => ({ executeTool: mock.execute }));

@@ -19,3 +19,11 @@ export const TENANT_MODULES = [
 ] as const;
 
 export type ModuleCode = (typeof TENANT_MODULES)[number]["code"];
+
+/**
+ * Módulos desligados no sistema inteiro, independente de tenant_module_flags:
+ * o sistema passou a ser de uso exclusivo de uma clínica, que não usa CRM,
+ * atendimento por WhatsApp nem assistente de IA. Os dados antigos continuam
+ * no banco; só as telas, ações e o recebimento de mensagens ficam bloqueados.
+ */
+export const RETIRED_MODULES: ReadonlySet<ModuleCode> = new Set<ModuleCode>(["crm", "whatsapp", "ai"]);
