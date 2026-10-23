@@ -48,6 +48,10 @@ export const DB_ERROR_MESSAGES = {
   professional_not_eligible: "Este profissional não atende este serviço.",
   outside_business_hours: "Esse horário está fora do funcionamento configurado para este dia.",
   professional_unavailable: "Este profissional registrou uma exceção (folga) nesta data.",
+  // Financeiro
+  entry_not_pending: "Essa parcela não está mais pendente. Atualize a página para ver a situação atual.",
+  entry_not_paid: "Essa parcela não está paga, então não há o que estornar.",
+  invalid_payment_plan: "As parcelas do contrato estão inválidas. Confira valor, parcelas e vencimento.",
   // Permissões personalizadas
   invalid_permission_code: "Uma das permissões enviadas não existe.",
   invalid_overrides: "Não foi possível salvar as permissões. Tente novamente.",

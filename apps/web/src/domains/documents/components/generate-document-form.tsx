@@ -19,18 +19,22 @@ import { ContractPaymentField } from "./contract-payment-field";
 import { SessionScheduleFields, type ContractSchedulingOptions } from "./session-schedule-fields";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
 import { ContractLivePreview } from "./contract-live-preview";
+import { ContractPaymentPlan } from "./contract-payment-plan";
 
 export function GenerateDocumentForm({
   template,
   initialCustomer,
   scheduling,
   procedureOptions = [],
+  canLaunchPayments = false,
 }: {
   template: DocumentTemplateRow;
   initialCustomer: CustomerOption;
   scheduling?: ContractSchedulingOptions;
   /** Nomes dos serviços cadastrados na Agenda, sugeridos no nome do procedimento. */
   procedureOptions?: string[];
+  /** Módulo financeiro ligado e permissão de lançar: mostra as parcelas que irão para o Financeiro. */
+  canLaunchPayments?: boolean;
 }) {
   const customer = initialCustomer;
   const [preview, setPreview] = useState<FieldPreview | null>(null);
@@ -100,6 +104,11 @@ export function GenerateDocumentForm({
 
           {customer && preview && preview.remaining.length === 0 && Object.keys(preview.autoFilled).length === 0 && (
             <p className="text-small text-muted-foreground">Esse modelo não tem campos de preenchimento.</p>
+          )}
+
+          {canLaunchPayments && preview && (
+            <ContractPaymentPlan formRef={formRef} fields={template.fields} autoFilled={preview.autoFilled}
+              fallbackDescription={template.name.replace(/\.docx$/i, "")} />
           )}
 
           <label className="flex items-center gap-2 text-body">

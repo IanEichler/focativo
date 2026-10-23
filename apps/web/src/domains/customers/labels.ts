@@ -21,6 +21,12 @@ export const TIMELINE_EVENT_LABELS: Record<string, string> = {
   "crm.opportunity_won": "Oportunidade ganha",
   "crm.opportunity_lost": "Oportunidade perdida",
   "customer.note_added": "Nota adicionada",
+  "customer.document_generated": "Contrato gerado",
+  "financial.contract_installments_created": "Parcelas do contrato lançadas",
+  "financial.entry_created": "Lançamento no financeiro",
+  "financial.entry_paid": "Pagamento recebido",
+  "financial.entry_payment_reversed": "Pagamento estornado",
+  "financial.entry_canceled": "Parcela cancelada",
 };
 
 export function timelineEventLabel(type: string): string {

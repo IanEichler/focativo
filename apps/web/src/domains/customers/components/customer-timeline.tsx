@@ -1,7 +1,7 @@
-import { CircleCheck, CircleX, Kanban, MessageSquareText, UserPlus } from "lucide-react";
+import { CircleCheck, CircleX, HandCoins, Kanban, MessageSquareText, UserPlus } from "lucide-react";
 import { Timeline, type TimelineItem } from "@/components/data/timeline";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatMoney } from "@/lib/format";
 import type { TimelineEventRow } from "../queries";
 
 function iconFor(type: string) {
@@ -9,6 +9,7 @@ function iconFor(type: string) {
   if (type === "crm.opportunity_won") return <CircleCheck />;
   if (type === "crm.opportunity_lost") return <CircleX />;
   if (type === "crm.opportunity_created" || type === "crm.opportunity_stage_changed") return <Kanban />;
+  if (type.startsWith("financial.")) return <HandCoins />;
   return <MessageSquareText />;
 }
 
@@ -16,6 +17,8 @@ function toneFor(type: string): TimelineItem["tone"] {
   if (type === "crm.opportunity_won") return "brand";
   if (type === "crm.opportunity_lost") return "danger";
   if (type.startsWith("crm.")) return "info";
+  if (type === "financial.entry_paid") return "brand";
+  if (type === "financial.entry_canceled" || type === "financial.entry_payment_reversed") return "danger";
   return "neutral";
 }
 
@@ -32,6 +35,15 @@ function describe(event: TimelineEventRow): React.ReactNode {
       return "Negócio fechado.";
     case "crm.opportunity_lost":
       return payload.lost_reason ? `Motivo: ${String(payload.lost_reason)}` : "Oportunidade perdida.";
+    case "financial.contract_installments_created":
+      return `${String(payload.installments ?? "")} parcela(s) criadas com a assinatura do contrato.`;
+    case "financial.entry_created":
+      return `${String(payload.description ?? "")} · ${formatMoney(Number(payload.total ?? 0))} em ${String(payload.installments ?? 1)} parcela(s).`;
+    case "financial.entry_paid":
+      return `${String(payload.description ?? "")} (${String(payload.installment ?? "")}) · ${formatMoney(Number(payload.amount ?? 0))}`;
+    case "financial.entry_payment_reversed":
+    case "financial.entry_canceled":
+      return `${String(payload.description ?? "")} · ${formatMoney(Number(payload.amount ?? 0))}`;
     default:
       return null;
   }

@@ -632,6 +632,7 @@ export type Database = {
           otp_hash: string | null
           otp_sends: number
           otp_sent_at: string | null
+          payment_plan: Json
           session_expires_at: string | null
           session_hash: string | null
           session_plan: Json
@@ -667,6 +668,7 @@ export type Database = {
           otp_hash?: string | null
           otp_sends?: number
           otp_sent_at?: string | null
+          payment_plan?: Json
           session_expires_at?: string | null
           session_hash?: string | null
           session_plan?: Json
@@ -702,6 +704,7 @@ export type Database = {
           otp_hash?: string | null
           otp_sends?: number
           otp_sent_at?: string | null
+          payment_plan?: Json
           session_expires_at?: string | null
           session_hash?: string | null
           session_plan?: Json
@@ -1205,6 +1208,101 @@ export type Database = {
           },
           {
             foreignKeyName: "document_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_entries: {
+        Row: {
+          amount: number
+          canceled_reason: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string
+          due_date: string
+          id: string
+          installment_count: number
+          installment_number: number
+          kind: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          signature_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          canceled_reason?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description: string
+          due_date: string
+          id?: string
+          installment_count?: number
+          installment_number?: number
+          kind?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          signature_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          canceled_reason?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          installment_count?: number
+          installment_number?: number
+          kind?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          signature_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_customer_fkey"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "financial_entries_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "contract_signatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4029,6 +4127,51 @@ export type Database = {
           p_fields?: Json
         }
         Returns: string
+      }
+      financial_entry_cancel: {
+        Args: {
+          p_entry_id: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      financial_entry_create: {
+        Args: {
+          p_tenant_id: string
+          p_customer_id: string
+          p_description: string
+          p_total: number
+          p_first_due_date: string
+          p_installments?: number
+          p_payment_method?: string
+          p_category?: string
+          p_notes?: string
+        }
+        Returns: number
+      }
+      financial_entry_pay: {
+        Args: {
+          p_entry_id: string
+          p_paid_at: string
+          p_payment_method?: string
+        }
+        Returns: undefined
+      }
+      financial_entry_unpay: {
+        Args: {
+          p_entry_id: string
+        }
+        Returns: undefined
+      }
+      financial_entry_update: {
+        Args: {
+          p_entry_id: string
+          p_description: string
+          p_amount: number
+          p_due_date: string
+          p_payment_method?: string
+        }
+        Returns: undefined
       }
       financial_summary: {
         Args: {

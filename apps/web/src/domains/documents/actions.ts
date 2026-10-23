@@ -22,6 +22,7 @@ import { saveSigningSnapshot } from "@/domains/signatures/snapshot";
 import { signingClient } from "@/domains/signatures/client";
 import { downloadSignedContractAction, createSignatureLinkAction } from "@/domains/signatures/actions";
 import { contractSessionInputs, sessionAgendaError, type ContractSessionPlan } from "./session-plan";
+import { contractPaymentPlan, type PaymentPlanItem } from "@/domains/financial/payment-plan";
 import type { Json } from "@/types/database.types";
 import { signingReadiness } from "@/domains/signatures/security";
 
@@ -230,6 +231,16 @@ export async function generateDocumentAction(
       }
     }
   } catch (error) { return { status: "error", message: error instanceof Error ? error.message : "Confira os dados das sessões." }; }
+  // Parcelas para o Financeiro: congeladas com o contrato e lançadas só na assinatura.
+  let paymentPlan: PaymentPlanItem[] = [];
+  if (formData.get("launchPayments") === "true" && context.hasModule("financial") && context.can("financial.write")) {
+    const result = contractPaymentPlan(data, template.name.replace(/\.docx$/i, ""));
+    if (result.problem) return { status: "error", message: `Parcelas do Financeiro: ${result.problem} Ou desmarque “Lançar parcelas no Financeiro”.` };
+    if (result.plan.length && !saveToProfile) {
+      return { status: "error", message: "Marque “Salvar o arquivo do contrato no perfil” para lançar as parcelas no Financeiro após a assinatura." };
+    }
+    paymentPlan = result.plan;
+  }
   const { data: templateFile, error: downloadError } = await supabase.storage
     .from(DOCUMENT_TEMPLATES_BUCKET)
     .download(template.filePath);
@@ -298,7 +309,7 @@ export async function generateDocumentAction(
     }
     if (savedDocumentId) {
       try {
-        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer, sessionPlan);
+        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer, sessionPlan, paymentPlan);
         signatureDocumentId = savedDocumentId;
         if (!signingReadiness()) {
           const link = await createSignatureLinkAction(savedDocumentId);

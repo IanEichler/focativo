@@ -117,7 +117,7 @@ it("creates the signing link automatically from the saved PDF and retains downlo
   const data = form(); data.set("saveToProfile", "true");
   const result = await generateDocumentAction({ status: "idle" }, data);
   expect(result).toMatchObject({ status: "success", signatureDocumentId: "33333333-3333-4333-8333-333333333333", signatureUrl: "https://sign.example.test/assinar/test" });
-  expect(mock.snapshot).toHaveBeenCalledWith(expect.any(Object), expect.any(String), expect.any(String), expect.any(String), Buffer.from("pdf"), expect.objectContaining({ cliente_nome: "Nome no contrato" }), expect.any(Object), []);
+  expect(mock.snapshot).toHaveBeenCalledWith(expect.any(Object), expect.any(String), expect.any(String), expect.any(String), Buffer.from("pdf"), expect.objectContaining({ cliente_nome: "Nome no contrato" }), expect.any(Object), [], []);
   mock.link.mockResolvedValue({ status: "error", message: "Link temporariamente indisponível" });
   expect(await generateDocumentAction({ status: "idle" }, data)).toMatchObject({ status: "success", pdfBase64: expect.any(String), signatureWarning: "Link temporariamente indisponível" });
 });

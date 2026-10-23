@@ -15,12 +15,13 @@ import { requireTenantContext } from "@/domains/tenants/context";
 import { signingClient } from "@/domains/signatures/client";
 import { firstParam } from "@/lib/url";
 import { DocumentsTab } from "./documents-tab";
+import { FinancialTab } from "./financial-tab";
 import { OverviewTab } from "./overview-tab";
 import { PurchasesTab } from "./purchases-tab";
 
 export const metadata: Metadata = { title: "Cliente" };
 
-const TABS = ["geral", "compras", "contratos", "documentos"] as const;
+const TABS = ["geral", "compras", "contratos", "financeiro", "documentos"] as const;
 
 export default async function CustomerDetailPage({ params, searchParams }: PageProps<"/app/clientes/[id]">) {
   const context = await requireTenantContext();
@@ -39,6 +40,7 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
   const timeline = tab === "geral" ? await listCustomerTimeline(context, id) : [];
 
   const base = `/app/clientes/${customer.id}`;
+  const showFinancial = context.hasModule("financial") && context.can("financial.read");
 
   return (
     <PageContainer>
@@ -100,12 +102,14 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
           { id: "geral", label: "Visão geral", href: base },
           { id: "compras", label: "Compras", href: `${base}?aba=compras` },
           { id: "contratos", label: "Contratos", href: `${base}?aba=contratos` },
+          ...(showFinancial ? [{ id: "financeiro", label: "Financeiro", href: `${base}?aba=financeiro` }] : []),
         ]}
       />
 
       {tab === "geral" && <OverviewTab customer={customer} timeline={timeline.slice(0, 5)} />}
       {tab === "compras" && <PurchasesTab context={context} customerId={customer.id} />}
       {(tab === "contratos" || tab === "documentos") && <DocumentsTab context={context} customerId={customer.id} />}
+      {tab === "financeiro" && <FinancialTab context={context} customerId={customer.id} />}
     </PageContainer>
   );
 }

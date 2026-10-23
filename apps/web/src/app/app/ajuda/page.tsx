@@ -13,6 +13,7 @@ interface TopicLink {
 const TOPICS: TopicLink[] = [
   { id: "clientes", title: "Clientes" },
   { id: "contratos", title: "Contratos" },
+  { id: "financeiro-cliente", title: "Financeiro da cliente" },
   { id: "agenda", title: "Agenda" },
   { id: "servicos-horarios", title: "Serviços e Horários" },
   { id: "produtos-estoque", title: "Produtos e Estoque" },
@@ -106,6 +107,11 @@ export default function HelpPage() {
             <strong>Nome do procedimento</strong>: ao clicar, aparecem os serviços cadastrados em Serviços e Horários.
             Se o procedimento não estiver cadastrado, é só digitar outro nome.
           </li>
+          <li>
+            <strong>Parcelas no Financeiro</strong>: com valor final, número de parcelas e vencimento preenchidos, o
+            formulário mostra as parcelas (uma por mês). Elas entram no Financeiro da cliente quando o contrato é
+            <strong> assinado</strong>; gerar o contrato de novo não duplica cobrança.
+          </li>
         </Ul>
       </Topic>
 
@@ -150,6 +156,32 @@ export default function HelpPage() {
 
       <Topic id="vendas" title="Vendas">
         <P>Registro de vendas concluídas, com forma de pagamento e itens vendidos.</P>
+      </Topic>
+
+      <Topic id="financeiro-cliente" title="Financeiro da cliente">
+        <P>
+          No perfil da cliente, aba <strong>Financeiro</strong>: total lançado, recebido, em aberto e em atraso, com a
+          lista de parcelas.
+        </P>
+        <Ul>
+          <li>
+            <strong>Marcar como pago</strong>: informe a data e a forma de pagamento.
+          </li>
+          <li>
+            <strong>Editar parcela</strong>: muda valor, vencimento ou forma de pagamento de uma parcela em aberto.
+          </li>
+          <li>
+            <strong>Estornar</strong>: desfaz um pagamento marcado por engano; a parcela volta a ficar em aberto.
+          </li>
+          <li>
+            <strong>Cancelar</strong>: a parcela deixa de ser cobrada. Parcela paga nunca é apagada.
+          </li>
+          <li>
+            <strong>Novo lançamento</strong>: para sessão avulsa ou contrato antigo; divide o valor total em parcelas
+            mensais.
+          </li>
+        </Ul>
+        <P>Tudo fica registrado no histórico da cliente.</P>
       </Topic>
 
       <Topic id="financeiro-relatorios" title="Financeiro e Relatórios">

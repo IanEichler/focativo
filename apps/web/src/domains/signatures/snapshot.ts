@@ -1,5 +1,6 @@
 import "server-only";
 import type { ContractSessionPlan } from "@/domains/documents/session-plan";
+import type { PaymentPlanItem } from "@/domains/financial/payment-plan";
 import type { Json } from "@/types/database.types";
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/domains/tenants/context";
@@ -9,7 +10,8 @@ import { normalizeFieldName } from "@/domains/documents/field-format";
 
 /** Called after the authenticated document-create RPC. Keep the exact reviewed PDF and party data. */
 export async function saveSigningSnapshot(context: TenantContext, documentId: string, customerId: string, name: string,
-  pdf: Buffer, fields: Record<string, string>, customer: { name: string; email: string | null; document: string | null }, sessionPlan: ContractSessionPlan[] = []) {
+  pdf: Buffer, fields: Record<string, string>, customer: { name: string; email: string | null; document: string | null }, sessionPlan: ContractSessionPlan[] = [],
+  paymentPlan: PaymentPlanItem[] = []) {
   if (!context.can("documents.write") || !context.hasModule("documents")) throw new Error("forbidden");
   const pick = (aliases: string[], fallback: string | null) => {
     const entry = Object.entries(fields).find(([field]) => aliases.includes(normalizeFieldName(field)));
@@ -27,6 +29,7 @@ export async function saveSigningSnapshot(context: TenantContext, documentId: st
     signer_email: pick(["cliente_email", "email", "e_mail"], customer.email).toLowerCase(),
     signer_document: pick(["cliente_cpf", "cpf", "cnpj", "documento", "cpf_cnpj"], customer.document).replace(/\D/g, ""),
     original_path: path, original_sha256: hash(pdf), session_plan: sessionPlan as unknown as Json,
+    payment_plan: paymentPlan as unknown as Json,
   });
   if (error) {
     // An insert timeout can hide a committed snapshot. Preserve the uploaded original.

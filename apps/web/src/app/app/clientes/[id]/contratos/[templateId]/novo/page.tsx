@@ -38,7 +38,8 @@ export default async function NewCustomerContractPage({ params }: PageProps<"/ap
       <Link href={`/app/clientes/${id}?aba=contratos`}><ArrowLeft /> Contratos de {customer.name}</Link>
     </Button></div>
     <PageHeader title={`Novo contrato — ${customer.name}`} description={template.name} />
-    <GenerateDocumentForm template={template} scheduling={scheduling} procedureOptions={services.map(service => service.name)} initialCustomer={{
+    <GenerateDocumentForm template={template} scheduling={scheduling} procedureOptions={services.map(service => service.name)}
+      canLaunchPayments={context.hasModule("financial") && context.can("financial.write")} initialCustomer={{
       id: customer.id, name: customer.name, phone: customer.phone, whatsapp: customer.whatsapp,
     }} />
   </PageContainer>;
