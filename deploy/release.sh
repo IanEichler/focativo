@@ -29,9 +29,12 @@ node --env-file=/etc/estoque-ia/deploy.env packages/database/scripts/deploy-migr
 activated=false
 start_release() {
   # PM2 reload retains an existing process's cwd/script. Recreate definitions
-  # so every process actually uses this release's absolute paths. The retired
-  # WhatsApp service stays in the delete list so old releases' process is removed.
-  pm2 delete estoque-ia-web estoque-ia-whatsapp estoque-ia-jobs >/dev/null 2>&1 || true
+  # so every process actually uses this release's absolute paths. One delete per
+  # name: a multi-name delete stops at the first missing process (the retired
+  # WhatsApp service) and leaves the rest running from the old release.
+  for name in estoque-ia-web estoque-ia-whatsapp estoque-ia-jobs; do
+    pm2 delete "$name" >/dev/null 2>&1 || true
+  done
   pm2 start "$1/deploy/ecosystem.config.cjs" --env production --update-env
 }
 rollback() {
