@@ -1232,6 +1232,7 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           payment_method: string | null
+          recurring_id: string | null
           signature_id: string | null
           status: string
           tenant_id: string
@@ -1253,6 +1254,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
+          recurring_id?: string | null
           signature_id?: string | null
           status?: string
           tenant_id: string
@@ -1274,6 +1276,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
+          recurring_id?: string | null
           signature_id?: string | null
           status?: string
           tenant_id?: string
@@ -1295,6 +1298,13 @@ export type Database = {
             referencedColumns: ["tenant_id", "id"]
           },
           {
+            foreignKeyName: "financial_entries_recurring_id_fkey"
+            columns: ["recurring_id"]
+            isOneToOne: false
+            referencedRelation: "financial_recurring_expenses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "financial_entries_signature_id_fkey"
             columns: ["signature_id"]
             isOneToOne: false
@@ -1303,6 +1313,66 @@ export type Database = {
           },
           {
             foreignKeyName: "financial_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_recurring_expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          day_of_month: number
+          description: string
+          ends_on: string | null
+          id: string
+          payment_method: string | null
+          starts_on: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_of_month: number
+          description: string
+          ends_on?: string | null
+          id?: string
+          payment_method?: string | null
+          starts_on: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_of_month?: number
+          description?: string
+          ends_on?: string | null
+          id?: string
+          payment_method?: string | null
+          starts_on?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_recurring_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_recurring_expenses_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4128,6 +4198,20 @@ export type Database = {
         }
         Returns: string
       }
+      financial_cash_flow: {
+        Args: {
+          p_tenant_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+            month: string
+            income_paid: number
+            expense_paid: number
+            income_open: number
+            expense_open: number
+          }[]
+      }
       financial_entry_cancel: {
         Args: {
           p_entry_id: string
@@ -4172,6 +4256,41 @@ export type Database = {
           p_payment_method?: string
         }
         Returns: undefined
+      }
+      financial_expense_create: {
+        Args: {
+          p_tenant_id: string
+          p_description: string
+          p_total: number
+          p_first_due_date: string
+          p_installments?: number
+          p_category?: string
+          p_payment_method?: string
+          p_notes?: string
+        }
+        Returns: number
+      }
+      financial_recurring_create: {
+        Args: {
+          p_tenant_id: string
+          p_description: string
+          p_amount: number
+          p_day_of_month: number
+          p_first_month: string
+          p_category?: string
+          p_payment_method?: string
+        }
+        Returns: string
+      }
+      financial_recurring_end: {
+        Args: {
+          p_recurring_id: string
+        }
+        Returns: undefined
+      }
+      financial_recurring_materialize_sweep: {
+        Args: never
+        Returns: number
       }
       financial_summary: {
         Args: {

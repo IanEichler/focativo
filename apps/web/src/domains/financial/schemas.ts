@@ -21,6 +21,25 @@ export const createEntrySchema = z.object({
 });
 export type CreateEntryField = keyof z.input<typeof createEntrySchema>;
 
+const installments = z.coerce
+  .number()
+  .int("Use um número inteiro.")
+  .min(1, "Mínimo de 1 parcela.")
+  .max(120, "Máximo de 120 parcelas.");
+
+/** Despesa avulsa (parcelada ou não) ou fixa: fixa repete todo mês no dia do 1º vencimento. */
+export const createExpenseSchema = z.object({
+  description,
+  category: optionalText(60),
+  total: amount("Valor"),
+  installments: installments.default(1),
+  firstDueDate: isoDate("Informe o vencimento."),
+  recurring: z.preprocess((value) => value === "on" || value === "true", z.boolean()),
+  paymentMethod: optionalText(200),
+  notes: optionalText(1000),
+});
+export type CreateExpenseField = keyof z.input<typeof createExpenseSchema>;
+
 export const updateEntrySchema = z.object({
   entryId: z.uuid(),
   description,

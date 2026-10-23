@@ -186,8 +186,8 @@ export default function HelpPage() {
 
       <Topic id="financeiro-relatorios" title="Financeiro e Relatórios">
         <P>
-          <strong>Financeiro</strong> reúne as parcelas de todas as clientes, mês a mês (use as setas para trocar de
-          mês):
+          <strong>Financeiro</strong> tem três abas. <strong>A receber</strong> reúne as parcelas de todas as clientes,
+          mês a mês (use as setas para trocar de mês):
         </P>
         <Ul>
           <li>
@@ -205,6 +205,26 @@ export default function HelpPage() {
             <strong>Novo lançamento</strong> funciona como no perfil da cliente, escolhendo a cliente no formulário.
           </li>
         </Ul>
+        <P>
+          <strong>Despesas</strong> são as contas a pagar, com os mesmos números e ações (marcar como pago, editar,
+          estornar, cancelar):
+        </P>
+        <Ul>
+          <li>
+            <strong>Nova despesa</strong>: avulsa ou parcelada, com categoria (escolha da lista ou digite uma nova).
+          </li>
+          <li>
+            Marque <strong>Despesa fixa</strong> para contas que se repetem todo mês no mesmo dia, como aluguel e luz.
+            A conta do mês seguinte já aparece na lista; para parar, use o X em “Despesas fixas” (a do mês atual
+            continua, as próximas são canceladas).
+          </li>
+          <li>O sino avisa contas vencidas ou que vencem hoje.</li>
+        </Ul>
+        <P>
+          <strong>Fluxo de caixa</strong> mostra entradas e saídas dos últimos 5 meses, do mês atual e dos próximos 6:
+          a parte cheia da coluna é o que já foi pago; a parte listrada é o que ainda vai entrar ou sair (parcelas e
+          despesas fixas). A tabela traz os valores e o saldo de cada mês.
+        </P>
         <P>
           <strong>Relatórios</strong> traz visões agregadas do que estiver ligado no sistema.
         </P>

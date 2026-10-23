@@ -111,6 +111,16 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
     });
   }
 
+  if (financialAlerts && financialAlerts.billsDue > 0) {
+    items.push({
+      key: "financial-bills-due",
+      label: "Contas a pagar vencidas ou de hoje",
+      count: financialAlerts.billsDue,
+      href: "/app/financeiro?aba=despesas",
+      tone: "warning",
+    });
+  }
+
   if (pendingCharges.length > 0) {
     items.push({
       key: "pending-charges",

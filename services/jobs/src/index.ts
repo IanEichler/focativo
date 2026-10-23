@@ -43,8 +43,37 @@ async function runReservationsExpireSweep(): Promise<void> {
   );
 }
 
+/** Despesas fixas (aluguel, luz): mantém as parcelas criadas até o fim do mês seguinte. */
+async function runRecurringExpensesSweep(): Promise<void> {
+  const startedAt = Date.now();
+  const { data, error } = await supabase.rpc("financial_recurring_materialize_sweep");
+  const durationMs = Date.now() - startedAt;
+
+  if (error) {
+    console.error(
+      JSON.stringify({
+        event: "job.financial_recurring_materialize_sweep",
+        status: "error",
+        error: error.message,
+        duration_ms: durationMs,
+      }),
+    );
+    return;
+  }
+
+  console.log(
+    JSON.stringify({
+      event: "job.financial_recurring_materialize_sweep",
+      status: "ok",
+      created_count: data,
+      duration_ms: durationMs,
+    }),
+  );
+}
+
 async function tick(): Promise<void> {
   await runReservationsExpireSweep();
+  await runRecurringExpensesSweep();
   setTimeout(() => void tick(), config.intervalMinutes * 60_000);
 }
 
