@@ -11,12 +11,7 @@ import { EntryActions, installmentLabel, NewEntryDialog } from "@/domains/financ
 import { isOverdue, listCustomerEntries, summarizeEntries, type FinancialEntryRow } from "@/domains/financial/queries";
 import type { TenantContext } from "@/domains/tenants/context";
 import { getTenantDetails } from "@/domains/tenants/queries";
-
-/** Datas sem horário (AAAA-MM-DD) não passam por Date, para não voltar um dia no fuso da clínica. */
-function formatDay(iso: string): string {
-  const [year, month, day] = iso.split("-");
-  return `${day}/${month}/${year}`;
-}
+import { formatDay } from "@/domains/financial/period";
 
 function EntryStatus({ entry, today }: { entry: FinancialEntryRow; today: string }) {
   if (entry.status === "PAID") {

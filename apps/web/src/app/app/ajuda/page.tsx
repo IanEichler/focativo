@@ -186,8 +186,27 @@ export default function HelpPage() {
 
       <Topic id="financeiro-relatorios" title="Financeiro e Relatórios">
         <P>
-          <strong>Financeiro</strong> mostra o resumo de entradas/saídas. <strong>Relatórios</strong> traz visões
-          agregadas (vendas por período, produtos mais vendidos, etc.).
+          <strong>Financeiro</strong> reúne as parcelas de todas as clientes, mês a mês (use as setas para trocar de
+          mês):
+        </P>
+        <Ul>
+          <li>
+            <strong>Recebido no mês</strong> conta pelo dia do pagamento; <strong>A receber</strong> e{" "}
+            <strong>Previsto</strong> contam pelo vencimento; <strong>Em atraso</strong> soma todas as parcelas vencidas.
+          </li>
+          <li>
+            <strong>Precisa de atenção</strong> lista as parcelas atrasadas e as que vencem hoje, com o botão de dar
+            baixa. O sino no topo também avisa.
+          </li>
+          <li>
+            Filtre as parcelas do mês por situação ou pelo nome da cliente; o nome leva ao Financeiro dela.
+          </li>
+          <li>
+            <strong>Novo lançamento</strong> funciona como no perfil da cliente, escolhendo a cliente no formulário.
+          </li>
+        </Ul>
+        <P>
+          <strong>Relatórios</strong> traz visões agregadas do que estiver ligado no sistema.
         </P>
       </Topic>
 

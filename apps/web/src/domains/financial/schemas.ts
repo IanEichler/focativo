@@ -11,7 +11,7 @@ const description = z.string().trim().min(2, "Mínimo de 2 caracteres.").max(200
 const amount = (label: string) => requiredDecimal({ label, min: 0.01, max: 9_999_999_999.99, scale: 2 });
 
 export const createEntrySchema = z.object({
-  customerId: z.uuid(),
+  customerId: z.uuid("Selecione a cliente."),
   description,
   total: amount("Valor total"),
   installments: z.coerce.number().int("Use um número inteiro.").min(1, "Mínimo de 1 parcela.").max(120, "Máximo de 120 parcelas."),

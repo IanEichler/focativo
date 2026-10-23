@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ContractPaymentField } from "@/domains/documents/components/contract-payment-field";
+import { CustomerPicker } from "@/domains/customers/components/customer-picker";
+import type { CustomerOption } from "@/domains/customers/queries";
 import { toDecimalInput } from "@/lib/decimal";
 import { IDLE, type ActionState } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
@@ -33,7 +35,8 @@ export function installmentLabel(entry: Pick<FinancialEntryRow, "installmentNumb
   return entry.installmentCount > 1 ? `Parcela ${entry.installmentNumber}/${entry.installmentCount}` : "Parcela única";
 }
 
-export function NewEntryDialog({ customerId, today }: { customerId: string; today: string }) {
+/** Sem `customerId` (tela Financeiro), o formulário pede a cliente. */
+export function NewEntryDialog({ customerId, today }: { customerId?: string; today: string }) {
   return (
     <FormDialog
       title="Novo lançamento"
@@ -49,14 +52,15 @@ export function NewEntryDialog({ customerId, today }: { customerId: string; toda
   );
 }
 
-function NewEntryForm({ customerId, today, onDone }: { customerId: string; today: string; onDone: () => void }) {
+function NewEntryForm({ customerId, today, onDone }: { customerId?: string; today: string; onDone: () => void }) {
   const [state, action] = useActionState<ActionState<CreateEntryField>, FormData>(createEntryAction, IDLE);
   const values = state.status === "error" ? state.values : undefined;
+  const [customer, setCustomer] = useState<CustomerOption | null>(null);
   useActionFeedback(state, { onSuccess: onDone });
 
   return (
     <form action={action} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl" noValidate>
-      <input type="hidden" name="customerId" value={customerId} />
+      <input type="hidden" name="customerId" value={customerId ?? customer?.id ?? ""} />
       <DialogFormLayout
         footer={
           <>
@@ -68,6 +72,7 @@ function NewEntryForm({ customerId, today, onDone }: { customerId: string; today
         }
       >
         <FormMessage state={state.status === "error" ? state : IDLE} />
+        {!customerId && <CustomerPicker value={customer} onChange={setCustomer} error={fieldError(state, "customerId")} />}
         <TextField
           label="Descrição"
           name="description"
@@ -124,7 +129,7 @@ export function EntryActions({
   today,
 }: {
   entry: FinancialEntryRow;
-  customerId: string;
+  customerId?: string;
   today: string;
 }) {
   const [dialog, setDialog] = useState<"pay" | "edit" | "reverse" | "cancel" | null>(null);
@@ -182,7 +187,7 @@ export function EntryActions({
         title="Estornar pagamento?"
         description={`${name} volta a ficar em aberto. O estorno fica registrado no histórico da cliente.`}
         confirmLabel="Estornar"
-        onConfirm={() => reverseEntryPaymentAction(entry.id, customerId)}
+        onConfirm={() => reverseEntryPaymentAction(entry.id, customerId ?? entry.customerId)}
       />
       <ConfirmDialog
         open={dialog === "cancel"}
@@ -191,7 +196,7 @@ export function EntryActions({
         description={`${name} deixa de ser cobrada e sai dos totais. Não dá para desfazer; se precisar, lance um novo valor.`}
         confirmLabel="Cancelar parcela"
         destructive
-        onConfirm={() => cancelEntryAction(entry.id, customerId)}
+        onConfirm={() => cancelEntryAction(entry.id, customerId ?? entry.customerId)}
       />
     </>
   );
@@ -204,7 +209,7 @@ function PayEntryForm({
   onDone,
 }: {
   entry: FinancialEntryRow;
-  customerId: string;
+  customerId?: string;
   today: string;
   onDone: () => void;
 }) {
@@ -215,7 +220,7 @@ function PayEntryForm({
   return (
     <form action={action} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl" noValidate>
       <input type="hidden" name="entryId" value={entry.id} />
-      <input type="hidden" name="customerId" value={customerId} />
+      <input type="hidden" name="customerId" value={customerId ?? entry.customerId ?? ""} />
       <DialogFormLayout
         footer={
           <>
@@ -242,7 +247,7 @@ function PayEntryForm({
   );
 }
 
-function EditEntryForm({ entry, customerId, onDone }: { entry: FinancialEntryRow; customerId: string; onDone: () => void }) {
+function EditEntryForm({ entry, customerId, onDone }: { entry: FinancialEntryRow; customerId?: string; onDone: () => void }) {
   const [state, action] = useActionState<ActionState<UpdateEntryField>, FormData>(updateEntryAction, IDLE);
   const values = state.status === "error" ? state.values : undefined;
   useActionFeedback(state, { onSuccess: onDone });
@@ -250,7 +255,7 @@ function EditEntryForm({ entry, customerId, onDone }: { entry: FinancialEntryRow
   return (
     <form action={action} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl" noValidate>
       <input type="hidden" name="entryId" value={entry.id} />
-      <input type="hidden" name="customerId" value={customerId} />
+      <input type="hidden" name="customerId" value={customerId ?? entry.customerId ?? ""} />
       <DialogFormLayout
         footer={
           <>

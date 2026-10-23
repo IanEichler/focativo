@@ -1,9 +1,12 @@
 import "server-only";
+import { calendarDate } from "@/domains/agenda/calendar";
 import { getTodayAgendaSummary } from "@/domains/agenda/queries";
+import { getFinancialAlerts } from "@/domains/financial/queries";
 import { getInventorySummary } from "@/domains/inventory/queries";
 import { listPendingCharges } from "@/domains/payments/queries";
 import { getReservationsExpiringSoonCount } from "@/domains/reservations/queries";
 import type { TenantContext } from "@/domains/tenants/context";
+import { getTenantDetails } from "@/domains/tenants/queries";
 import { getUnreadConversationsCount } from "@/domains/whatsapp/queries";
 
 export interface NotificationItem {
@@ -26,12 +29,15 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
   const canWhatsapp = context.can("whatsapp.read") && context.hasModule("whatsapp");
   const canAgenda = context.can("agenda.read") && context.hasModule("agenda");
 
-  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday] = await Promise.all([
+  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday, financialAlerts] = await Promise.all([
     canInventory ? getInventorySummary(context) : Promise.resolve(null),
     canReservations ? getReservationsExpiringSoonCount(context) : Promise.resolve(0),
     canFinancial ? listPendingCharges(context) : Promise.resolve([]),
     canWhatsapp ? getUnreadConversationsCount(context) : Promise.resolve(0),
     canAgenda ? getTodayAgendaSummary(context) : Promise.resolve(null),
+    canFinancial
+      ? getTenantDetails(context).then((tenant) => getFinancialAlerts(context, calendarDate(new Date(), tenant.timezone)))
+      : Promise.resolve(null),
   ]);
 
   const items: NotificationItem[] = [];
@@ -81,6 +87,26 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
       label: "Reservas vencendo em 24h",
       count: expiringSoon,
       href: "/app/reservas",
+      tone: "warning",
+    });
+  }
+
+  if (financialAlerts && financialAlerts.overdue > 0) {
+    items.push({
+      key: "financial-overdue",
+      label: "Parcelas atrasadas",
+      count: financialAlerts.overdue,
+      href: "/app/financeiro",
+      tone: "danger",
+    });
+  }
+
+  if (financialAlerts && financialAlerts.dueToday > 0) {
+    items.push({
+      key: "financial-due-today",
+      label: "Parcelas vencendo hoje",
+      count: financialAlerts.dueToday,
+      href: "/app/financeiro",
       tone: "warning",
     });
   }

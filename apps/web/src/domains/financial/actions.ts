@@ -24,7 +24,7 @@ function forbidden<T extends string>(): ActionState<T> {
   return { status: "error", message: toUserMessage({ message: "forbidden" }) };
 }
 
-function refresh(customerId: string | undefined) {
+function refresh(customerId: string | null | undefined) {
   if (customerId) revalidatePath(`/app/clientes/${customerId}`);
   revalidatePath("/app/financeiro");
 }
@@ -114,7 +114,7 @@ export async function payEntryAction(
   return { status: "success", message: "Pagamento registrado." };
 }
 
-export async function reverseEntryPaymentAction(entryId: string, customerId: string): Promise<ActionState> {
+export async function reverseEntryPaymentAction(entryId: string, customerId: string | null): Promise<ActionState> {
   const context = await requireTenantContext();
   if (!canWrite(context) || !z.uuid().safeParse(entryId).success) return forbidden();
   const supabase = await createClient();
@@ -124,7 +124,7 @@ export async function reverseEntryPaymentAction(entryId: string, customerId: str
   return { status: "success", message: "Pagamento estornado. A parcela voltou a ficar em aberto." };
 }
 
-export async function cancelEntryAction(entryId: string, customerId: string): Promise<ActionState> {
+export async function cancelEntryAction(entryId: string, customerId: string | null): Promise<ActionState> {
   const context = await requireTenantContext();
   if (!canWrite(context) || !z.uuid().safeParse(entryId).success) return forbidden();
   const supabase = await createClient();
