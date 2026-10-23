@@ -51,11 +51,3 @@ export async function requireUser(nextPath?: string): Promise<CurrentUser> {
   }
   return user;
 }
-
-export const isSuperAdmin = cache(async (): Promise<boolean> => {
-  const user = await getVerifiedIdentity();
-  if (!user) return false;
-  const supabase = await createClient();
-  const { data } = await supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
-  return Boolean(data);
-});

@@ -1,9 +1,8 @@
 /**
- * Módulos habilitáveis por tenant pelo admin master. Cada um trava uma
- * página/rota própria. O tipo de empresa (varejo vs. serviços, escolhido na
- * criação) decide o padrão inicial — varejo desliga "agenda", serviços
- * desliga "catalog"/"inventory"/"reservations"/"sales" — mas o admin master
- * pode religar/desligar qualquer um depois (ver tenant_module_flags).
+ * Módulos do sistema. Cada um trava uma página/rota própria. O que vale para
+ * a clínica é decidido aqui (CORE_MODULES/RETIRED_MODULES); para os demais,
+ * fica o que já estava gravado em tenant_module_flags — não existe mais tela
+ * para mudar isso desde que o painel do admin master foi removido.
  */
 export const TENANT_MODULES = [
   { code: "catalog", label: "Catálogo de produtos" },
@@ -27,3 +26,6 @@ export type ModuleCode = (typeof TENANT_MODULES)[number]["code"];
  * no banco; só as telas, ações e o recebimento de mensagens ficam bloqueados.
  */
 export const RETIRED_MODULES: ReadonlySet<ModuleCode> = new Set<ModuleCode>(["crm", "whatsapp", "ai"]);
+
+/** Sempre ligados para a clínica, mesmo que um registro antigo em tenant_module_flags diga o contrário. */
+export const CORE_MODULES: ReadonlySet<ModuleCode> = new Set<ModuleCode>(["agenda", "financial", "documents"]);

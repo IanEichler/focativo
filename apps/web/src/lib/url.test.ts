@@ -3,11 +3,11 @@ import { buildHref, firstParam, parsePage } from "./url";
 
 describe("url helpers", () => {
   it("builds hrefs preserving and patching params", () => {
-    expect(buildHref("/admin/empresas", { q: "gorila", status: "ACTIVE" }, { page: 2 })).toBe(
-      "/admin/empresas?q=gorila&status=ACTIVE&page=2",
+    expect(buildHref("/app/clientes", { q: "gorila", status: "ACTIVE" }, { page: 2 })).toBe(
+      "/app/clientes?q=gorila&status=ACTIVE&page=2",
     );
-    expect(buildHref("/admin/empresas", { q: "gorila", page: "3" }, { page: undefined, q: "" })).toBe(
-      "/admin/empresas",
+    expect(buildHref("/app/clientes", { q: "gorila", page: "3" }, { page: undefined, q: "" })).toBe(
+      "/app/clientes",
     );
   });
 

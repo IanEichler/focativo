@@ -10,40 +10,7 @@ import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { formDataToObject, safeFormValues, validationError } from "@/lib/validation";
 import { ACTIVE_TENANT_COOKIE, ACTIVE_TENANT_COOKIE_OPTIONS, requireTenantContext } from "./context";
-import {
-  businessTypeForSegment,
-  createTenantSchema,
-  tenantIdSchema,
-  updateTenantSchema,
-  type CreateTenantField,
-  type UpdateTenantField,
-} from "./schemas";
-
-export async function createTenantAction(
-  _prev: ActionState<CreateTenantField>,
-  formData: FormData,
-): Promise<ActionState<CreateTenantField>> {
-  const user = await requireUser();
-  const input = formDataToObject(formData);
-  const parsed = createTenantSchema.safeParse(input);
-  if (!parsed.success) return validationError(parsed.error, input);
-
-  const supabase = await createClient();
-  const { data: tenantId, error } = await supabase.rpc("create_tenant", {
-    p_name: parsed.data.name,
-    p_segment: parsed.data.segment,
-    p_business_type: businessTypeForSegment(parsed.data.segment),
-  });
-
-  if (error || !tenantId) {
-    logger.error({ event: "tenant.create", status: "error", user_id: user.id, code: error?.message });
-    return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
-  }
-
-  logger.info({ event: "tenant.create", status: "ok", user_id: user.id, tenant_id: tenantId });
-  (await cookies()).set(ACTIVE_TENANT_COOKIE, tenantId, ACTIVE_TENANT_COOKIE_OPTIONS);
-  redirect(ROUTES.appHome);
-}
+import { tenantIdSchema, updateTenantSchema, type UpdateTenantField } from "./schemas";
 
 /** Troca a empresa ativa. O cookie só é gravado se houver associação ativa (RLS). */
 export async function switchTenantAction(formData: FormData): Promise<void> {

@@ -5,7 +5,7 @@ describe("safeNextPath (open redirect protection)", () => {
   it.each([
     ["/app/usuarios", "/app/usuarios"],
     ["/app/configuracoes?aba=perfil", "/app/configuracoes?aba=perfil"],
-    ["/admin/empresas#x", "/admin/empresas#x"],
+    ["/app/clientes#x", "/app/clientes#x"],
   ])("accepts internal path %s", (input, expected) => {
     expect(safeNextPath(input)).toBe(expected);
   });
@@ -30,10 +30,10 @@ describe("safeNextPath (open redirect protection)", () => {
 });
 
 describe("route classification", () => {
-  it("protects app, admin, onboarding and password reset", () => {
+  it("protects app, onboarding and password reset", () => {
     expect(isProtectedPath("/app")).toBe(true);
     expect(isProtectedPath("/app/dashboard")).toBe(true);
-    expect(isProtectedPath("/admin/empresas/1")).toBe(true);
+    expect(isProtectedPath("/admin/empresas/1")).toBe(false);
     expect(isProtectedPath("/onboarding")).toBe(true);
     expect(isProtectedPath("/redefinir-senha")).toBe(true);
     expect(isProtectedPath("/application")).toBe(false);

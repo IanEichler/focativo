@@ -9,10 +9,9 @@ export const ROUTES = {
   authConfirm: "/auth/confirm",
   onboarding: "/onboarding",
   appHome: "/app/dashboard",
-  admin: "/admin",
 } as const;
 
-const PROTECTED_PREFIXES = ["/app", "/admin", "/onboarding", ROUTES.resetPassword];
+const PROTECTED_PREFIXES = ["/app", "/onboarding", ROUTES.resetPassword];
 const GUEST_ONLY = [ROUTES.login, ROUTES.signup, ROUTES.forgotPassword];
 
 function matchesPrefix(pathname: string, prefix: string) {

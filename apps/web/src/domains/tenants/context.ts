@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
-import { getCurrentUser, getVerifiedIdentity, isSuperAdmin, type CurrentUser } from "@/domains/auth/session";
-import { RETIRED_MODULES, type ModuleCode } from "@/lib/modules";
+import { getCurrentUser, getVerifiedIdentity, type CurrentUser } from "@/domains/auth/session";
+import { CORE_MODULES, RETIRED_MODULES, type ModuleCode } from "@/lib/modules";
 import { hasPermission, type Permission, type RoleCode } from "@/lib/permissions";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +29,7 @@ export interface TenantContext {
   permissions: ReadonlySet<string>;
   memberships: TenantSummary[];
   can: (permission: Permission) => boolean;
-  /** Módulo do plano habilitado pelo admin master (default ligado — ausência de registro = habilitado). */
+  /** Módulo ligado: aposentados nunca, essenciais sempre, os demais conforme tenant_module_flags. */
   hasModule: (module: ModuleCode) => boolean;
 }
 
@@ -79,21 +79,19 @@ export const getTenantContext = cache(async (): Promise<TenantContext | null> =>
     permissions,
     memberships: snapshot.memberships,
     can: (permission) => hasPermission(permissions, permission),
-    hasModule: (module) => !RETIRED_MODULES.has(module) && !disabledModules.has(module),
+    hasModule: (module) => !RETIRED_MODULES.has(module) && (CORE_MODULES.has(module) || !disabledModules.has(module)),
   };
 });
 
 /**
  * Exige usuário autenticado com empresa ativa; caso contrário redireciona.
- * Um admin master sem nenhuma empresa (caso comum: a conta existe só para
- * administrar a plataforma) vai para o painel administrativo em vez do
- * onboarding de "crie sua empresa" — ele não é um cliente da plataforma.
+ * Conta sem acesso à clínica vai para /onboarding, que só mostra convites
+ * pendentes ou orienta a pedir acesso — não existe mais criar empresa.
  */
 export async function requireTenantContext(): Promise<TenantContext> {
   const context = await getTenantContext();
   if (!context) {
     if (!(await getCurrentUser())) redirect(ROUTES.login);
-    if (await isSuperAdmin()) redirect(ROUTES.admin);
     redirect(ROUTES.onboarding);
   }
   return context;

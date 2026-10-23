@@ -77,25 +77,6 @@ export const APP_NAV: NavSection[] = [
   },
 ];
 
-export const ADMIN_NAV: NavSection[] = [
-  {
-    items: [
-      { title: "Visão geral", href: "/admin", icon: "dashboard" },
-      { title: "Empresas", href: "/admin/empresas", icon: "building" },
-      { title: "Assinaturas", href: "/admin/assinaturas", icon: "layers", availability: "soon" },
-      { title: "Planos", href: "/admin/planos", icon: "credit-card", availability: "soon" },
-      { title: "Pagamentos", href: "/admin/pagamentos", icon: "wallet", availability: "soon" },
-      { title: "Uso", href: "/admin/uso", icon: "activity", availability: "soon" },
-      { title: "WhatsApps", href: "/admin/whatsapps", icon: "message", availability: "soon" },
-      { title: "IA", href: "/admin/ia", icon: "bot", availability: "soon" },
-      { title: "Saúde", href: "/admin/saude", icon: "heart-pulse", availability: "soon" },
-      { title: "Feature Flags", href: "/admin/feature-flags", icon: "flag", availability: "soon" },
-      { title: "Logs", href: "/admin/logs", icon: "scroll", availability: "soon" },
-      { title: "Configurações", href: "/admin/configuracoes", icon: "settings", availability: "soon" },
-    ],
-  },
-];
-
 /** Remove itens sem permissão, com módulo desligado pelo admin master, e seções vazias (executado no servidor). */
 export function filterNav(
   sections: NavSection[],

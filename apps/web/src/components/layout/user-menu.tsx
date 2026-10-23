@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useTransition } from "react";
@@ -25,11 +25,9 @@ import { initials } from "@/lib/format";
 interface UserMenuProps {
   name: string;
   email: string | null;
-  isSuperAdmin: boolean;
-  area: "app" | "admin";
 }
 
-export function UserMenu({ name, email, isSuperAdmin, area }: UserMenuProps) {
+export function UserMenu({ name, email }: UserMenuProps) {
   const { theme, setTheme } = useTheme();
   const displayName = name || email || "Usuário";
   const [signingOut, startTransition] = useTransition();
@@ -60,27 +58,11 @@ export function UserMenu({ name, email, isSuperAdmin, area }: UserMenuProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup className="flex flex-col gap-0.5">
-          {area === "app" && (
-            <DropdownMenuItem asChild className="px-1.5 py-2">
-              <Link href="/app/configuracoes?aba=perfil">
-                <UserRound /> Meu perfil
-              </Link>
-            </DropdownMenuItem>
-          )}
-          {isSuperAdmin && area === "app" && (
-            <DropdownMenuItem asChild className="px-1.5 py-2">
-              <Link href="/admin">
-                <ShieldCheck /> Administração da plataforma
-              </Link>
-            </DropdownMenuItem>
-          )}
-          {area === "admin" && (
-            <DropdownMenuItem asChild className="px-1.5 py-2">
-              <Link href="/app/dashboard">
-                <Building2 /> Voltar para a empresa
-              </Link>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem asChild className="px-1.5 py-2">
+            <Link href="/app/configuracoes?aba=perfil">
+              <UserRound /> Meu perfil
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="px-1.5 py-2">Tema</DropdownMenuSubTrigger>
             <DropdownMenuSubContent>

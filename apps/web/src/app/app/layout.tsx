@@ -5,18 +5,13 @@ import { SIDEBAR_COOKIE } from "@/components/layout/constants";
 import { APP_NAV, filterNav, reorderNav } from "@/components/layout/nav-config";
 import { Topbar } from "@/components/layout/topbar";
 import { UserMenu } from "@/components/layout/user-menu";
-import { isSuperAdmin } from "@/domains/auth/session";
 import { NotificationsBell } from "@/domains/notifications/components/notifications-bell";
 import { getNotifications } from "@/domains/notifications/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
 
 export default async function TenantAppLayout({ children }: LayoutProps<"/app">) {
   const context = await requireTenantContext();
-  const [superAdmin, cookieStore, notifications] = await Promise.all([
-    isSuperAdmin(),
-    cookies(),
-    getNotifications(context),
-  ]);
+  const [cookieStore, notifications] = await Promise.all([cookies(), getNotifications(context)]);
 
   const sections = reorderNav(filterNav(APP_NAV, context.permissions, context.hasModule), context.user.navOrder);
 
@@ -30,7 +25,7 @@ export default async function TenantAppLayout({ children }: LayoutProps<"/app">)
           end={
             <>
               <NotificationsBell items={notifications} />
-              <UserMenu name={context.user.fullName} email={context.user.email} isSuperAdmin={superAdmin} area="app" />
+              <UserMenu name={context.user.fullName} email={context.user.email} />
             </>
           }
         />
