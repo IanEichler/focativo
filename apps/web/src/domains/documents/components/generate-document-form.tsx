@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { TextField } from "@/components/forms/text-field";
 import { TextareaField } from "@/components/forms/fields";
@@ -18,20 +18,25 @@ import { ContractValueField } from "./contract-value-field";
 import { ContractPaymentField } from "./contract-payment-field";
 import { SessionScheduleFields, type ContractSchedulingOptions } from "./session-schedule-fields";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
+import { ContractLivePreview } from "./contract-live-preview";
 
 export function GenerateDocumentForm({
   template,
   initialCustomer,
   scheduling,
+  procedureOptions = [],
 }: {
   template: DocumentTemplateRow;
   initialCustomer: CustomerOption;
   scheduling?: ContractSchedulingOptions;
+  /** Nomes dos serviços cadastrados na Agenda, sugeridos no nome do procedimento. */
+  procedureOptions?: string[];
 }) {
   const customer = initialCustomer;
   const [preview, setPreview] = useState<FieldPreview | null>(null);
   const [loadingPreview, startPreviewTransition] = useTransition();
   const submitting = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, generating] = useActionState<GenerateDocumentState, FormData>(async (previous, data) => {
     try {
       return await generateDocumentAction(previous, data);
@@ -64,12 +69,14 @@ export function GenerateDocumentForm({
   }, [state]);
 
   return (
+    <div className="grid items-start gap-6 lg:grid-cols-2">
     <Card>
       <CardHeader>
         <CardTitle>Preencher contrato</CardTitle>
       </CardHeader>
       <CardContent>
         <form
+          ref={formRef}
           className="flex flex-col gap-4"
           aria-busy={generating}
           onSubmit={(event) => {
@@ -89,7 +96,7 @@ export function GenerateDocumentForm({
 
           {loadingPreview && <p className="text-small text-muted-foreground">Carregando campos do modelo…</p>}
 
-          {preview && <ContractFields key={customer?.id} fields={preview.remaining} autoFilled={preview.autoFilled} scheduling={scheduling} />}
+          {preview && <ContractFields key={customer?.id} fields={preview.remaining} autoFilled={preview.autoFilled} scheduling={scheduling} procedureOptions={procedureOptions} />}
 
           {customer && preview && preview.remaining.length === 0 && Object.keys(preview.autoFilled).length === 0 && (
             <p className="text-small text-muted-foreground">Esse modelo não tem campos de preenchimento.</p>
@@ -141,6 +148,8 @@ export function GenerateDocumentForm({
         </form>
       </CardContent>
     </Card>
+    {preview && <ContractLivePreview templateId={template.id} fields={template.fields} autoFilled={preview.autoFilled} formRef={formRef} />}
+    </div>
   );
 }
 
@@ -210,7 +219,8 @@ function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field.replaceAll("_", " ");
 }
 
-export function ContractFields({ fields: remainingFields, autoFilled, scheduling }: { fields: string[]; autoFilled: Record<string, string>; scheduling?: ContractSchedulingOptions }) {
+export function ContractFields({ fields: remainingFields, autoFilled, scheduling, procedureOptions = [] }: { fields: string[]; autoFilled: Record<string, string>; scheduling?: ContractSchedulingOptions; procedureOptions?: string[] }) {
+  const procedureListId = useId();
   const signatureField = [...Object.keys(autoFilled), ...remainingFields].find((field) => normalizeFieldName(field) === "data_assinatura");
   const [signatureDate, setSignatureDate] = useState(signatureField ? autoFilled[signatureField] ?? "" : "");
   const addressFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) =>
@@ -295,6 +305,11 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
 
   return (
     <div className="flex flex-col gap-5">
+      {procedureOptions.length > 0 && (
+        <datalist id={procedureListId}>
+          {procedureOptions.map((name) => <option key={name} value={name} />)}
+        </datalist>
+      )}
       {groups
         .filter((group) => group.fields.length > 0)
         .map((group) => {
@@ -334,6 +349,10 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
                   return <TextField key={field} label={fieldLabel(field)} name={`field_${field}`}
                     value={contractDateInWords(signatureDate)} readOnly placeholder="Preencha a data da assinatura"
                     description="Preenchida automaticamente a partir da data da assinatura." />;
+                }
+                if (procedureOptions.length && /^(item|sessao)_\d+_procedimento$/.test(field)) {
+                  return <TextField key={field} {...props} list={procedureListId} autoComplete="off"
+                    description="Escolha um serviço cadastrado ou digite outro nome." />;
                 }
                 return mask ? (
                   <MaskedTextField key={field} {...props} mask={mask} inputMode={contractFieldKind(field) === "phone" ? "tel" : "numeric"} />

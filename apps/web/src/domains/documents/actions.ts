@@ -154,6 +154,21 @@ export async function previewDocumentFieldsAction(
   return computeFieldPreview(context, templateId, customerId);
 }
 
+/** Arquivo .docx do modelo (base64) para a pré-visualização em tempo real do formulário. */
+export async function getDocumentTemplateFileAction(templateId: string): Promise<string | null> {
+  const context = await requireTenantContext();
+  if (!context.hasModule("documents") || !context.can("documents.read")) return null;
+  const template = await getDocumentTemplate(context, templateId);
+  if (!template) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(DOCUMENT_TEMPLATES_BUCKET).download(template.filePath);
+  if (error || !data) {
+    logger.warn({ event: "document.template_preview", status: "error", tenant_id: context.tenant.id, code: error?.name });
+    return null;
+  }
+  return Buffer.from(await data.arrayBuffer()).toString("base64");
+}
+
 export async function generateDocumentAction(
   _prev: GenerateDocumentState,
   formData: FormData,

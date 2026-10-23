@@ -27,14 +27,18 @@ export default async function NewCustomerContractPage({ params }: PageProps<"/ap
   if (!customer || !template) notFound();
 
   const canSchedule = context.hasModule("agenda") && context.can("agenda.write");
-  const [services, members] = canSchedule ? await Promise.all([listServices(context, { activeOnly: true }), listTenantMembers(context)]) : [[], []];
+  const canListServices = context.hasModule("agenda") && context.can("agenda.read");
+  const [services, members] = await Promise.all([
+    canListServices ? listServices(context, { activeOnly: true }) : [],
+    canSchedule ? listTenantMembers(context) : [],
+  ]);
   const scheduling = canSchedule ? { services, professionals: members.filter(item => item.status === "ACTIVE").map(item => ({ userId: item.userId, fullName: item.fullName })) } : undefined;
   return <PageContainer>
     <div><Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
       <Link href={`/app/clientes/${id}?aba=contratos`}><ArrowLeft /> Contratos de {customer.name}</Link>
     </Button></div>
     <PageHeader title={`Novo contrato — ${customer.name}`} description={template.name} />
-    <GenerateDocumentForm template={template} scheduling={scheduling} initialCustomer={{
+    <GenerateDocumentForm template={template} scheduling={scheduling} procedureOptions={services.map(service => service.name)} initialCustomer={{
       id: customer.id, name: customer.name, phone: customer.phone, whatsapp: customer.whatsapp,
     }} />
   </PageContainer>;

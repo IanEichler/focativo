@@ -12,6 +12,7 @@ interface TopicLink {
 
 const TOPICS: TopicLink[] = [
   { id: "clientes", title: "Clientes" },
+  { id: "contratos", title: "Contratos" },
   { id: "agenda", title: "Agenda" },
   { id: "servicos-horarios", title: "Serviços e Horários" },
   { id: "produtos-estoque", title: "Produtos e Estoque" },
@@ -87,6 +88,23 @@ export default function HelpPage() {
             <strong>Excluir</strong> — apaga de vez. Só funciona se o cliente não
             tiver reserva, venda ou agendamento real associado (nesses casos, só arquivar). Exige digitar o nome exato
             do cliente pra confirmar.
+          </li>
+        </Ul>
+      </Topic>
+
+      <Topic id="contratos" title="Contratos">
+        <P>
+          No perfil da cliente, aba <strong>Contratos</strong>, escolha o modelo e preencha os campos. Os dados que já
+          estão no cadastro vêm preenchidos (dá pra corrigir).
+        </P>
+        <Ul>
+          <li>
+            <strong>Prévia ao lado</strong>: o contrato aparece montado enquanto você digita, com o mesmo modelo que
+            vai virar PDF e Word. Campo ainda em branco aparece como “________”.
+          </li>
+          <li>
+            <strong>Nome do procedimento</strong>: ao clicar, aparecem os serviços cadastrados em Serviços e Horários.
+            Se o procedimento não estiver cadastrado, é só digitar outro nome.
           </li>
         </Ul>
       </Topic>

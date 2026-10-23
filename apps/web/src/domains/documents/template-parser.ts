@@ -10,7 +10,7 @@ const PLACEHOLDER_PATTERN = /\{\{\s*([\w.]+)\s*\}\}|\{\s*([\w.]+)\s*\}/g;
  * texto visível concatenado) em vez de tentar casar o regex direto no XML
  * cru, senão placeholders partidos passariam batido.
  */
-export function extractPlaceholders(fileBuffer: Buffer): string[] {
+export function extractPlaceholders(fileBuffer: Uint8Array): string[] {
   const zip = new PizZip(fileBuffer);
   const documentXml = zip.file("word/document.xml")?.asText();
   if (!documentXml) return [];
@@ -24,7 +24,7 @@ export function extractPlaceholders(fileBuffer: Buffer): string[] {
 }
 
 /** Mantém compatibilidade com modelos antigos de chaves duplas e com DOCX do Word de chaves simples. */
-export function templateDelimiters(fileBuffer: Buffer): { start: string; end: string } {
+export function templateDelimiters(fileBuffer: Uint8Array): { start: string; end: string } {
   const xml = new PizZip(fileBuffer).file("word/document.xml")?.asText() ?? "";
   const text = xml.replace(/<[^>]+>/g, "");
   return /\{\{\s*[\w.]+\s*\}\}/.test(text) ? { start: "{{", end: "}}" } : { start: "{", end: "}" };
