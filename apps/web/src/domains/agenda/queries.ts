@@ -1,5 +1,6 @@
 import "server-only";
 import { appointmentServiceLabel } from "./attendance";
+import { calendarDate, clinicDateTime, shiftDate } from "./calendar";
 import type { TenantContext } from "@/domains/tenants/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Enums } from "@/types/database.types";
@@ -122,13 +123,15 @@ export interface TodayAgendaSummary {
   nextStartsAt: string | null;
 }
 
-/** Compromissos de hoje ainda em aberto (usado no dashboard). Nunca financeiro: só uma contagem operacional. */
-export async function getTodayAgendaSummary(context: TenantContext): Promise<TodayAgendaSummary> {
+/**
+ * Compromissos de hoje ainda em aberto (dashboard e sino). Nunca financeiro: só
+ * uma contagem operacional. "Hoje" é o dia no fuso da clínica, não o do servidor.
+ */
+export async function getTodayAgendaSummary(context: TenantContext, timeZone: string): Promise<TodayAgendaSummary> {
   const supabase = await createClient();
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const today = calendarDate(new Date(), timeZone);
+  const start = clinicDateTime(`${today}T00:00`, timeZone);
+  const end = clinicDateTime(`${shiftDate(today, 1)}T00:00`, timeZone);
 
   const { data, count, error } = await supabase
     .from("agenda_appointments")
@@ -194,4 +197,16 @@ export async function getProfessionalExceptions(
     date: row.date,
     reason: row.reason,
   }));
+}
+
+/** Sessões de contrato assinado que não conseguiram entrar na agenda (horário ocupado, fora do expediente…). */
+export async function getPendingContractSessionsCount(context: TenantContext): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("contract_session_appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", context.tenant.id)
+    .is("appointment_id", null);
+  if (error) throw new Error(`getPendingContractSessionsCount failed: ${error.code}`);
+  return count ?? 0;
 }

@@ -112,6 +112,17 @@ export default function HelpPage() {
             formulário mostra as parcelas (uma por mês). Elas entram no Financeiro da cliente quando o contrato é
             <strong> assinado</strong>; gerar o contrato de novo não duplica cobrança.
           </li>
+          <li>
+            <strong>Sessões na agenda</strong>: em cada sessão, preencha data, horário, serviço e profissional; quando a
+            cliente assina pelo link, elas entram sozinhas na Agenda. Para um pacote, use{" "}
+            <strong>Preencher sessões de uma vez</strong>: informe a 1ª data, a frequência (toda semana, a cada 2
+            semanas, todo mês…), o horário, o serviço e o profissional, e todas as sessões são preenchidas — depois é só
+            ajustar alguma exceção. O que já foi digitado em região e observações é mantido.
+          </li>
+          <li>
+            Se na hora da assinatura algum horário não estiver mais livre, a sessão fica em{" "}
+            <strong>sessões pendentes</strong> na Agenda para escolher outro horário, e o sino avisa.
+          </li>
         </Ul>
       </Topic>
 

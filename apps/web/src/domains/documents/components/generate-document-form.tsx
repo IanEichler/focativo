@@ -13,10 +13,11 @@ import type { CustomerOption } from "@/domains/customers/queries";
 import { generateDocumentAction, previewDocumentFieldsAction, type FieldPreview } from "../actions";
 import { GENERATE_IDLE, type GenerateDocumentState } from "../state";
 import type { DocumentTemplateRow } from "../queries";
-import { contractDateInWords, contractFieldKind, contractFieldMask, normalizeFieldName } from "../field-format";
+import { contractDateInWords, contractFieldKind, contractFieldMask, maskContractDate, normalizeFieldName } from "../field-format";
 import { ContractValueField } from "./contract-value-field";
 import { ContractPaymentField } from "./contract-payment-field";
 import { SessionScheduleFields, type ContractSchedulingOptions } from "./session-schedule-fields";
+import { SessionBulkFill, type SessionBulkPreset } from "./session-bulk-fill";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
 import { ContractLivePreview } from "./contract-live-preview";
 import { ContractPaymentPlan } from "./contract-payment-plan";
@@ -230,6 +231,16 @@ function fieldLabel(field: string): string {
 
 export function ContractFields({ fields: remainingFields, autoFilled, scheduling, procedureOptions = [] }: { fields: string[]; autoFilled: Record<string, string>; scheduling?: ContractSchedulingOptions; procedureOptions?: string[] }) {
   const procedureListId = useId();
+  // "Preencher sessões": a versão muda a key dos grupos de sessão para remontá-los com os novos valores.
+  const [bulk, setBulk] = useState<{ version: number; preset: SessionBulkPreset | null }>({ version: 0, preset: null });
+  const sessionNumberOf = (field: string) => /^sessao_(\d+)_/.exec(field)?.[1];
+  const defaultFor = (field: string) => {
+    const number = sessionNumberOf(field);
+    if (!bulk.preset || !number) return autoFilled[field];
+    const date = bulk.preset.dates[number];
+    if (date && field === `sessao_${number}_data`) return maskContractDate(date);
+    return bulk.preset.typed[field] ?? autoFilled[field];
+  };
   const signatureField = [...Object.keys(autoFilled), ...remainingFields].find((field) => normalizeFieldName(field) === "data_assinatura");
   const [signatureDate, setSignatureDate] = useState(signatureField ? autoFilled[signatureField] ?? "" : "");
   const addressFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) =>
@@ -319,6 +330,10 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
           {procedureOptions.map((name) => <option key={name} value={name} />)}
         </datalist>
       )}
+      {scheduling && sessionNumbers.length >= 2 && (
+        <SessionBulkFill sessionNumbers={sessionNumbers} {...scheduling}
+          onApply={(preset) => setBulk((current) => ({ version: current.version + 1, preset }))} />
+      )}
       {groups
         .filter((group) => group.fields.length > 0)
         .map((group) => {
@@ -342,7 +357,7 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
             <div className="grid gap-4 pt-3 sm:grid-cols-2">
               {group.fields.map((field) => {
                 const mask = contractFieldMask(field);
-                const props = { label: fieldLabel(field), name: `field_${field}`, defaultValue: autoFilled[field] };
+                const props = { label: fieldLabel(field), name: `field_${field}`, defaultValue: defaultFor(field) };
                 const kind = contractFieldKind(field);
                 if (/^sessao_\d+_observacoes$/.test(field)) {
                   return <div key={field} className="sm:col-span-2"><TextareaField {...props} rows={3} maxLength={2000} /></div>;
@@ -351,7 +366,7 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
                   return <ContractPaymentField key={field} name={`field_${field}`} defaultValue={autoFilled[field]} />;
                 }
                 if (["date", "money", "integer"].includes(kind ?? "")) {
-                  return <ContractValueField key={field} field={field} label={fieldLabel(field)} defaultValue={autoFilled[field]}
+                  return <ContractValueField key={field} field={field} label={fieldLabel(field)} defaultValue={defaultFor(field)}
                     onValueChange={field === signatureField ? setSignatureDate : undefined} />;
                 }
                 if (signatureField && normalizeFieldName(field) === "data_assinatura_extenso") {
@@ -369,13 +384,19 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
               })}
             </div>
           );
-          return group.optional ? (
-            <details key={group.title} className="rounded-lg border border-border p-4">
-              <summary className="cursor-pointer font-medium">{group.title}</summary>
-              {inputs}
-              {scheduling && <div className="mt-4"><SessionScheduleFields number={/^Sessão (\d+)/.exec(group.title)![1]!} {...scheduling} /></div>}
-            </details>
-          ) : (
+          if (group.optional) {
+            const number = /^Sessão (\d+)/.exec(group.title)![1]!;
+            const filled = Boolean(bulk.preset?.dates[number]);
+            return (
+              <details key={`${group.title}-${bulk.version}`} open={filled || undefined} className="rounded-lg border border-border p-4">
+                <summary className="cursor-pointer font-medium">{group.title}</summary>
+                {inputs}
+                {scheduling && <div className="mt-4"><SessionScheduleFields number={number} {...scheduling}
+                  defaults={filled ? { serviceId: bulk.preset!.serviceId, time: bulk.preset!.time, professionalId: bulk.preset!.professionalId } : undefined} /></div>}
+              </details>
+            );
+          }
+          return (
             <fieldset key={group.title} className="rounded-lg border border-border p-4">
               <legend className="px-1 font-medium">{group.title}</legend>
               {inputs}

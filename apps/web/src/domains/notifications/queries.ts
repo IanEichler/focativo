@@ -1,6 +1,6 @@
 import "server-only";
 import { calendarDate } from "@/domains/agenda/calendar";
-import { getTodayAgendaSummary } from "@/domains/agenda/queries";
+import { getPendingContractSessionsCount, getTodayAgendaSummary } from "@/domains/agenda/queries";
 import { getFinancialAlerts } from "@/domains/financial/queries";
 import { getInventorySummary } from "@/domains/inventory/queries";
 import { listPendingCharges } from "@/domains/payments/queries";
@@ -29,15 +29,16 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
   const canWhatsapp = context.can("whatsapp.read") && context.hasModule("whatsapp");
   const canAgenda = context.can("agenda.read") && context.hasModule("agenda");
 
-  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday, financialAlerts] = await Promise.all([
+  const timeZone = canFinancial || canAgenda ? (await getTenantDetails(context)).timezone : "America/Cuiaba";
+  const today = calendarDate(new Date(), timeZone);
+  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday, financialAlerts, pendingSessions] = await Promise.all([
     canInventory ? getInventorySummary(context) : Promise.resolve(null),
     canReservations ? getReservationsExpiringSoonCount(context) : Promise.resolve(0),
     canFinancial ? listPendingCharges(context) : Promise.resolve([]),
     canWhatsapp ? getUnreadConversationsCount(context) : Promise.resolve(0),
-    canAgenda ? getTodayAgendaSummary(context) : Promise.resolve(null),
-    canFinancial
-      ? getTenantDetails(context).then((tenant) => getFinancialAlerts(context, calendarDate(new Date(), tenant.timezone)))
-      : Promise.resolve(null),
+    canAgenda ? getTodayAgendaSummary(context, timeZone) : Promise.resolve(null),
+    canFinancial ? getFinancialAlerts(context, today) : Promise.resolve(null),
+    canAgenda ? getPendingContractSessionsCount(context) : Promise.resolve(0),
   ]);
 
   const items: NotificationItem[] = [];
@@ -138,6 +139,16 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
       count: unreadConversations,
       href: "/app/atendimento",
       tone: "info",
+    });
+  }
+
+  if (pendingSessions > 0) {
+    items.push({
+      key: "contract-sessions-pending",
+      label: "Sessões de contrato sem horário na agenda",
+      count: pendingSessions,
+      href: "/app/agenda",
+      tone: "warning",
     });
   }
 

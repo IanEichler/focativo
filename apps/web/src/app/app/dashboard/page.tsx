@@ -43,13 +43,13 @@ export default async function DashboardPage() {
   const canSeeAgenda = context.can("agenda.read") && context.hasModule("agenda");
   const since = sinceDaysAgo(DASHBOARD_PERIOD_DAYS);
 
-  const [details, team, inventory, salesByDay, topProducts, todayAgenda] = await Promise.all([
-    getTenantDetails(context),
+  const details = await getTenantDetails(context);
+  const [team, inventory, salesByDay, topProducts, todayAgenda] = await Promise.all([
     getTeamSummary(context),
     canSeeInventory ? getInventorySummary(context) : Promise.resolve(null),
     canSeeCommercial ? getSalesByDay(context, since) : Promise.resolve([]),
     canSeeCommercial ? getTopProducts(context, since, 5) : Promise.resolve([]),
-    canSeeAgenda ? getTodayAgendaSummary(context) : Promise.resolve(null),
+    canSeeAgenda ? getTodayAgendaSummary(context, details.timezone) : Promise.resolve(null),
   ]);
 
   const revenue = salesByDay.reduce((sum, row) => sum + row.revenue, 0);
