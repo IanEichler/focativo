@@ -254,6 +254,13 @@ function render(data: Awaited<ReturnType<typeof introspect>>): string {
     ].join("\n");
   });
 
+  // O catálogo do Postgres não diz se um argumento aceita null. Estes aceitam, e o
+  // app passa null de propósito (número ainda desconhecido, só o chat id do WhatsApp).
+  const nullableArgs: Record<string, string[]> = {
+    whatsapp_receive_message: ["p_whatsapp_number"],
+    whatsapp_correct_number: ["p_whatsapp_number"],
+  };
+
   const functionBlocks = data.functions.map((fn) => {
     const names = fn.arg_names ?? [];
     const modes = fn.arg_modes ?? fn.arg_types.map(() => "i");
@@ -270,7 +277,8 @@ function render(data: Awaited<ReturnType<typeof introspect>>): string {
       const type = isArray ? `${base}[]` : base;
       if (mode === "i" || mode === "b" || mode === "v") {
         const position = inputIndexes.indexOf(index);
-        inArgs.push(`${indent(5)}${key(name)}${position >= firstDefault ? "?" : ""}: ${type}`);
+        const nullable = nullableArgs[fn.name]?.includes(name) ? " | null" : "";
+        inArgs.push(`${indent(5)}${key(name)}${position >= firstDefault ? "?" : ""}: ${type}${nullable}`);
       }
       if (mode === "o" || mode === "b" || mode === "t") {
         outCols.push(`${indent(6)}${key(name)}: ${type}`);

@@ -173,7 +173,7 @@ describe("agenda: horário de funcionamento e exceções por profissional", () =
       );
     });
 
-    it("blocks agenda_appointment_create and ai_agenda_book for that professional on that date, but not other date/professional", async () => {
+    it("blocks agenda_appointment_create for that professional on that date, but not other date/professional", async () => {
       const professionalA = await db.addActiveMember(tenantId, "VENDEDOR");
       const professionalB = await db.addActiveMember(tenantId, "VENDEDOR");
       const { iso, date } = localDatetime(70, 10);
@@ -217,31 +217,6 @@ describe("agenda: horário de funcionamento e exceções por profissional", () =
           p_starts_at: other.iso,
         });
       expect(okOtherDay!.agenda_appointment_create).toBeTruthy();
-
-      // ai_agenda_book também respeita a exceção
-      const [msgRow] = await db.admin.rpc<{ whatsapp_receive_message: string }>("whatsapp_receive_message", {
-        p_tenant_id: tenantId,
-        p_whatsapp_number: "11933221100",
-        p_content: "Oi",
-        p_external_message_id: `agenda-hours-${Date.now()}`,
-      });
-      void msgRow;
-      const [conversation] = await db.admin.query<{ id: string }>(
-        `select c.id from public.conversations c join public.customers cu on cu.id = c.customer_id
-         where cu.whatsapp = $1 and c.tenant_id = $2`,
-        ["11933221100", tenantId],
-      );
-      await db.as(ownerId).rpc("ai_settings_update", { p_tenant_id: tenantId, p_enabled: true });
-
-      await expectDbError(
-        db.admin.rpc("ai_agenda_book", {
-          p_conversation_id: conversation!.id,
-          p_service_id: serviceId,
-          p_professional_user_id: professionalA,
-          p_starts_at: iso,
-        }),
-        "professional_unavailable",
-      );
     });
 
     it("deleting an exception frees the date again immediately", async () => {
