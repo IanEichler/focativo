@@ -4302,6 +4302,14 @@ export type Database = {
         Args: never
         Returns: number
       }
+      financial_report: {
+        Args: {
+          p_tenant_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: Json
+      }
       financial_summary: {
         Args: {
           p_tenant_id: string

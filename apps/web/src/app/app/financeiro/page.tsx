@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Wallet } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, Download, HandCoins, Receipt, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/data/filter-controls";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calendarDate } from "@/domains/agenda/calendar";
+import { BarList } from "@/domains/financial/components/bar-list";
 import { CashFlowChart } from "@/domains/financial/components/cash-flow-chart";
 import { EntryActions, installmentLabel, NewEntryDialog } from "@/domains/financial/components/entry-forms";
 import { NewExpenseDialog, RecurringExpensesCard } from "@/domains/financial/components/expense-forms";
@@ -20,6 +21,7 @@ import { formatDay, monthLabel, monthRange, shiftMonth, validMonth } from "@/dom
 import {
   ENTRY_SITUATIONS,
   getCashFlow,
+  getFinancialReport,
   getMonthSummary,
   isOverdue,
   listActiveRecurringExpenses,
@@ -30,14 +32,16 @@ import {
   type EntrySituation,
   type FinancialEntryRow,
 } from "@/domains/financial/queries";
+import { REPORT_PERIODS, reportRange, type ReportPeriod } from "@/domains/financial/report";
 import { requireTenantContext, type TenantContext } from "@/domains/tenants/context";
 import { getTenantDetails } from "@/domains/tenants/queries";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { buildHref, firstParam, type SearchParamsRecord } from "@/lib/url";
 
 export const metadata: Metadata = { title: "Financeiro" };
 
-const TABS = ["receber", "despesas", "fluxo"] as const;
+const TABS = ["receber", "despesas", "fluxo", "relatorios"] as const;
 
 function EntryStatus({ entry, today }: { entry: FinancialEntryRow; today: string }) {
   if (entry.status === "PAID") return <StatusBadge tone="success">Pago em {formatDay(entry.paidAt!)}</StatusBadge>;
@@ -342,6 +346,109 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
   );
 }
 
+async function ReportsTab({ context, today, params }: { context: TenantContext; today: string; params: SearchParamsRecord }) {
+  const requested = firstParam(params.periodo);
+  const period = (REPORT_PERIODS.some((item) => item.value === requested) ? requested : "mes") as ReportPeriod;
+  const { from, to } = reportRange(period, today);
+  const report = await getFinancialReport(context, from, to);
+  const result = Math.round((report.income - report.expense) * 100) / 100;
+  const rate = report.delinquency.due > 0 ? report.delinquency.overdue / report.delinquency.due : 0;
+  const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Período do relatório" className="flex flex-wrap gap-1.5">
+          {REPORT_PERIODS.map((item) => (
+            <Button key={item.value} size="sm" variant={item.value === period ? "default" : "outline"} asChild>
+              <Link href={buildHref("/app/financeiro", { aba: "relatorios" }, { periodo: item.value === "mes" ? undefined : item.value })} scroll={false}>
+                {item.label}
+              </Link>
+            </Button>
+          ))}
+        </nav>
+        <Button variant="outline" asChild>
+          <a href={`/api/financeiro/exportar?periodo=${period}`} download>
+            <Download /> Exportar planilha (CSV)
+          </a>
+        </Button>
+      </div>
+      <p className="-mt-3 text-small text-muted-foreground">
+        De {formatDay(from)} a {formatDay(to)}. Receitas e despesas contam pelo dia do pagamento.
+      </p>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Recebido" value={<MoneyValue value={report.income} />} icon={<HandCoins />} />
+        <MetricCard label="Despesas pagas" value={<MoneyValue value={report.expense} />} icon={<Receipt />} />
+        <MetricCard
+          label="Resultado"
+          value={<MoneyValue value={result} />}
+          icon={<Wallet />}
+          hint="Recebido − despesas pagas"
+          className={result < 0 ? "border-danger/40" : undefined}
+        />
+        <MetricCard
+          label="Inadimplência"
+          value={formatPercent(rate)}
+          icon={<AlertTriangle />}
+          hint={
+            report.delinquency.overdueCount > 0
+              ? `${formatMoney(report.delinquency.overdue)} em ${plural(report.delinquency.overdueCount, "parcela vencida", "parcelas vencidas")}`
+              : "Nada vencido sem pagamento"
+          }
+          className={rate > 0 ? "border-warning/40" : undefined}
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Receita por procedimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              groups={report.byProcedure}
+              tone="in"
+              emptyText="Nenhum recebimento no período."
+              countLabel={(count) => plural(count, "pagamento", "pagamentos")}
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Receita por forma de pagamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              groups={report.byMethod}
+              tone="in"
+              emptyText="Nenhum recebimento no período."
+              countLabel={(count) => plural(count, "pagamento", "pagamentos")}
+            />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Despesas por categoria</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              groups={report.byCategory}
+              tone="out"
+              emptyText="Nenhuma despesa paga no período."
+              countLabel={(count) => plural(count, "conta", "contas")}
+            />
+          </CardContent>
+        </Card>
+      </div>
+      <p className="text-small text-muted-foreground">
+        Inadimplência: do que venceu no período até ontem, a parte que ainda não foi paga. A planilha traz tudo que vence ou
+        foi pago no período, com cliente, parcela, situação e forma de pagamento.
+      </p>
+    </>
+  );
+}
+
 export default async function FinancialPage({ searchParams }: PageProps<"/app/financeiro">) {
   const context = await requireTenantContext();
   if (!context.can("financial.read") || !context.hasModule("financial")) {
@@ -386,10 +493,11 @@ export default async function FinancialPage({ searchParams }: PageProps<"/app/fi
           { id: "receber", label: "A receber", href: tabHref("receber") },
           { id: "despesas", label: "Despesas", href: tabHref("despesas") },
           { id: "fluxo", label: "Fluxo de caixa", href: tabHref("fluxo") },
+          { id: "relatorios", label: "Relatórios", href: tabHref("relatorios") },
         ]}
       />
 
-      {tab !== "fluxo" && (
+      {(tab === "receber" || tab === "despesas") && (
         <MonthNav
           month={month}
           currentMonth={currentMonth}
@@ -400,6 +508,7 @@ export default async function FinancialPage({ searchParams }: PageProps<"/app/fi
       {tab === "receber" && <EntriesTab context={context} kind="INCOME" month={month} today={today} params={params} />}
       {tab === "despesas" && <EntriesTab context={context} kind="EXPENSE" month={month} today={today} params={params} />}
       {tab === "fluxo" && <CashFlowTab context={context} currentMonth={currentMonth} />}
+      {tab === "relatorios" && <ReportsTab context={context} today={today} params={params} />}
     </PageContainer>
   );
 }

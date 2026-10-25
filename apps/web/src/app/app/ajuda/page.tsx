@@ -244,6 +244,12 @@ export default function HelpPage() {
           despesas fixas). A tabela traz os valores e o saldo de cada mês.
         </P>
         <P>
+          <strong>Relatórios</strong> (aba do Financeiro): escolha o período (este mês, mês passado, 3, 6 ou 12 meses, este
+          ano) e veja recebido, despesas pagas, resultado e inadimplência, mais a receita por procedimento, por forma de
+          pagamento e as despesas por categoria. <strong>Exportar planilha (CSV)</strong> baixa tudo que vence ou foi
+          pago no período, pronto para abrir no Excel e mandar para o contador.
+        </P>
+        <P>
           <strong>Relatórios</strong> traz visões agregadas do que estiver ligado no sistema.
         </P>
       </Topic>

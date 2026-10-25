@@ -1,6 +1,7 @@
 import "server-only";
 import type { TenantContext } from "@/domains/tenants/context";
 import { createClient } from "@/lib/supabase/server";
+import type { ExportEntry } from "./report";
 
 export type EntryStatus = "PENDING" | "PAID" | "CANCELED";
 export type EntryKind = "INCOME" | "EXPENSE";
@@ -300,4 +301,85 @@ export async function getCashFlow(context: TenantContext, from: string, to: stri
     incomeOpen: Number(row.income_open),
     expenseOpen: Number(row.expense_open),
   }));
+}
+
+export interface ReportGroup {
+  label: string;
+  amount: number;
+  count: number;
+}
+
+export interface FinancialReport {
+  income: number;
+  expense: number;
+  byProcedure: ReportGroup[];
+  byMethod: ReportGroup[];
+  byCategory: ReportGroup[];
+  delinquency: { due: number; overdue: number; overdueCount: number };
+}
+
+type RawGroup = { label: string; amount: number | string; count: number };
+type RawReport = {
+  income: number | string;
+  expense: number | string;
+  by_procedure: RawGroup[];
+  by_method: RawGroup[];
+  by_category: RawGroup[];
+  delinquency: { due: number | string; overdue: number | string; overdue_count: number };
+};
+
+export async function getFinancialReport(context: TenantContext, from: string, to: string): Promise<FinancialReport> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("financial_report", { p_tenant_id: context.tenant.id, p_from: from, p_to: to });
+  if (error || !data) throw new Error(`getFinancialReport failed: ${error?.message}`);
+  const raw = data as unknown as RawReport;
+  const groups = (rows: RawGroup[]) => rows.map((row) => ({ label: row.label, amount: Number(row.amount), count: row.count }));
+  return {
+    income: Number(raw.income),
+    expense: Number(raw.expense),
+    byProcedure: groups(raw.by_procedure),
+    byMethod: groups(raw.by_method),
+    byCategory: groups(raw.by_category),
+    delinquency: {
+      due: Number(raw.delinquency.due),
+      overdue: Number(raw.delinquency.overdue),
+      overdueCount: raw.delinquency.overdue_count,
+    },
+  };
+}
+
+/** Lançamentos que vencem ou foram pagos no período, para a planilha do contador. */
+export async function listEntriesForExport(context: TenantContext, from: string, to: string): Promise<ExportEntry[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("financial_entries")
+    .select(`${ENTRY_COLUMNS}, kind, customer:customers(name)`)
+    .eq("tenant_id", context.tenant.id)
+    .or(`and(due_date.gte.${from},due_date.lte.${to}),and(paid_at.gte.${from},paid_at.lte.${to})`)
+    .order("due_date", { ascending: true })
+    .limit(10000);
+  if (error) throw new Error(`listEntriesForExport failed: ${error.code}`);
+  return (data ?? []).map((record) => {
+    const row = toRow(record as unknown as EntryRecord);
+    return {
+      kind: (record as unknown as { kind: "INCOME" | "EXPENSE" }).kind,
+      customerName: row.customerName,
+      description: row.description,
+      category: row.category,
+      installmentNumber: row.installmentNumber,
+      installmentCount: row.installmentCount,
+      dueDate: row.dueDate,
+      amount: row.amount,
+      status: row.status,
+      paidAt: row.paidAt,
+      paymentMethod: row.paymentMethod,
+      origin: row.fromContract
+        ? "Contrato"
+        : row.fromAppointment
+          ? "Agenda"
+          : row.fromRecurring
+            ? "Despesa fixa"
+            : "Lançamento manual",
+    };
+  });
 }

@@ -108,10 +108,6 @@ export function CashFlowChart({ months, currentMonth }: { months: CashFlowMonth[
 
   return (
     <div className="cash-flow-chart flex flex-col gap-3">
-      <style>{`
-        .cash-flow-chart { --flow-in: #4779c5; --flow-out: #c68a2d; }
-        .dark .cash-flow-chart { --flow-in: #3987e5; --flow-out: #c98500; }
-      `}</style>
       <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-small text-muted-foreground" aria-label="Legenda">
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="size-3 rounded-sm" style={{ background: "var(--flow-in)" }} /> Entradas
