@@ -92,7 +92,10 @@ export function customerProfileValues(
   if (values.phone && values.whatsapp && values.phone !== values.whatsapp)
     throw new Error("Os campos de telefone e WhatsApp no contrato têm valores diferentes.");
   const contact = values.whatsapp ?? values.phone;
-  if (contact) { values.phone = contact; values.whatsapp = contact; }
+  if (contact) {
+    values.phone = contact;
+    values.whatsapp = contact;
+  }
   for (const key of Object.keys(values) as (keyof CustomerFieldsInput)[]) {
     if (values[key] === customer[key]?.trim()) delete values[key];
   }
@@ -100,6 +103,11 @@ export function customerProfileValues(
 }
 
 /** Compare under a row lock so a profile edit during PDF generation is not lost. */
-export function customerProfileExpected(values: Record<string, string>, customer: CustomerFieldsInput): Record<string, string | null> {
-  return Object.fromEntries(Object.keys(values).map(key => [key, customer[key as keyof CustomerFieldsInput] ?? null]));
+export function customerProfileExpected(
+  values: Record<string, string>,
+  customer: CustomerFieldsInput,
+): Record<string, string | null> {
+  return Object.fromEntries(
+    Object.keys(values).map((key) => [key, customer[key as keyof CustomerFieldsInput] ?? null]),
+  );
 }

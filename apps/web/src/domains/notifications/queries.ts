@@ -31,15 +31,16 @@ export async function getNotifications(context: TenantContext): Promise<Notifica
 
   const timeZone = canFinancial || canAgenda ? (await getTenantDetails(context)).timezone : "America/Cuiaba";
   const today = calendarDate(new Date(), timeZone);
-  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday, financialAlerts, pendingSessions] = await Promise.all([
-    canInventory ? getInventorySummary(context) : Promise.resolve(null),
-    canReservations ? getReservationsExpiringSoonCount(context) : Promise.resolve(0),
-    canFinancial ? listPendingCharges(context) : Promise.resolve([]),
-    canWhatsapp ? getUnreadConversationsCount(context) : Promise.resolve(0),
-    canAgenda ? getTodayAgendaSummary(context, timeZone) : Promise.resolve(null),
-    canFinancial ? getFinancialAlerts(context, today) : Promise.resolve(null),
-    canAgenda ? getPendingContractSessionsCount(context) : Promise.resolve(0),
-  ]);
+  const [inventory, expiringSoon, pendingCharges, unreadConversations, agendaToday, financialAlerts, pendingSessions] =
+    await Promise.all([
+      canInventory ? getInventorySummary(context) : Promise.resolve(null),
+      canReservations ? getReservationsExpiringSoonCount(context) : Promise.resolve(0),
+      canFinancial ? listPendingCharges(context) : Promise.resolve([]),
+      canWhatsapp ? getUnreadConversationsCount(context) : Promise.resolve(0),
+      canAgenda ? getTodayAgendaSummary(context, timeZone) : Promise.resolve(null),
+      canFinancial ? getFinancialAlerts(context, today) : Promise.resolve(null),
+      canAgenda ? getPendingContractSessionsCount(context) : Promise.resolve(0),
+    ]);
 
   const items: NotificationItem[] = [];
 

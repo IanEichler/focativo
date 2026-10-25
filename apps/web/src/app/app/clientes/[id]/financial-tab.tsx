@@ -34,7 +34,11 @@ export async function FinancialTab({ context, customerId }: { context: TenantCon
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total lançado" value={<MoneyValue value={summary.contracted} />} icon={<CircleDollarSign />} />
+        <MetricCard
+          label="Total lançado"
+          value={<MoneyValue value={summary.contracted} />}
+          icon={<CircleDollarSign />}
+        />
         <MetricCard label="Recebido" value={<MoneyValue value={summary.received} />} icon={<HandCoins />} />
         <MetricCard label="Em aberto" value={<MoneyValue value={summary.open} />} icon={<Clock />} />
         <MetricCard
@@ -71,10 +75,15 @@ export async function FinancialTab({ context, customerId }: { context: TenantCon
               </TableHeader>
               <TableBody>
                 {entries.map((entry) => (
-                  <TableRow key={entry.id} className={entry.status === "CANCELED" ? "text-muted-foreground" : undefined}>
+                  <TableRow
+                    key={entry.id}
+                    className={entry.status === "CANCELED" ? "text-muted-foreground" : undefined}
+                  >
                     <TableCell>
                       <span className="flex flex-col">
-                        <span className={entry.status === "CANCELED" ? "line-through" : undefined}>{entry.description}</span>
+                        <span className={entry.status === "CANCELED" ? "line-through" : undefined}>
+                          {entry.description}
+                        </span>
                         <span className="text-caption text-muted-foreground">
                           {installmentLabel(entry)}
                           {entry.fromContract ? " · contrato assinado" : ""}

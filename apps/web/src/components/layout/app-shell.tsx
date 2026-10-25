@@ -71,7 +71,13 @@ export function AppShell({
             collapsed ? "w-sidebar-collapsed" : "w-sidebar",
           )}
         >
-          <SidebarBody sections={sections} rootHref={rootHref} collapsed={collapsed} footer={sidebarFooter} onToggle={toggleCollapsed} />
+          <SidebarBody
+            sections={sections}
+            rootHref={rootHref}
+            collapsed={collapsed}
+            footer={sidebarFooter}
+            onToggle={toggleCollapsed}
+          />
         </aside>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -99,7 +105,9 @@ export function AppShell({
           className={cn(
             "flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200 ease-out will-change-[padding] contain-layout",
             isInbox && "h-dvh overflow-hidden",
-            collapsed ? "lg:pl-[calc(var(--spacing-sidebar-collapsed)+16px)]" : "lg:pl-[calc(var(--spacing-sidebar)+16px)]",
+            collapsed
+              ? "lg:pl-[calc(var(--spacing-sidebar-collapsed)+16px)]"
+              : "lg:pl-[calc(var(--spacing-sidebar)+16px)]",
           )}
         >
           {topbar}
@@ -132,7 +140,12 @@ function SidebarBody({
 }) {
   return (
     <div data-collapsed={collapsed} className="flex h-full min-h-0 flex-col">
-      <div className={cn("flex min-h-16 shrink-0 items-center justify-between gap-2 px-3 py-3", collapsed && "flex-col px-0")}>
+      <div
+        className={cn(
+          "flex min-h-16 shrink-0 items-center justify-between gap-2 px-3 py-3",
+          collapsed && "flex-col px-0",
+        )}
+      >
         <Link
           href={rootHref}
           onClick={onNavigate}

@@ -28,7 +28,15 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
         <Card>
           <CardHeader className="flex-row items-center justify-between gap-3">
             <CardTitle>Novo contrato</CardTitle>
-            {templates.length > 0 && <UploadTemplateDialog trigger={<Button variant="outline" size="sm"><Plus /> Novo modelo</Button>} />}
+            {templates.length > 0 && (
+              <UploadTemplateDialog
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Plus /> Novo modelo
+                  </Button>
+                }
+              />
+            )}
           </CardHeader>
           <CardContent>
             {templates.length === 0 ? (
@@ -38,7 +46,13 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
                 title="Nenhum modelo de contrato cadastrado"
                 description="Cadastre um modelo Word para preencher os dados desta cliente e gerar PDF e DOCX."
                 action={
-                  <UploadTemplateDialog trigger={<Button><Plus /> Cadastrar modelo</Button>} />
+                  <UploadTemplateDialog
+                    trigger={
+                      <Button>
+                        <Plus /> Cadastrar modelo
+                      </Button>
+                    }
+                  />
                 }
               />
             ) : (

@@ -89,7 +89,9 @@ it("does not grant anonymous access to the function", async () => {
 
 async function sync(id: string, values: Record<string, unknown>, expected: Record<string, unknown>, userId = ownerId) {
   const [row] = await db.as(userId).rpc<{ customer_sync_from_contract: number }>("customer_sync_from_contract", {
-    p_customer_id: id, p_values: JSON.stringify(values), p_expected: JSON.stringify(expected),
+    p_customer_id: id,
+    p_values: JSON.stringify(values),
+    p_expected: JSON.stringify(expected),
   });
   return row!.customer_sync_from_contract;
 }
@@ -97,16 +99,31 @@ async function sync(id: string, values: Record<string, unknown>, expected: Recor
 it("updates corrected existing fields, fills blanks and preserves empty contract fields", async () => {
   const id = await customer();
   await fill(id, { document: "12345678900", rg: "RG antigo", address: "Rua antiga" });
-  expect(await sync(id, { name: "Nome correto", document: "98765432100", address: "Rua correta", rg: "", profession: "Professora" },
-    { name: "Cliente original", document: "12345678900", address: "Rua antiga", profession: null })).toBe(4);
-  const [saved] = await db.as(ownerId).query("select name,document,address,rg,profession from public.customers where id=$1", [id]);
-  expect(saved).toEqual({ name: "Nome correto", document: "98765432100", address: "Rua correta", rg: "RG antigo", profession: "Professora" });
+  expect(
+    await sync(
+      id,
+      { name: "Nome correto", document: "98765432100", address: "Rua correta", rg: "", profession: "Professora" },
+      { name: "Cliente original", document: "12345678900", address: "Rua antiga", profession: null },
+    ),
+  ).toBe(4);
+  const [saved] = await db
+    .as(ownerId)
+    .query("select name,document,address,rg,profession from public.customers where id=$1", [id]);
+  expect(saved).toEqual({
+    name: "Nome correto",
+    document: "98765432100",
+    address: "Rua correta",
+    rg: "RG antigo",
+    profession: "Professora",
+  });
 });
 
 it("preserves concurrent edits and rolls back the complete patch on conflict", async () => {
   const id = await customer();
   await fill(id, { rg: "Editado em outra tela" });
-  await expect(sync(id, { name: "Contrato", rg: "RG no contrato" }, { name: "Cliente original", rg: null })).rejects.toThrow("customer_changed");
+  await expect(
+    sync(id, { name: "Contrato", rg: "RG no contrato" }, { name: "Cliente original", rg: null }),
+  ).rejects.toThrow("customer_changed");
   const [saved] = await db.as(ownerId).query("select name,rg from public.customers where id=$1", [id]);
   expect(saved).toEqual({ name: "Cliente original", rg: "Editado em outra tela" });
 });
@@ -117,5 +134,7 @@ it("limits sync to personal fields and enforces tenant and anonymous access boun
   await expect(sync(id, { name: "Nome" }, {})).rejects.toThrow("invalid_input");
   const other = await db.createTenantWithOwner("Outra clínica sync");
   await expect(sync(id, { name: "Nome" }, { name: "Cliente original" }, other.ownerId)).rejects.toThrow("not_found");
-  await expect(db.anon.rpc("customer_sync_from_contract", { p_customer_id: id, p_values: "{}", p_expected: "{}" })).rejects.toThrow("permission denied");
+  await expect(
+    db.anon.rpc("customer_sync_from_contract", { p_customer_id: id, p_values: "{}", p_expected: "{}" }),
+  ).rejects.toThrow("permission denied");
 });

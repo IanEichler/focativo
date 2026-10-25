@@ -22,7 +22,10 @@ export function fillTemplateBytes(
     nullGetter: () => options.emptyValue ?? "",
   });
   // Com emptyValue (pré-visualização), campo em branco vira a marca no lugar de sumir.
-  const filled = options.emptyValue === undefined ? data : Object.fromEntries(Object.entries(data).filter(([, value]) => value.trim()));
+  const filled =
+    options.emptyValue === undefined
+      ? data
+      : Object.fromEntries(Object.entries(data).filter(([, value]) => value.trim()));
   doc.render(formatContractFields(filled));
   return doc.getZip().generate({ type: "uint8array" });
 }

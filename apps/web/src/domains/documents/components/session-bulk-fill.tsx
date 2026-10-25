@@ -45,7 +45,8 @@ export function SessionBulkFill({
     }
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return setError("Informe o horário.");
     if (!serviceId) return setError("Escolha o serviço.");
-    if (!professionalId || !eligible.some((item) => item.userId === professionalId)) return setError("Escolha o profissional.");
+    if (!professionalId || !eligible.some((item) => item.userId === professionalId))
+      return setError("Escolha o profissional.");
     setError(null);
 
     const typed: Record<string, string> = {};
@@ -73,7 +74,13 @@ export function SessionBulkFill({
         Preenche data, horário, serviço e profissional das sessões abaixo. Depois dá para ajustar qualquer uma.
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
-        <TextField label="1ª sessão" name="bulk_first" type="date" value={first} onChange={(event) => setFirst(event.target.value)} />
+        <TextField
+          label="1ª sessão"
+          name="bulk_first"
+          type="date"
+          value={first}
+          onChange={(event) => setFirst(event.target.value)}
+        />
         <SelectField
           label="Frequência"
           name="bulk_frequency"
@@ -89,7 +96,13 @@ export function SessionBulkFill({
           onChange={(event) => setCount(event.target.value)}
           description={`O modelo tem ${sessionNumbers.length}.`}
         />
-        <TextField label="Horário" name="bulk_time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+        <TextField
+          label="Horário"
+          name="bulk_time"
+          type="time"
+          value={time}
+          onChange={(event) => setTime(event.target.value)}
+        />
         <SelectField
           label="Serviço"
           name="bulk_service"
@@ -112,7 +125,12 @@ export function SessionBulkFill({
           {error}
         </p>
       )}
-      <Button type="button" variant="outline" className="self-start" onClick={(event) => apply(event.currentTarget.form)}>
+      <Button
+        type="button"
+        variant="outline"
+        className="self-start"
+        onClick={(event) => apply(event.currentTarget.form)}
+      >
         Preencher sessões
       </Button>
     </fieldset>

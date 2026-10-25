@@ -11,7 +11,8 @@ afterEach(async () => {
   for (const folder of folders.splice(0)) await rm(folder, { recursive: true });
 });
 it("stores the exact PDF and handles concurrent writes without replacing it", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "signature-archive-")); folders.push(directory);
+  const directory = await mkdtemp(join(tmpdir(), "signature-archive-"));
+  folders.push(directory);
   vi.stubEnv("SIGNING_ARCHIVE_DIR", directory);
   const bytes = Buffer.from("signed PDF fixture");
   await Promise.all([archiveSignedPdf(bytes), archiveSignedPdf(bytes)]);

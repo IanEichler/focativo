@@ -28,16 +28,19 @@ export function BarList({
             <span className="min-w-0 truncate" title={group.label}>
               {group.label}
             </span>
-            <span className="shrink-0 tabular font-medium">{formatMoney(group.amount)}</span>
+            <span className="shrink-0 font-medium tabular">{formatMoney(group.amount)}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
               <div
                 className="h-full rounded-full"
-                style={{ width: `${max > 0 ? Math.max((group.amount / max) * 100, 1) : 0}%`, background: `var(--flow-${tone})` }}
+                style={{
+                  width: `${max > 0 ? Math.max((group.amount / max) * 100, 1) : 0}%`,
+                  background: `var(--flow-${tone})`,
+                }}
               />
             </div>
-            <span className="w-36 shrink-0 whitespace-nowrap text-right text-caption text-muted-foreground tabular">
+            <span className="w-36 shrink-0 text-right text-caption whitespace-nowrap text-muted-foreground tabular">
               {countLabel(group.count)} · {formatPercent(total > 0 ? group.amount / total : 0)}
             </span>
           </div>

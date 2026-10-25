@@ -34,8 +34,15 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
   if (!customer) notFound();
 
   const canWrite = context.can("customers.write");
-  const signed = canWrite ? await signingClient().from("contract_signatures").select("id")
-    .eq("tenant_id", context.tenant.id).eq("customer_id", id).eq("status", "SIGNED").limit(1) : null;
+  const signed = canWrite
+    ? await signingClient()
+        .from("contract_signatures")
+        .select("id")
+        .eq("tenant_id", context.tenant.id)
+        .eq("customer_id", id)
+        .eq("status", "SIGNED")
+        .limit(1)
+    : null;
   const canDelete = canWrite && signed && !signed.error && signed.data?.length === 0;
   const timeline = tab === "geral" ? await listCustomerTimeline(context, id) : [];
 

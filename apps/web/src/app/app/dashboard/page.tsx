@@ -124,57 +124,57 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Empresa</CardTitle>
-              <CardAction>
-                <StatusBadge tone={details.status === "ACTIVE" ? "success" : "warning"}>
-                  {details.status === "ACTIVE" ? "Ativa" : details.status === "SUSPENDED" ? "Suspensa" : "Cancelada"}
-                </StatusBadge>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
-                <dt className="text-muted-foreground">Nome</dt>
-                <dd className="truncate text-right font-medium">{details.name}</dd>
-                <dt className="text-muted-foreground">Segmento</dt>
-                <dd className="truncate text-right">{segment}</dd>
-                <dt className="text-muted-foreground">Seu papel</dt>
-                <dd className="text-right">{context.tenant.roleName}</dd>
-                <dt className="text-muted-foreground">Desde</dt>
-                <dd className="text-right tabular">{formatDate(details.createdAt)}</dd>
-              </dl>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Empresa</CardTitle>
+            <CardAction>
+              <StatusBadge tone={details.status === "ACTIVE" ? "success" : "warning"}>
+                {details.status === "ACTIVE" ? "Ativa" : details.status === "SUSPENDED" ? "Suspensa" : "Cancelada"}
+              </StatusBadge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
+              <dt className="text-muted-foreground">Nome</dt>
+              <dd className="truncate text-right font-medium">{details.name}</dd>
+              <dt className="text-muted-foreground">Segmento</dt>
+              <dd className="truncate text-right">{segment}</dd>
+              <dt className="text-muted-foreground">Seu papel</dt>
+              <dd className="text-right">{context.tenant.roleName}</dd>
+              <dt className="text-muted-foreground">Desde</dt>
+              <dd className="text-right tabular">{formatDate(details.createdAt)}</dd>
+            </dl>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipe</CardTitle>
-              {context.can("users.invite") && (
-                <CardAction>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/app/usuarios">
-                      <UserPlus /> Convidar
-                    </Link>
-                  </Button>
-                </CardAction>
-              )}
-            </CardHeader>
-            <CardContent className="flex items-end gap-8">
-              <div>
-                <p className="text-metric tabular">{formatNumber(team.active)}</p>
-                <p className="text-small text-muted-foreground">
-                  {team.active === 1 ? "usuário ativo" : "usuários ativos"}
-                </p>
-              </div>
-              <div>
-                <p className="text-metric text-muted-foreground tabular">{formatNumber(team.invited)}</p>
-                <p className="text-small text-muted-foreground">
-                  {team.invited === 1 ? "convite pendente" : "convites pendentes"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Equipe</CardTitle>
+            {context.can("users.invite") && (
+              <CardAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/app/usuarios">
+                    <UserPlus /> Convidar
+                  </Link>
+                </Button>
+              </CardAction>
+            )}
+          </CardHeader>
+          <CardContent className="flex items-end gap-8">
+            <div>
+              <p className="text-metric tabular">{formatNumber(team.active)}</p>
+              <p className="text-small text-muted-foreground">
+                {team.active === 1 ? "usuário ativo" : "usuários ativos"}
+              </p>
+            </div>
+            <div>
+              <p className="text-metric text-muted-foreground tabular">{formatNumber(team.invited)}</p>
+              <p className="text-small text-muted-foreground">
+                {team.invited === 1 ? "convite pendente" : "convites pendentes"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {canSeeCommercial && (

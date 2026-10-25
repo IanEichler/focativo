@@ -70,7 +70,11 @@ export function CustomerAddressFields({
           .join(", ");
         const city = `${data.localidade} / ${data.uf}`;
         // Preserve manual changes made while the lookup was in flight.
-        if (street && current.current.addressRevision === before.addressRevision && (!fillOnlyEmpty || !before.address.trim())) {
+        if (
+          street &&
+          current.current.addressRevision === before.addressRevision &&
+          (!fillOnlyEmpty || !before.address.trim())
+        ) {
           current.current.address = street;
           setAddress(street);
         }
@@ -94,61 +98,84 @@ export function CustomerAddressFields({
 
   return (
     <>
-      {names.postal_code.length > 0 && <TextField
-        label="CEP"
-        name={names.postal_code[0]!}
-        inputMode="numeric"
-        autoComplete="postal-code"
-        placeholder="00000-000"
-        value={postalCode}
-        error={errors.postal_code}
-        onChange={(event) => {
-          editedPostalCode.current = true;
-          setPostalCode(maskPostalCode(event.target.value));
-          setStatus("idle");
-        }}
-        labelAction={status === "error" ? (
-          <button type="button" className="text-small underline underline-offset-4" onClick={() => setAttempt((value) => value + 1)}>
-            Tentar novamente
-          </button>
-        ) : undefined}
-        description={
-          <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5">
-            {status === "loading" && <LoaderCircle aria-hidden="true" className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
-            {messages[status]}
-          </span>
-        }
-      />}
-      {names.address.length > 0 && <TextField
-        label="Endereço"
-        name={names.address[0]!}
-        autoComplete="street-address"
-        placeholder="Rua, bairro, número e complemento"
-        maxLength={500}
-        value={address}
-        error={errors.address}
-        onChange={(event) => {
-          current.current.addressRevision += 1;
-          current.current.address = event.target.value;
-          setAddress(event.target.value);
-        }}
-      />}
-      {names.city_state.length > 0 && <TextField
-        label="Cidade / UF"
-        name={names.city_state[0]!}
-        placeholder="Cidade / UF"
-        maxLength={160}
-        value={cityState}
-        error={errors.city_state}
-        onChange={(event) => {
-          current.current.cityRevision += 1;
-          current.current.cityState = event.target.value;
-          setCityState(event.target.value);
-        }}
-      />}
-      {names.postal_code.slice(1).map((name) => <input key={name} type="hidden" name={name} value={postalCode} />)}
-      {names.address.slice(1).map((name) => <input key={name} type="hidden" name={name} value={address} />)}
-      {names.city_state.slice(1).map((name) => <input key={name} type="hidden" name={name} value={cityState} />)}
+      {names.postal_code.length > 0 && (
+        <TextField
+          label="CEP"
+          name={names.postal_code[0]!}
+          inputMode="numeric"
+          autoComplete="postal-code"
+          placeholder="00000-000"
+          value={postalCode}
+          error={errors.postal_code}
+          onChange={(event) => {
+            editedPostalCode.current = true;
+            setPostalCode(maskPostalCode(event.target.value));
+            setStatus("idle");
+          }}
+          labelAction={
+            status === "error" ? (
+              <button
+                type="button"
+                className="text-small underline underline-offset-4"
+                onClick={() => setAttempt((value) => value + 1)}
+              >
+                Tentar novamente
+              </button>
+            ) : undefined
+          }
+          description={
+            <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5">
+              {status === "loading" && (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                />
+              )}
+              {messages[status]}
+            </span>
+          }
+        />
+      )}
+      {names.address.length > 0 && (
+        <TextField
+          label="Endereço"
+          name={names.address[0]!}
+          autoComplete="street-address"
+          placeholder="Rua, bairro, número e complemento"
+          maxLength={500}
+          value={address}
+          error={errors.address}
+          onChange={(event) => {
+            current.current.addressRevision += 1;
+            current.current.address = event.target.value;
+            setAddress(event.target.value);
+          }}
+        />
+      )}
+      {names.city_state.length > 0 && (
+        <TextField
+          label="Cidade / UF"
+          name={names.city_state[0]!}
+          placeholder="Cidade / UF"
+          maxLength={160}
+          value={cityState}
+          error={errors.city_state}
+          onChange={(event) => {
+            current.current.cityRevision += 1;
+            current.current.cityState = event.target.value;
+            setCityState(event.target.value);
+          }}
+        />
+      )}
+      {names.postal_code.slice(1).map((name) => (
+        <input key={name} type="hidden" name={name} value={postalCode} />
+      ))}
+      {names.address.slice(1).map((name) => (
+        <input key={name} type="hidden" name={name} value={address} />
+      ))}
+      {names.city_state.slice(1).map((name) => (
+        <input key={name} type="hidden" name={name} value={cityState} />
+      ))}
     </>
   );
 }

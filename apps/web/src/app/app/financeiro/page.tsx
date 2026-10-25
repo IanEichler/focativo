@@ -1,4 +1,14 @@
-import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, Download, HandCoins, Receipt, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  Download,
+  HandCoins,
+  Receipt,
+  Wallet,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/data/filter-controls";
@@ -128,7 +138,15 @@ function EntriesTable({
   );
 }
 
-function MonthNav({ month, currentMonth, href }: { month: string; currentMonth: string; href: (month: string) => string }) {
+function MonthNav({
+  month,
+  currentMonth,
+  href,
+}: {
+  month: string;
+  currentMonth: string;
+  href: (month: string) => string;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" size="icon-sm" asChild aria-label="Mês anterior">
@@ -198,7 +216,12 @@ async function EntriesTab({
           icon={<CalendarClock />}
           hint="Em aberto com vencimento no mês"
         />
-        <MetricCard label="Previsto no mês" value={<MoneyValue value={summary.expected} />} icon={<CircleDollarSign />} hint="Tudo que vence no mês" />
+        <MetricCard
+          label="Previsto no mês"
+          value={<MoneyValue value={summary.expected} />}
+          icon={<CircleDollarSign />}
+          hint="Tudo que vence no mês"
+        />
         <MetricCard
           label="Em atraso"
           value={<MoneyValue value={summary.overdue} />}
@@ -212,7 +235,11 @@ async function EntriesTab({
         <section className="flex flex-col gap-3">
           <SectionHeader
             title="Precisa de atenção"
-            description={income ? "Parcelas atrasadas e que vencem hoje, de qualquer mês." : "Contas atrasadas e que vencem hoje, de qualquer mês."}
+            description={
+              income
+                ? "Parcelas atrasadas e que vencem hoje, de qualquer mês."
+                : "Contas atrasadas e que vencem hoje, de qualquer mês."
+            }
           />
           <Card>
             <CardContent className="pt-5">
@@ -235,7 +262,13 @@ async function EntriesTab({
         </FilterBar>
         {entries.length === 0 ? (
           <EmptyState
-            title={situation || search ? "Nada encontrado" : income ? "Nenhuma parcela neste mês" : "Nenhuma despesa neste mês"}
+            title={
+              situation || search
+                ? "Nada encontrado"
+                : income
+                  ? "Nenhuma parcela neste mês"
+                  : "Nenhuma despesa neste mês"
+            }
             description={
               situation || search
                 ? "Tente outra situação ou outra busca."
@@ -264,7 +297,9 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
   const balance = (month: (typeof months)[number]) =>
     Math.round((month.incomePaid + month.incomeOpen - month.expensePaid - month.expenseOpen) * 100) / 100;
   const realizedBalance = current ? Math.round((current.incomePaid - current.expensePaid) * 100) / 100 : 0;
-  const hasData = months.some((month) => month.incomePaid || month.incomeOpen || month.expensePaid || month.expenseOpen);
+  const hasData = months.some(
+    (month) => month.incomePaid || month.incomeOpen || month.expensePaid || month.expenseOpen,
+  );
 
   return (
     <>
@@ -283,7 +318,13 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
         />
         <MetricCard
           label="Saldo previsto nos próximos 6 meses"
-          value={<MoneyValue value={months.filter((month) => month.month > currentMonth).reduce((total, month) => total + balance(month), 0)} />}
+          value={
+            <MoneyValue
+              value={months
+                .filter((month) => month.month > currentMonth)
+                .reduce((total, month) => total + balance(month), 0)}
+            />
+          }
           icon={<CalendarClock />}
           hint="Parcelas a receber − contas e despesas fixas"
         />
@@ -321,12 +362,23 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
                   {months.map((month) => {
                     const value = balance(month);
                     return (
-                      <TableRow key={month.month} className={month.month === currentMonth ? "bg-muted/40 font-medium" : undefined}>
+                      <TableRow
+                        key={month.month}
+                        className={month.month === currentMonth ? "bg-muted/40 font-medium" : undefined}
+                      >
                         <TableCell>{monthLabel(month.month)}</TableCell>
-                        <TableCell className="text-right"><MoneyValue value={month.incomePaid} /></TableCell>
-                        <TableCell className="text-right"><MoneyValue value={month.incomeOpen} /></TableCell>
-                        <TableCell className="text-right"><MoneyValue value={month.expensePaid} /></TableCell>
-                        <TableCell className="text-right"><MoneyValue value={month.expenseOpen} /></TableCell>
+                        <TableCell className="text-right">
+                          <MoneyValue value={month.incomePaid} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MoneyValue value={month.incomeOpen} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MoneyValue value={month.expensePaid} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MoneyValue value={month.expenseOpen} />
+                        </TableCell>
                         <TableCell className={cn("text-right", value < 0 && "text-danger")}>
                           <MoneyValue value={value} />
                         </TableCell>
@@ -336,7 +388,8 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
                 </TableBody>
               </Table>
               <p className="mt-3 text-small text-muted-foreground">
-                “A receber” e “A pagar” incluem o que está atrasado no mês do vencimento e a projeção das despesas fixas.
+                “A receber” e “A pagar” incluem o que está atrasado no mês do vencimento e a projeção das despesas
+                fixas.
               </p>
             </CardContent>
           </Card>
@@ -346,7 +399,15 @@ async function CashFlowTab({ context, currentMonth }: { context: TenantContext; 
   );
 }
 
-async function ReportsTab({ context, today, params }: { context: TenantContext; today: string; params: SearchParamsRecord }) {
+async function ReportsTab({
+  context,
+  today,
+  params,
+}: {
+  context: TenantContext;
+  today: string;
+  params: SearchParamsRecord;
+}) {
   const requested = firstParam(params.periodo);
   const period = (REPORT_PERIODS.some((item) => item.value === requested) ? requested : "mes") as ReportPeriod;
   const { from, to } = reportRange(period, today);
@@ -361,7 +422,14 @@ async function ReportsTab({ context, today, params }: { context: TenantContext; 
         <nav aria-label="Período do relatório" className="flex flex-wrap gap-1.5">
           {REPORT_PERIODS.map((item) => (
             <Button key={item.value} size="sm" variant={item.value === period ? "default" : "outline"} asChild>
-              <Link href={buildHref("/app/financeiro", { aba: "relatorios" }, { periodo: item.value === "mes" ? undefined : item.value })} scroll={false}>
+              <Link
+                href={buildHref(
+                  "/app/financeiro",
+                  { aba: "relatorios" },
+                  { periodo: item.value === "mes" ? undefined : item.value },
+                )}
+                scroll={false}
+              >
                 {item.label}
               </Link>
             </Button>
@@ -442,8 +510,8 @@ async function ReportsTab({ context, today, params }: { context: TenantContext; 
         </Card>
       </div>
       <p className="text-small text-muted-foreground">
-        Inadimplência: do que venceu no período até ontem, a parte que ainda não foi paga. A planilha traz tudo que vence ou
-        foi pago no período, com cliente, parcela, situação e forma de pagamento.
+        Inadimplência: do que venceu no período até ontem, a parte que ainda não foi paga. A planilha traz tudo que
+        vence ou foi pago no período, com cliente, parcela, situação e forma de pagamento.
       </p>
     </>
   );
@@ -470,7 +538,8 @@ export default async function FinancialPage({ searchParams }: PageProps<"/app/fi
   const canWrite = context.can("financial.write");
   const categories = canWrite && tab === "despesas" ? await listExpenseCategories(context) : [];
   const base = "/app/financeiro";
-  const tabHref = (id: string) => buildHref(base, {}, { aba: id === "receber" ? undefined : id, mes: month === currentMonth ? undefined : month });
+  const tabHref = (id: string) =>
+    buildHref(base, {}, { aba: id === "receber" ? undefined : id, mes: month === currentMonth ? undefined : month });
 
   return (
     <PageContainer>
@@ -506,7 +575,9 @@ export default async function FinancialPage({ searchParams }: PageProps<"/app/fi
       )}
 
       {tab === "receber" && <EntriesTab context={context} kind="INCOME" month={month} today={today} params={params} />}
-      {tab === "despesas" && <EntriesTab context={context} kind="EXPENSE" month={month} today={today} params={params} />}
+      {tab === "despesas" && (
+        <EntriesTab context={context} kind="EXPENSE" month={month} today={today} params={params} />
+      )}
       {tab === "fluxo" && <CashFlowTab context={context} currentMonth={currentMonth} />}
       {tab === "relatorios" && <ReportsTab context={context} today={today} params={params} />}
     </PageContainer>

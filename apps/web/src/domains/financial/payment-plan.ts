@@ -73,9 +73,11 @@ export function contractPaymentPlan(fields: Record<string, string>, fallbackDesc
   }
 
   const installmentCents = toCents(pick(fields, ["valor_parcela"]));
-  const totalCents = toCents(pick(fields, ["valor_final"])) ?? (installmentCents === null ? null : installmentCents * count);
+  const totalCents =
+    toCents(pick(fields, ["valor_final"])) ?? (installmentCents === null ? null : installmentCents * count);
   if (totalCents === null) return { plan: [], problem: "Preencha o valor final do contrato." };
-  if (Math.floor(totalCents / count) === 0) return { plan: [], problem: "O valor é pequeno demais para tantas parcelas." };
+  if (Math.floor(totalCents / count) === 0)
+    return { plan: [], problem: "O valor é pequeno demais para tantas parcelas." };
 
   const dueText = pick(fields, ["vencimento", "data_contratacao", "data_assinatura"]);
   if (!dueText || !validContractDate(dueText)) {

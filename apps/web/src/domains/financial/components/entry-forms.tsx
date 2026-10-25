@@ -72,7 +72,9 @@ function NewEntryForm({ customerId, today, onDone }: { customerId?: string; toda
         }
       >
         <FormMessage state={state.status === "error" ? state : IDLE} />
-        {!customerId && <CustomerPicker value={customer} onChange={setCustomer} error={fieldError(state, "customerId")} />}
+        {!customerId && (
+          <CustomerPicker value={customer} onChange={setCustomer} error={fieldError(state, "customerId")} />
+        )}
         <TextField
           label="Descrição"
           name="description"
@@ -178,7 +180,12 @@ export function EntryActions({
       >
         {() => <PayEntryForm entry={entry} customerId={customerId} today={today} onDone={close} />}
       </FormDialog>
-      <FormDialog title="Editar parcela" description={name} open={dialog === "edit"} onOpenChange={(open) => !open && close()}>
+      <FormDialog
+        title="Editar parcela"
+        description={name}
+        open={dialog === "edit"}
+        onOpenChange={(open) => !open && close()}
+      >
         {() => <EditEntryForm entry={entry} customerId={customerId} onDone={close} />}
       </FormDialog>
       <ConfirmDialog
@@ -247,7 +254,15 @@ function PayEntryForm({
   );
 }
 
-function EditEntryForm({ entry, customerId, onDone }: { entry: FinancialEntryRow; customerId?: string; onDone: () => void }) {
+function EditEntryForm({
+  entry,
+  customerId,
+  onDone,
+}: {
+  entry: FinancialEntryRow;
+  customerId?: string;
+  onDone: () => void;
+}) {
   const [state, action] = useActionState<ActionState<UpdateEntryField>, FormData>(updateEntryAction, IDLE);
   const values = state.status === "error" ? state.values : undefined;
   useActionFeedback(state, { onSuccess: onDone });

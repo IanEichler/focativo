@@ -1,5 +1,11 @@
 import { expect, it } from "vitest";
-import { contractDateInWords, contractFieldError, formatContractField, maskContractDate, validContractDate } from "./field-format";
+import {
+  contractDateInWords,
+  contractFieldError,
+  formatContractField,
+  maskContractDate,
+  validContractDate,
+} from "./field-format";
 
 it("formats compact and ISO dates without timezone shifts", () => {
   expect(maskContractDate("08042004")).toBe("08/04/2004");

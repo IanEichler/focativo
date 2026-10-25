@@ -63,7 +63,9 @@ function StackedColumn({
         />
       </clipPath>
       <g clipPath={`url(#${clipId})`}>
-        {realizedHeight > 0 && <rect x={x} y={baseline - realizedHeight} width={BAR} height={realizedHeight} fill={color} />}
+        {realizedHeight > 0 && (
+          <rect x={x} y={baseline - realizedHeight} width={BAR} height={realizedHeight} fill={color} />
+        )}
         {openHeight > 0 && (
           <>
             <rect x={x} y={top} width={BAR} height={openHeight} fill={color} opacity={0.18} />
@@ -104,7 +106,8 @@ export function CashFlowChart({ months, currentMonth }: { months: CashFlowMonth[
   const band = (chartWidth - PAD.left - PAD.right) / Math.max(months.length, 1);
 
   const activeMonth = active === null ? null : months[active]!;
-  const tooltipLeft = active === null ? 0 : Math.min(Math.max(PAD.left + band * active + band / 2, 90), chartWidth - 90);
+  const tooltipLeft =
+    active === null ? 0 : Math.min(Math.max(PAD.left + band * active + band / 2, 90), chartWidth - 90);
 
   return (
     <div className="cash-flow-chart flex flex-col gap-3">
@@ -127,98 +130,144 @@ export function CashFlowChart({ months, currentMonth }: { months: CashFlowMonth[
         </li>
       </ul>
       <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden pt-1">
-      <div className="relative" style={{ width: chartWidth }} onPointerLeave={() => setActive(null)}>
-        <svg
-          width={chartWidth}
-          height={HEIGHT}
-          role="img"
-          aria-label="Entradas e saídas por mês; os valores estão na tabela abaixo."
-          className="block overflow-visible"
-        >
-          <defs>
-            {(["in", "out"] as const).map((kind) => (
-              <pattern key={kind} id={`${uid}-${kind}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" stroke={`var(--flow-${kind})`} strokeWidth="2" />
-              </pattern>
-            ))}
-          </defs>
-          {ticks.map((tick) => (
-            <g key={tick}>
-              <line
-                x1={PAD.left}
-                x2={chartWidth - PAD.right}
-                y1={baseline - scale(tick)}
-                y2={baseline - scale(tick)}
-                className="stroke-border"
-                strokeDasharray={tick === 0 ? undefined : "2 4"}
-              />
-              <text x={PAD.left - 8} y={baseline - scale(tick)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px]">
-                {compactMoney(tick)}
-              </text>
-            </g>
-          ))}
-          {months.map((month, index) => {
-            const center = PAD.left + band * index + band / 2;
-            const x = center - groupWidth / 2;
-            const isCurrent = month.month === currentMonth;
-            return (
-              <g key={month.month}>
-                {isCurrent && (
-                  <rect x={PAD.left + band * index} y={PAD.top} width={band} height={plotHeight} className="fill-muted" opacity={0.6} />
-                )}
-                <StackedColumn x={x} realized={month.incomePaid} open={month.incomeOpen} scale={scale} baseline={baseline} color="var(--flow-in)" patternId={`${uid}-in`} />
-                <StackedColumn x={x + BAR + GAP} realized={month.expensePaid} open={month.expenseOpen} scale={scale} baseline={baseline} color="var(--flow-out)" patternId={`${uid}-out`} />
-                <text
-                  x={center}
-                  y={baseline + 18}
-                  textAnchor="middle"
-                  className={isCurrent ? "fill-foreground text-[11px] font-medium" : "fill-muted-foreground text-[11px]"}
-                >
-                  {shortMonth(month.month)}
-                </text>
-                <rect
-                  x={PAD.left + band * index}
-                  y={PAD.top}
-                  width={band}
-                  height={plotHeight}
-                  fill="transparent"
-                  tabIndex={0}
-                  aria-label={`${shortMonth(month.month)}: entradas ${formatMoney(totals[index]!.income)}, saídas ${formatMoney(totals[index]!.expense)}`}
-                  onPointerMove={() => setActive(index)}
-                  onFocus={() => setActive(index)}
-                  onBlur={() => setActive(null)}
-                  className="outline-none focus-visible:stroke-ring"
-                />
-              </g>
-            );
-          })}
-        </svg>
-        {activeMonth && (
-          <div
-            role="status"
-            className="pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-lg border border-border bg-popover p-2.5 text-small shadow-md"
-            style={{ left: tooltipLeft }}
+        <div className="relative" style={{ width: chartWidth }} onPointerLeave={() => setActive(null)}>
+          <svg
+            width={chartWidth}
+            height={HEIGHT}
+            role="img"
+            aria-label="Entradas e saídas por mês; os valores estão na tabela abaixo."
+            className="block overflow-visible"
           >
-            <p className="mb-1.5 font-medium text-foreground">{shortMonth(activeMonth.month)}</p>
-            {[
-              { label: "Recebido", value: activeMonth.incomePaid, color: "var(--flow-in)" },
-              { label: "A receber", value: activeMonth.incomeOpen, color: "var(--flow-in)", dashed: true },
-              { label: "Pago", value: activeMonth.expensePaid, color: "var(--flow-out)" },
-              { label: "A pagar", value: activeMonth.expenseOpen, color: "var(--flow-out)", dashed: true },
-            ].map((row) => (
-              <p key={row.label} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <svg aria-hidden width="12" height="4">
-                    <line x1="0" y1="2" x2="12" y2="2" stroke={row.color} strokeWidth="2" strokeDasharray={row.dashed ? "3 2" : undefined} />
-                  </svg>
-                  {row.label}
-                </span>
-                <strong className="tabular font-medium text-foreground">{formatMoney(row.value)}</strong>
-              </p>
+            <defs>
+              {(["in", "out"] as const).map((kind) => (
+                <pattern
+                  key={kind}
+                  id={`${uid}-${kind}`}
+                  width="6"
+                  height="6"
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <line x1="0" y1="0" x2="0" y2="6" stroke={`var(--flow-${kind})`} strokeWidth="2" />
+                </pattern>
+              ))}
+            </defs>
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line
+                  x1={PAD.left}
+                  x2={chartWidth - PAD.right}
+                  y1={baseline - scale(tick)}
+                  y2={baseline - scale(tick)}
+                  className="stroke-border"
+                  strokeDasharray={tick === 0 ? undefined : "2 4"}
+                />
+                <text
+                  x={PAD.left - 8}
+                  y={baseline - scale(tick)}
+                  dy="0.32em"
+                  textAnchor="end"
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {compactMoney(tick)}
+                </text>
+              </g>
             ))}
-          </div>
-        )}
-      </div>
+            {months.map((month, index) => {
+              const center = PAD.left + band * index + band / 2;
+              const x = center - groupWidth / 2;
+              const isCurrent = month.month === currentMonth;
+              return (
+                <g key={month.month}>
+                  {isCurrent && (
+                    <rect
+                      x={PAD.left + band * index}
+                      y={PAD.top}
+                      width={band}
+                      height={plotHeight}
+                      className="fill-muted"
+                      opacity={0.6}
+                    />
+                  )}
+                  <StackedColumn
+                    x={x}
+                    realized={month.incomePaid}
+                    open={month.incomeOpen}
+                    scale={scale}
+                    baseline={baseline}
+                    color="var(--flow-in)"
+                    patternId={`${uid}-in`}
+                  />
+                  <StackedColumn
+                    x={x + BAR + GAP}
+                    realized={month.expensePaid}
+                    open={month.expenseOpen}
+                    scale={scale}
+                    baseline={baseline}
+                    color="var(--flow-out)"
+                    patternId={`${uid}-out`}
+                  />
+                  <text
+                    x={center}
+                    y={baseline + 18}
+                    textAnchor="middle"
+                    className={
+                      isCurrent ? "fill-foreground text-[11px] font-medium" : "fill-muted-foreground text-[11px]"
+                    }
+                  >
+                    {shortMonth(month.month)}
+                  </text>
+                  <rect
+                    x={PAD.left + band * index}
+                    y={PAD.top}
+                    width={band}
+                    height={plotHeight}
+                    fill="transparent"
+                    tabIndex={0}
+                    aria-label={`${shortMonth(month.month)}: entradas ${formatMoney(totals[index]!.income)}, saídas ${formatMoney(totals[index]!.expense)}`}
+                    onPointerMove={() => setActive(index)}
+                    onFocus={() => setActive(index)}
+                    onBlur={() => setActive(null)}
+                    className="outline-none focus-visible:stroke-ring"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+          {activeMonth && (
+            <div
+              role="status"
+              className="pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-lg border border-border bg-popover p-2.5 text-small shadow-md"
+              style={{ left: tooltipLeft }}
+            >
+              <p className="mb-1.5 font-medium text-foreground">{shortMonth(activeMonth.month)}</p>
+              {[
+                { label: "Recebido", value: activeMonth.incomePaid, color: "var(--flow-in)" },
+                { label: "A receber", value: activeMonth.incomeOpen, color: "var(--flow-in)", dashed: true },
+                { label: "Pago", value: activeMonth.expensePaid, color: "var(--flow-out)" },
+                { label: "A pagar", value: activeMonth.expenseOpen, color: "var(--flow-out)", dashed: true },
+              ].map((row) => (
+                <p key={row.label} className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <svg aria-hidden width="12" height="4">
+                      <line
+                        x1="0"
+                        y1="2"
+                        x2="12"
+                        y2="2"
+                        stroke={row.color}
+                        strokeWidth="2"
+                        strokeDasharray={row.dashed ? "3 2" : undefined}
+                      />
+                    </svg>
+                    {row.label}
+                  </span>
+                  <strong className="font-medium text-foreground tabular">{formatMoney(row.value)}</strong>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

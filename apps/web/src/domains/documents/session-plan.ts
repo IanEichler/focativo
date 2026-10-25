@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { maskContractDate, validContractDate } from "./field-format";
 
-export type ContractSessionInput = { number: number; date: string; time: string; serviceId: string; professionalId: string; notes: string };
+export type ContractSessionInput = {
+  number: number;
+  date: string;
+  time: string;
+  serviceId: string;
+  professionalId: string;
+  notes: string;
+};
 export type ContractSessionPlan = ContractSessionInput & { startsAt: string; endsAt: string; serviceName: string };
 
 export function contractSessionInputs(fields: Record<string, string>, form: FormData): ContractSessionInput[] {
@@ -14,12 +21,27 @@ export function contractSessionInputs(fields: Record<string, string>, form: Form
     const time = String(form.get(`session_${number}_time`) ?? "");
     const serviceId = String(form.get(`session_${number}_serviceId`) ?? "");
     const professionalId = String(form.get(`session_${number}_professionalId`) ?? "");
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !z.uuid().safeParse(serviceId).success || !z.uuid().safeParse(professionalId).success) {
-      throw new Error(`Sessão ${number}: preencha horário, serviço e profissional para registrar na agenda após a assinatura.`);
+    if (
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
+      !z.uuid().safeParse(serviceId).success ||
+      !z.uuid().safeParse(professionalId).success
+    ) {
+      throw new Error(
+        `Sessão ${number}: preencha horário, serviço e profissional para registrar na agenda após a assinatura.`,
+      );
     }
     const [day, month, year] = maskContractDate(date).split("/");
-    sessions.push({ number, date: `${year}-${month}-${day}`, time, serviceId, professionalId,
-      notes: [fields[`sessao_${number}_regiao`], fields[`sessao_${number}_observacoes`]].filter(Boolean).join(" · ").slice(0, 700) });
+    sessions.push({
+      number,
+      date: `${year}-${month}-${day}`,
+      time,
+      serviceId,
+      professionalId,
+      notes: [fields[`sessao_${number}_regiao`], fields[`sessao_${number}_observacoes`]]
+        .filter(Boolean)
+        .join(" · ")
+        .slice(0, 700),
+    });
   }
   return sessions.sort((a, b) => a.number - b.number);
 }

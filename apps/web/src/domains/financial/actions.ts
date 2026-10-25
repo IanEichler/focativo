@@ -43,7 +43,11 @@ export async function createExpenseAction(
   const data = parsed.data;
   const installments = data.recurring ? 1 : data.installments;
   if (Math.round(data.total * 100) < installments) {
-    return { status: "error", message: "O valor é pequeno demais para tantas parcelas.", values: safeFormValues(input) };
+    return {
+      status: "error",
+      message: "O valor é pequeno demais para tantas parcelas.",
+      values: safeFormValues(input),
+    };
   }
 
   const supabase = await createClient();
@@ -68,7 +72,12 @@ export async function createExpenseAction(
         p_notes: data.notes ?? undefined,
       });
   if (error) {
-    logger.warn({ event: "financial.expense_create", status: "error", tenant_id: context.tenant.id, code: error.message });
+    logger.warn({
+      event: "financial.expense_create",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: error.message,
+    });
     return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
   }
   refresh(null);
@@ -97,7 +106,11 @@ export async function createEntryAction(
   if (!parsed.success) return validationError(parsed.error, input);
   const data = parsed.data;
   if (Math.round(data.total * 100) < data.installments) {
-    return { status: "error", message: "O valor é pequeno demais para tantas parcelas.", values: safeFormValues(input) };
+    return {
+      status: "error",
+      message: "O valor é pequeno demais para tantas parcelas.",
+      values: safeFormValues(input),
+    };
   }
 
   const supabase = await createClient();
@@ -112,11 +125,19 @@ export async function createEntryAction(
     p_notes: data.notes ?? undefined,
   });
   if (error) {
-    logger.warn({ event: "financial.entry_create", status: "error", tenant_id: context.tenant.id, code: error.message });
+    logger.warn({
+      event: "financial.entry_create",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: error.message,
+    });
     return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
   }
   refresh(data.customerId);
-  return { status: "success", message: data.installments > 1 ? `${data.installments} parcelas lançadas.` : "Lançamento criado." };
+  return {
+    status: "success",
+    message: data.installments > 1 ? `${data.installments} parcelas lançadas.` : "Lançamento criado.",
+  };
 }
 
 export async function updateEntryAction(
@@ -139,7 +160,12 @@ export async function updateEntryAction(
     p_payment_method: data.paymentMethod ?? undefined,
   });
   if (error) {
-    logger.warn({ event: "financial.entry_update", status: "error", tenant_id: context.tenant.id, code: error.message });
+    logger.warn({
+      event: "financial.entry_update",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: error.message,
+    });
     return { status: "error", message: toUserMessage(error), values: safeFormValues(input) };
   }
   refresh(input.customerId);

@@ -127,7 +127,10 @@ export async function listEntries(
   params: { kind: EntryKind; from: string; to: string; today: string; situation?: EntrySituation; search?: string },
 ): Promise<FinancialEntryRow[]> {
   const supabase = await createClient();
-  const search = params.search?.trim().replace(/[%_,()]/g, " ").trim();
+  const search = params.search
+    ?.trim()
+    .replace(/[%_,()]/g, " ")
+    .trim();
   const byCustomer = Boolean(search) && params.kind === "INCOME";
   let query = supabase
     .from("financial_entries")
@@ -136,7 +139,8 @@ export async function listEntries(
     .eq("kind", params.kind)
     .gte("due_date", params.from)
     .lte("due_date", params.to);
-  if (search) query = byCustomer ? query.ilike("customer.name", `%${search}%`) : query.ilike("description", `%${search}%`);
+  if (search)
+    query = byCustomer ? query.ilike("customer.name", `%${search}%`) : query.ilike("description", `%${search}%`);
   if (params.situation === "pago") query = query.eq("status", "PAID");
   if (params.situation === "cancelado") query = query.eq("status", "CANCELED");
   if (params.situation === "aberto") query = query.eq("status", "PENDING").gte("due_date", params.today);
@@ -151,7 +155,11 @@ export async function listEntries(
 }
 
 /** Atrasadas e vencendo hoje, de qualquer mês — o que precisa de atenção agora. */
-export async function listAttentionEntries(context: TenantContext, kind: EntryKind, today: string): Promise<FinancialEntryRow[]> {
+export async function listAttentionEntries(
+  context: TenantContext,
+  kind: EntryKind,
+  today: string,
+): Promise<FinancialEntryRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("financial_entries")
@@ -183,7 +191,11 @@ export async function getMonthSummary(
 ): Promise<MonthSummary> {
   const supabase = await createClient();
   const base = () =>
-    supabase.from("financial_entries").select("amount, status").eq("tenant_id", context.tenant.id).eq("kind", params.kind);
+    supabase
+      .from("financial_entries")
+      .select("amount, status")
+      .eq("tenant_id", context.tenant.id)
+      .eq("kind", params.kind);
   const [paid, due, overdue] = await Promise.all([
     base().eq("status", "PAID").gte("paid_at", params.from).lte("paid_at", params.to),
     base().neq("status", "CANCELED").gte("due_date", params.from).lte("due_date", params.to),
@@ -292,7 +304,11 @@ export interface CashFlowMonth {
 
 export async function getCashFlow(context: TenantContext, from: string, to: string): Promise<CashFlowMonth[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("financial_cash_flow", { p_tenant_id: context.tenant.id, p_from: from, p_to: to });
+  const { data, error } = await supabase.rpc("financial_cash_flow", {
+    p_tenant_id: context.tenant.id,
+    p_from: from,
+    p_to: to,
+  });
   if (error) throw new Error(`getCashFlow failed: ${error.message}`);
   return (data ?? []).map((row) => ({
     month: String(row.month).slice(0, 7),
@@ -330,10 +346,15 @@ type RawReport = {
 
 export async function getFinancialReport(context: TenantContext, from: string, to: string): Promise<FinancialReport> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("financial_report", { p_tenant_id: context.tenant.id, p_from: from, p_to: to });
+  const { data, error } = await supabase.rpc("financial_report", {
+    p_tenant_id: context.tenant.id,
+    p_from: from,
+    p_to: to,
+  });
   if (error || !data) throw new Error(`getFinancialReport failed: ${error?.message}`);
   const raw = data as unknown as RawReport;
-  const groups = (rows: RawGroup[]) => rows.map((row) => ({ label: row.label, amount: Number(row.amount), count: row.count }));
+  const groups = (rows: RawGroup[]) =>
+    rows.map((row) => ({ label: row.label, amount: Number(row.amount), count: row.count }));
   return {
     income: Number(raw.income),
     expense: Number(raw.expense),

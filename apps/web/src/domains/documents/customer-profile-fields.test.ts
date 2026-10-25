@@ -56,9 +56,17 @@ it("validates corrections even when the profile already has a value", () => {
 });
 
 it("updates existing personal data and mirrors the unified WhatsApp number", () => {
-  expect(customerProfileValues({ cliente_nome: "Nome completo", cliente_email: "novo@example.com", cliente_telefone: "+55 (65) 99999-1234", cliente_rg: "" },
-    { ...customer, email: "antigo@example.com", phone: "65988881234", whatsapp: "65988881234", rg: "Não apagar" }))
-    .toEqual({ name: "Nome completo", email: "novo@example.com", phone: "5565999991234", whatsapp: "5565999991234" });
+  expect(
+    customerProfileValues(
+      {
+        cliente_nome: "Nome completo",
+        cliente_email: "novo@example.com",
+        cliente_telefone: "+55 (65) 99999-1234",
+        cliente_rg: "",
+      },
+      { ...customer, email: "antigo@example.com", phone: "65988881234", whatsapp: "65988881234", rg: "Não apagar" },
+    ),
+  ).toEqual({ name: "Nome completo", email: "novo@example.com", phone: "5565999991234", whatsapp: "5565999991234" });
   expect(customerProfileValues({ cliente_nome: "Maria" }, customer)).toEqual({});
 });
 

@@ -2,28 +2,57 @@ import { maskCpfCnpj, maskPhone, maskPostalCode } from "@/lib/masks";
 import { parseDecimalBR } from "@/lib/decimal";
 
 export function normalizeFieldName(value: string): string {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 export function contractFieldKind(field: string) {
   const key = normalizeFieldName(field);
-  if (["cpf", "cliente_cpf", "cnpj", "documento", "cpf_cnpj", "empresa_cnpj", "cnpj_empresa", "contratada_cnpj"].includes(key)) return "document";
-  if (["telefone", "cliente_telefone", "celular", "whatsapp", "fone", "contato", "empresa_telefone"].includes(key)) return "phone";
+  if (
+    ["cpf", "cliente_cpf", "cnpj", "documento", "cpf_cnpj", "empresa_cnpj", "cnpj_empresa", "contratada_cnpj"].includes(
+      key,
+    )
+  )
+    return "document";
+  if (["telefone", "cliente_telefone", "celular", "whatsapp", "fone", "contato", "empresa_telefone"].includes(key))
+    return "phone";
   if (["cep", "cliente_cep"].includes(key)) return "postal_code";
   if (["endereco", "cliente_endereco"].includes(key)) return "address";
   if (["cidade_uf", "cliente_cidade_uf"].includes(key)) return "city_state";
-  if (["cliente_data_nascimento", "data_nascimento", "nascimento", "aniversario", "data_contratacao", "data_assinatura", "vencimento", "data", "data_hoje", "data_atual"].includes(key) || /^sessao_\d+_data$/.test(key)) return "date";
-  if (["valor_bruto", "valor_final", "valor_parcela"].includes(key) || /^item_\d+_valor_(sessao|total)$/.test(key)) return "money";
+  if (
+    [
+      "cliente_data_nascimento",
+      "data_nascimento",
+      "nascimento",
+      "aniversario",
+      "data_contratacao",
+      "data_assinatura",
+      "vencimento",
+      "data",
+      "data_hoje",
+      "data_atual",
+    ].includes(key) ||
+    /^sessao_\d+_data$/.test(key)
+  )
+    return "date";
+  if (["valor_bruto", "valor_final", "valor_parcela"].includes(key) || /^item_\d+_valor_(sessao|total)$/.test(key))
+    return "money";
   if (key === "numero_parcelas") return "integer";
   return null;
 }
 
 export function contractFieldMask(field: string) {
   switch (contractFieldKind(field)) {
-    case "document": return maskCpfCnpj;
-    case "phone": return maskPhone;
-    case "postal_code": return maskPostalCode;
-    default: return undefined;
+    case "document":
+      return maskCpfCnpj;
+    case "phone":
+      return maskPhone;
+    case "postal_code":
+      return maskPostalCode;
+    default:
+      return undefined;
   }
 }
 
@@ -56,14 +85,17 @@ export function validContractDate(value: string): boolean {
   if (!/^(\d{8}|\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/.test(value)) return false;
   const [day, month, year] = maskContractDate(value).split("/").map(Number) as [number, number, number];
   const date = new Date(Date.UTC(year, month - 1, day));
-  return year >= 1000 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  return (
+    year >= 1000 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
 }
 
 export function contractDateInWords(value: string): string {
   if (!validContractDate(value)) return "";
   const [day, month, year] = maskContractDate(value).split("/").map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-    .format(new Date(Date.UTC(year, month - 1, day)));
+  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(year, month - 1, day)),
+  );
 }
 
 export function contractFieldError(field: string, value: string): string | undefined {
@@ -81,7 +113,9 @@ export function contractFieldError(field: string, value: string): string | undef
 }
 
 export function formatContractFields(data: Record<string, string>): Record<string, string> {
-  const result = Object.fromEntries(Object.entries(data).map(([field, value]) => [field, formatContractField(field, value)]));
+  const result = Object.fromEntries(
+    Object.entries(data).map(([field, value]) => [field, formatContractField(field, value)]),
+  );
   const signatureDate = Object.entries(data).find(([field]) => normalizeFieldName(field) === "data_assinatura")?.[1];
   const words = signatureDate ? contractDateInWords(signatureDate) : "";
   if (words) {

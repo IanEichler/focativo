@@ -26,7 +26,11 @@ export default async function AiSettingsPage() {
     getAiSettings(context),
     getAiBusinessInfo(context),
     getAiUsageMonthToDate(context),
-    createAdminClient().from("tenant_ai_platform_limits").select("provider").eq("tenant_id", context.tenant.id).maybeSingle(),
+    createAdminClient()
+      .from("tenant_ai_platform_limits")
+      .select("provider")
+      .eq("tenant_id", context.tenant.id)
+      .maybeSingle(),
   ]);
   if (limitsError) throw new Error("Não foi possível verificar a configuração da IA.");
   const provider = getAIProvider(limits?.provider ?? "anthropic");

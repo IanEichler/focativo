@@ -115,7 +115,7 @@ export function ContractLivePreview({
         <div
           ref={viewportRef}
           aria-label="Prévia do contrato"
-          className="max-h-[calc(100vh-14rem)] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-muted/40 [&_.docx-wrapper]:bg-transparent [&_.docx-wrapper]:p-3 [&_.docx-wrapper>section.docx]:mb-3 [&_.docx-wrapper>section.docx]:shadow-sm"
+          className="max-h-[calc(100vh-14rem)] overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-muted/40 [&_.docx-wrapper]:bg-transparent [&_.docx-wrapper]:p-3 [&_.docx-wrapper>section.docx]:mb-3 [&_.docx-wrapper>section.docx]:shadow-sm"
           hidden={status !== "ready"}
         >
           <div ref={pagesRef} />

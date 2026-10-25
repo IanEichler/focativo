@@ -6,9 +6,15 @@ import { contractPaymentPlan, type PaymentPlanResult } from "@/domains/financial
 
 const POLL_MS = 500;
 
-function readFields(form: HTMLFormElement, fields: string[], autoFilled: Record<string, string>): Record<string, string> {
+function readFields(
+  form: HTMLFormElement,
+  fields: string[],
+  autoFilled: Record<string, string>,
+): Record<string, string> {
   const formData = new FormData(form);
-  return Object.fromEntries(fields.map((field) => [field, String(formData.get(`field_${field}`) ?? autoFilled[field] ?? "").trim()]));
+  return Object.fromEntries(
+    fields.map((field) => [field, String(formData.get(`field_${field}`) ?? autoFilled[field] ?? "").trim()]),
+  );
 }
 
 /**
@@ -53,7 +59,12 @@ export function ContractPaymentPlan({
       <legend className="px-1 font-medium">Parcelas no Financeiro</legend>
       <input type="hidden" name="launchPayments" value={launch ? "true" : "false"} />
       <label className="flex items-center gap-2 text-body">
-        <input type="checkbox" checked={launch} onChange={(event) => setLaunch(event.target.checked)} className="size-4" />
+        <input
+          type="checkbox"
+          checked={launch}
+          onChange={(event) => setLaunch(event.target.checked)}
+          className="size-4"
+        />
         Lançar as parcelas no Financeiro da cliente quando o contrato for assinado
       </label>
       {launch &&
@@ -76,8 +87,8 @@ export function ContractPaymentPlan({
         ))}
       {launch && !result.problem && (
         <p className="text-small text-muted-foreground">
-          Uma parcela por mês a partir do vencimento. Depois de assinado, dá para ajustar valor e data de cada parcela na aba
-          Financeiro da cliente.
+          Uma parcela por mês a partir do vencimento. Depois de assinado, dá para ajustar valor e data de cada parcela
+          na aba Financeiro da cliente.
         </p>
       )}
     </fieldset>

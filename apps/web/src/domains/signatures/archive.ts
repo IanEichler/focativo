@@ -6,7 +6,8 @@ import { hash } from "./security";
 
 function archivePath(digest: string) {
   const directory = process.env.SIGNING_ARCHIVE_DIR;
-  if (!directory || !isAbsolute(directory)) throw new Error("Configure a pasta persistente SIGNING_ARCHIVE_DIR para guardar os contratos assinados.");
+  if (!directory || !isAbsolute(directory))
+    throw new Error("Configure a pasta persistente SIGNING_ARCHIVE_DIR para guardar os contratos assinados.");
   if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error("Hash de arquivo inválido.");
   return { directory, file: join(directory, `${digest}.pdf`) };
 }
@@ -28,14 +29,25 @@ export async function archiveSignedPdf(bytes: Buffer): Promise<void> {
   try {
     await handle.writeFile(bytes);
     await handle.sync();
-  } finally { await handle.close(); }
+  } finally {
+    await handle.close();
+  }
   try {
-    try { await link(temporary, file); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+    try {
+      await link(temporary, file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
     await readArchivedPdf(digest);
     if (process.platform !== "win32") {
       const folder = await open(directory, "r");
-      try { await folder.sync(); } finally { await folder.close(); }
+      try {
+        await folder.sync();
+      } finally {
+        await folder.close();
+      }
     }
-  } finally { await unlink(temporary); }
+  } finally {
+    await unlink(temporary);
+  }
 }

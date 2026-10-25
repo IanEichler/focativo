@@ -45,9 +45,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      { source: "/assinar/:path*", headers: [
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), payment=()" },
-      ] },
+      {
+        source: "/assinar/:path*",
+        headers: [{ key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), payment=()" }],
+      },
     ];
   },
 };

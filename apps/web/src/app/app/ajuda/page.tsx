@@ -86,9 +86,8 @@ export default function HelpPage() {
             (“Reativar”).
           </li>
           <li>
-            <strong>Excluir</strong> — apaga de vez. Só funciona se o cliente não
-            tiver reserva, venda ou agendamento real associado (nesses casos, só arquivar). Exige digitar o nome exato
-            do cliente pra confirmar.
+            <strong>Excluir</strong> — apaga de vez. Só funciona se o cliente não tiver reserva, venda ou agendamento
+            real associado (nesses casos, só arquivar). Exige digitar o nome exato do cliente pra confirmar.
           </li>
         </Ul>
       </Topic>
@@ -100,8 +99,8 @@ export default function HelpPage() {
         </P>
         <Ul>
           <li>
-            <strong>Prévia ao lado</strong>: o contrato aparece montado enquanto você digita, com o mesmo modelo que
-            vai virar PDF e Word. Campo ainda em branco aparece como “________”.
+            <strong>Prévia ao lado</strong>: o contrato aparece montado enquanto você digita, com o mesmo modelo que vai
+            virar PDF e Word. Campo ainda em branco aparece como “________”.
           </li>
           <li>
             <strong>Nome do procedimento</strong>: ao clicar, aparecem os serviços cadastrados em Serviços e Horários.
@@ -203,15 +202,14 @@ export default function HelpPage() {
         <Ul>
           <li>
             <strong>Recebido no mês</strong> conta pelo dia do pagamento; <strong>A receber</strong> e{" "}
-            <strong>Previsto</strong> contam pelo vencimento; <strong>Em atraso</strong> soma todas as parcelas vencidas.
+            <strong>Previsto</strong> contam pelo vencimento; <strong>Em atraso</strong> soma todas as parcelas
+            vencidas.
           </li>
           <li>
             <strong>Precisa de atenção</strong> lista as parcelas atrasadas e as que vencem hoje, com o botão de dar
             baixa. O sino no topo também avisa.
           </li>
-          <li>
-            Filtre as parcelas do mês por situação ou pelo nome da cliente; o nome leva ao Financeiro dela.
-          </li>
+          <li>Filtre as parcelas do mês por situação ou pelo nome da cliente; o nome leva ao Financeiro dela.</li>
           <li>
             <strong>Novo lançamento</strong> funciona como no perfil da cliente, escolhendo a cliente no formulário.
           </li>
@@ -219,8 +217,8 @@ export default function HelpPage() {
             <strong>Atendimentos da Agenda</strong>: quando um agendamento é marcado como confirmado (ou concluído),
             entra aqui uma cobrança com o preço do serviço, vencendo no dia do atendimento. Use{" "}
             <strong>Marcar como pago</strong> para registrar que recebeu e a forma (Pix, cartão, dinheiro…). Se o
-            agendamento for cancelado ou a cliente faltar, a cobrança em aberto é cancelada sozinha. Sessões de
-            contrato e serviços sem preço não geram cobrança, porque já estão nas parcelas do contrato.
+            agendamento for cancelado ou a cliente faltar, a cobrança em aberto é cancelada sozinha. Sessões de contrato
+            e serviços sem preço não geram cobrança, porque já estão nas parcelas do contrato.
           </li>
         </Ul>
         <P>
@@ -232,22 +230,22 @@ export default function HelpPage() {
             <strong>Nova despesa</strong>: avulsa ou parcelada, com categoria (escolha da lista ou digite uma nova).
           </li>
           <li>
-            Marque <strong>Despesa fixa</strong> para contas que se repetem todo mês no mesmo dia, como aluguel e luz.
-            A conta do mês seguinte já aparece na lista; para parar, use o X em “Despesas fixas” (a do mês atual
-            continua, as próximas são canceladas).
+            Marque <strong>Despesa fixa</strong> para contas que se repetem todo mês no mesmo dia, como aluguel e luz. A
+            conta do mês seguinte já aparece na lista; para parar, use o X em “Despesas fixas” (a do mês atual continua,
+            as próximas são canceladas).
           </li>
           <li>O sino avisa contas vencidas ou que vencem hoje.</li>
         </Ul>
         <P>
-          <strong>Fluxo de caixa</strong> mostra entradas e saídas dos últimos 5 meses, do mês atual e dos próximos 6:
-          a parte cheia da coluna é o que já foi pago; a parte listrada é o que ainda vai entrar ou sair (parcelas e
+          <strong>Fluxo de caixa</strong> mostra entradas e saídas dos últimos 5 meses, do mês atual e dos próximos 6: a
+          parte cheia da coluna é o que já foi pago; a parte listrada é o que ainda vai entrar ou sair (parcelas e
           despesas fixas). A tabela traz os valores e o saldo de cada mês.
         </P>
         <P>
-          <strong>Relatórios</strong> (aba do Financeiro): escolha o período (este mês, mês passado, 3, 6 ou 12 meses, este
-          ano) e veja recebido, despesas pagas, resultado e inadimplência, mais a receita por procedimento, por forma de
-          pagamento e as despesas por categoria. <strong>Exportar planilha (CSV)</strong> baixa tudo que vence ou foi
-          pago no período, pronto para abrir no Excel e mandar para o contador.
+          <strong>Relatórios</strong> (aba do Financeiro): escolha o período (este mês, mês passado, 3, 6 ou 12 meses,
+          este ano) e veja recebido, despesas pagas, resultado e inadimplência, mais a receita por procedimento, por
+          forma de pagamento e as despesas por categoria. <strong>Exportar planilha (CSV)</strong> baixa tudo que vence
+          ou foi pago no período, pronto para abrir no Excel e mandar para o contador.
         </P>
         <P>
           <strong>Relatórios</strong> traz visões agregadas do que estiver ligado no sistema.

@@ -55,7 +55,17 @@ function cell(value: string): string {
 /** CSV no padrão do Excel em português: separador ";", vírgula decimal e BOM para acentos. */
 export function entriesToCsv(entries: ExportEntry[]): string {
   const header = [
-    "Tipo", "Cliente", "Descrição", "Categoria", "Parcela", "Vencimento", "Valor", "Situação", "Pago em", "Forma de pagamento", "Origem",
+    "Tipo",
+    "Cliente",
+    "Descrição",
+    "Categoria",
+    "Parcela",
+    "Vencimento",
+    "Valor",
+    "Situação",
+    "Pago em",
+    "Forma de pagamento",
+    "Origem",
   ];
   const rows = entries.map((entry) => [
     entry.kind === "INCOME" ? "Receita" : "Despesa",

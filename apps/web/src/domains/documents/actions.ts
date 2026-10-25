@@ -26,7 +26,6 @@ import { contractPaymentPlan, type PaymentPlanItem } from "@/domains/financial/p
 import type { Json } from "@/types/database.types";
 import { signingReadiness } from "@/domains/signatures/security";
 
-
 function denied(context: TenantContext, event: string): ActionState<never> {
   logger.warn({ event, status: "denied", tenant_id: context.tenant.id, user_id: context.user.id });
   return { status: "error", message: toUserMessage({ message: "forbidden" }) };
@@ -164,7 +163,12 @@ export async function getDocumentTemplateFileAction(templateId: string): Promise
   const supabase = await createClient();
   const { data, error } = await supabase.storage.from(DOCUMENT_TEMPLATES_BUCKET).download(template.filePath);
   if (error || !data) {
-    logger.warn({ event: "document.template_preview", status: "error", tenant_id: context.tenant.id, code: error?.name });
+    logger.warn({
+      event: "document.template_preview",
+      status: "error",
+      tenant_id: context.tenant.id,
+      code: error?.name,
+    });
     return null;
   }
   return Buffer.from(await data.arrayBuffer()).toString("base64");
@@ -221,23 +225,45 @@ export async function generateDocumentAction(
   try {
     const sessions = contractSessionInputs(data, formData);
     if (sessions.length) {
-      if (!context.hasModule("agenda") || !context.can("agenda.write")) return { status: "error", message: "Seu acesso não permite agendar as sessões. Peça a um responsável com acesso à agenda." };
-      if (!saveToProfile) return { status: "error", message: "Marque “Salvar o arquivo do contrato no perfil” para agendar as sessões após a assinatura." };
-      const validated = await supabase.rpc("contract_validate_sessions", { p_tenant_id: context.tenant.id, p_sessions: sessions as unknown as Json });
+      if (!context.hasModule("agenda") || !context.can("agenda.write"))
+        return {
+          status: "error",
+          message: "Seu acesso não permite agendar as sessões. Peça a um responsável com acesso à agenda.",
+        };
+      if (!saveToProfile)
+        return {
+          status: "error",
+          message: "Marque “Salvar o arquivo do contrato no perfil” para agendar as sessões após a assinatura.",
+        };
+      const validated = await supabase.rpc("contract_validate_sessions", {
+        p_tenant_id: context.tenant.id,
+        p_sessions: sessions as unknown as Json,
+      });
       if (validated.error) return { status: "error", message: sessionAgendaError(validated.error.message) };
       sessionPlan = validated.data as unknown as ContractSessionPlan[];
       for (const session of sessionPlan) {
-        if (`sessao_${session.number}_procedimento` in data) data[`sessao_${session.number}_procedimento`] = session.serviceName;
+        if (`sessao_${session.number}_procedimento` in data)
+          data[`sessao_${session.number}_procedimento`] = session.serviceName;
       }
     }
-  } catch (error) { return { status: "error", message: error instanceof Error ? error.message : "Confira os dados das sessões." }; }
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Confira os dados das sessões." };
+  }
   // Parcelas para o Financeiro: congeladas com o contrato e lançadas só na assinatura.
   let paymentPlan: PaymentPlanItem[] = [];
   if (formData.get("launchPayments") === "true" && context.hasModule("financial") && context.can("financial.write")) {
     const result = contractPaymentPlan(data, template.name.replace(/\.docx$/i, ""));
-    if (result.problem) return { status: "error", message: `Parcelas do Financeiro: ${result.problem} Ou desmarque “Lançar parcelas no Financeiro”.` };
+    if (result.problem)
+      return {
+        status: "error",
+        message: `Parcelas do Financeiro: ${result.problem} Ou desmarque “Lançar parcelas no Financeiro”.`,
+      };
     if (result.plan.length && !saveToProfile) {
-      return { status: "error", message: "Marque “Salvar o arquivo do contrato no perfil” para lançar as parcelas no Financeiro após a assinatura." };
+      return {
+        status: "error",
+        message:
+          "Marque “Salvar o arquivo do contrato no perfil” para lançar as parcelas no Financeiro após a assinatura.",
+      };
     }
     paymentPlan = result.plan;
   }
@@ -309,7 +335,17 @@ export async function generateDocumentAction(
     }
     if (savedDocumentId) {
       try {
-        await saveSigningSnapshot(context, savedDocumentId, customerId, fileName, pdfBuffer, data, customer, sessionPlan, paymentPlan);
+        await saveSigningSnapshot(
+          context,
+          savedDocumentId,
+          customerId,
+          fileName,
+          pdfBuffer,
+          data,
+          customer,
+          sessionPlan,
+          paymentPlan,
+        );
         signatureDocumentId = savedDocumentId;
         if (!signingReadiness()) {
           const link = await createSignatureLinkAction(savedDocumentId);
@@ -317,7 +353,8 @@ export async function generateDocumentAction(
           else signatureWarning = link.message;
         }
       } catch {
-        signatureWarning = "O contrato foi salvo, mas não foi possível preparar a assinatura eletrônica. Os downloads continuam disponíveis.";
+        signatureWarning =
+          "O contrato foi salvo, mas não foi possível preparar a assinatura eletrônica. Os downloads continuam disponíveis.";
       }
     }
     revalidatePath(`/app/clientes/${customerId}`);
@@ -336,9 +373,10 @@ export async function generateDocumentAction(
     });
     if (profileError) {
       logger.warn({ event: "document.customer_profile_fill", tenant_id: context.tenant.id, code: profileError.code });
-      profileMessage = profileError.code === "40001"
-        ? "Contrato gerado, mas o perfil foi alterado durante a geração. Confira o cadastro e gere novamente para aplicar os dados do contrato."
-        : `Contrato gerado. Não foi possível atualizar o perfil da cliente: ${toUserMessage(profileError)}`;
+      profileMessage =
+        profileError.code === "40001"
+          ? "Contrato gerado, mas o perfil foi alterado durante a geração. Confira o cadastro e gere novamente para aplicar os dados do contrato."
+          : `Contrato gerado. Não foi possível atualizar o perfil da cliente: ${toUserMessage(profileError)}`;
       profileWarning = true;
     } else if (updatedCount) {
       profileMessage = "Perfil da cliente atualizado com os dados pessoais preenchidos no contrato.";
@@ -379,8 +417,12 @@ export async function getCustomerDocumentPdfAction(
     .eq("id", documentId)
     .maybeSingle();
   if (!document) return { status: "error" };
-  const signature = await signingClient().from("contract_signatures").select("status")
-    .eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
+  const signature = await signingClient()
+    .from("contract_signatures")
+    .select("status")
+    .eq("document_id", documentId)
+    .eq("tenant_id", context.tenant.id)
+    .maybeSingle();
   if (signature.error) return { status: "error" };
   if (signature.data?.status === "SIGNED") {
     const result = await downloadSignedContractAction(documentId);
@@ -421,8 +463,12 @@ export async function getCustomerDocumentDownloadUrlAction(documentId: string): 
     .eq("id", documentId)
     .maybeSingle();
   if (!doc) return null;
-  const signature = await signingClient().from("contract_signatures").select("status")
-    .eq("document_id", documentId).eq("tenant_id", context.tenant.id).maybeSingle();
+  const signature = await signingClient()
+    .from("contract_signatures")
+    .select("status")
+    .eq("document_id", documentId)
+    .eq("tenant_id", context.tenant.id)
+    .maybeSingle();
   if (signature.error || signature.data?.status === "SIGNED") return null;
 
   const { data, error } = await supabase.storage

@@ -161,7 +161,12 @@ export function RecurringExpensesCard({ items, canWrite }: { items: RecurringExp
               <span className="flex items-center gap-2">
                 <MoneyValue value={item.amount} />
                 {canWrite && (
-                  <Button variant="ghost" size="icon-sm" aria-label={`Encerrar ${item.description}`} onClick={() => setEnding(item)}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Encerrar ${item.description}`}
+                    onClick={() => setEnding(item)}
+                  >
                     <X />
                   </Button>
                 )}

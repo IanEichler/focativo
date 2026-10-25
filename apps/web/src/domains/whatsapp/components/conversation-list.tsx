@@ -36,44 +36,44 @@ export function ConversationList({
         return (
           <li key={conversation.id}>
             <ConversationContextMenu conversation={conversation} canWrite={canWrite} href={href}>
-            <Link
-              href={href}
-              scroll={false}
-              className={cn(
-                "flex items-start gap-3 px-3 py-3 transition-colors hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none",
-                active && "bg-secondary",
-              )}
-            >
-              <Avatar>
-                {conversation.customerAvatarUrl && <AvatarImage src={conversation.customerAvatarUrl} alt="" />}
-                <AvatarFallback className="bg-brand-100 text-caption font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
-                  {initials(conversation.customerName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-body font-medium">{conversation.customerName}</span>
-                  {conversation.lastMessageAt && (
-                    <span className="shrink-0 text-caption text-subtle">
-                      {formatRelative(conversation.lastMessageAt)}
-                    </span>
-                  )}
+              <Link
+                href={href}
+                scroll={false}
+                className={cn(
+                  "flex items-start gap-3 px-3 py-3 transition-colors hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none",
+                  active && "bg-secondary",
+                )}
+              >
+                <Avatar>
+                  {conversation.customerAvatarUrl && <AvatarImage src={conversation.customerAvatarUrl} alt="" />}
+                  <AvatarFallback className="bg-brand-100 text-caption font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
+                    {initials(conversation.customerName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-body font-medium">{conversation.customerName}</span>
+                    {conversation.lastMessageAt && (
+                      <span className="shrink-0 text-caption text-subtle">
+                        {formatRelative(conversation.lastMessageAt)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate text-small text-muted-foreground">
+                    {conversation.lastMessagePreview ?? "—"}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge tone={CONVERSATION_STATUS_TONES[conversation.status]} className="text-caption">
+                      {CONVERSATION_STATUS_LABELS[conversation.status]}
+                    </StatusBadge>
+                    {conversation.unreadCount > 0 && (
+                      <span className="flex size-5 items-center justify-center rounded-full bg-brand-600 text-caption font-semibold text-white">
+                        {conversation.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="truncate text-small text-muted-foreground">
-                  {conversation.lastMessagePreview ?? "—"}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <StatusBadge tone={CONVERSATION_STATUS_TONES[conversation.status]} className="text-caption">
-                    {CONVERSATION_STATUS_LABELS[conversation.status]}
-                  </StatusBadge>
-                  {conversation.unreadCount > 0 && (
-                    <span className="flex size-5 items-center justify-center rounded-full bg-brand-600 text-caption font-semibold text-white">
-                      {conversation.unreadCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </Link>
+              </Link>
             </ConversationContextMenu>
           </li>
         );

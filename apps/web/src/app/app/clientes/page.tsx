@@ -78,7 +78,9 @@ export default async function CustomersPage({ searchParams }: PageProps<"/app/cl
     {
       id: "document",
       header: "CPF/CNPJ",
-      cell: (customer) => <span className="whitespace-nowrap text-muted-foreground">{maskCpfCnpj(customer.document ?? "") || "—"}</span>,
+      cell: (customer) => (
+        <span className="whitespace-nowrap text-muted-foreground">{maskCpfCnpj(customer.document ?? "") || "—"}</span>
+      ),
     },
     { id: "contact", header: "Contato", hideBelow: "sm", cell: (customer) => <ContactCell customer={customer} /> },
     {

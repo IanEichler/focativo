@@ -6,9 +6,7 @@ describe("url helpers", () => {
     expect(buildHref("/app/clientes", { q: "gorila", status: "ACTIVE" }, { page: 2 })).toBe(
       "/app/clientes?q=gorila&status=ACTIVE&page=2",
     );
-    expect(buildHref("/app/clientes", { q: "gorila", page: "3" }, { page: undefined, q: "" })).toBe(
-      "/app/clientes",
-    );
+    expect(buildHref("/app/clientes", { q: "gorila", page: "3" }, { page: undefined, q: "" })).toBe("/app/clientes");
   });
 
   it("parses pages defensively", () => {

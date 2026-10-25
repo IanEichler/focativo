@@ -13,7 +13,13 @@ import type { CustomerOption } from "@/domains/customers/queries";
 import { generateDocumentAction, previewDocumentFieldsAction, type FieldPreview } from "../actions";
 import { GENERATE_IDLE, type GenerateDocumentState } from "../state";
 import type { DocumentTemplateRow } from "../queries";
-import { contractDateInWords, contractFieldKind, contractFieldMask, maskContractDate, normalizeFieldName } from "../field-format";
+import {
+  contractDateInWords,
+  contractFieldKind,
+  contractFieldMask,
+  maskContractDate,
+  normalizeFieldName,
+} from "../field-format";
 import { ContractValueField } from "./contract-value-field";
 import { ContractPaymentField } from "./contract-payment-field";
 import { SessionScheduleFields, type ContractSchedulingOptions } from "./session-schedule-fields";
@@ -46,7 +52,10 @@ export function GenerateDocumentForm({
     try {
       return await generateDocumentAction(previous, data);
     } catch {
-      return { status: "error", message: "Não foi possível gerar o contrato. Seus dados foram mantidos; tente novamente." };
+      return {
+        status: "error",
+        message: "Não foi possível gerar o contrato. Seus dados foram mantidos; tente novamente.",
+      };
     } finally {
       submitting.current = false;
     }
@@ -75,90 +84,138 @@ export function GenerateDocumentForm({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
-    <Card>
-      <CardHeader>
-        <CardTitle>Preencher contrato</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form
-          ref={formRef}
-          className="flex flex-col gap-4"
-          aria-busy={generating}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (submitting.current || generating || loadingPreview || !customer || !preview) return;
-            // Dispatch explicitly so React does not reset uncontrolled fields after the action settles.
-            const data = new FormData(event.currentTarget);
-            submitting.current = true;
-            startTransition(() => formAction(data));
-          }}
-        >
-          <fieldset disabled={generating} className="flex min-w-0 flex-col gap-4">
-          <input type="hidden" name="templateId" value={template.id} />
-          {customer && <input type="hidden" name="customerId" value={customer.id} />}
+      <Card>
+        <CardHeader>
+          <CardTitle>Preencher contrato</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            ref={formRef}
+            className="flex flex-col gap-4"
+            aria-busy={generating}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (submitting.current || generating || loadingPreview || !customer || !preview) return;
+              // Dispatch explicitly so React does not reset uncontrolled fields after the action settles.
+              const data = new FormData(event.currentTarget);
+              submitting.current = true;
+              startTransition(() => formAction(data));
+            }}
+          >
+            <fieldset disabled={generating} className="flex min-w-0 flex-col gap-4">
+              <input type="hidden" name="templateId" value={template.id} />
+              {customer && <input type="hidden" name="customerId" value={customer.id} />}
 
-          <p className="text-small text-muted-foreground">Contrato vinculado ao perfil de <span className="font-medium text-foreground">{customer.name}</span>.</p>
+              <p className="text-small text-muted-foreground">
+                Contrato vinculado ao perfil de <span className="font-medium text-foreground">{customer.name}</span>.
+              </p>
 
-          {loadingPreview && <p className="text-small text-muted-foreground">Carregando campos do modelo…</p>}
+              {loadingPreview && <p className="text-small text-muted-foreground">Carregando campos do modelo…</p>}
 
-          {preview && <ContractFields key={customer?.id} fields={preview.remaining} autoFilled={preview.autoFilled} scheduling={scheduling} procedureOptions={procedureOptions} />}
-
-          {customer && preview && preview.remaining.length === 0 && Object.keys(preview.autoFilled).length === 0 && (
-            <p className="text-small text-muted-foreground">Esse modelo não tem campos de preenchimento.</p>
-          )}
-
-          {canLaunchPayments && preview && (
-            <ContractPaymentPlan formRef={formRef} fields={template.fields} autoFilled={preview.autoFilled}
-              fallbackDescription={template.name.replace(/\.docx$/i, "")} />
-          )}
-
-          <label className="flex items-center gap-2 text-body">
-            <input type="checkbox" name="saveToProfile" value="true" defaultChecked className="size-4" />
-            Salvar o arquivo do contrato no perfil do cliente
-          </label>
-          <p className="text-small text-muted-foreground">
-            Ao gerar, os dados pessoais preenchidos atualizam o perfil da cliente, incluindo correções de informações
-            já cadastradas. Campos deixados em branco não apagam dados do perfil.
-          </p>
-
-          </fieldset>
-
-          <Button type="submit" disabled={!customer || !preview || loadingPreview || generating} aria-busy={generating} className="self-start">
-            {generating && <Spinner />}
-            {generating ? "Gerando PDF e Word…" : "Gerar PDF e Word"}
-          </Button>
-          {state.status === "error" && <p role="alert" className="text-small text-danger">{state.message}</p>}
-
-          {state.status === "success" && (
-            <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/40 p-3">
-              {state.profileMessage && (
-                <p role={state.profileWarning ? "alert" : "status"} className="w-full text-small">
-                  {state.profileMessage}
-                </p>
+              {preview && (
+                <ContractFields
+                  key={customer?.id}
+                  fields={preview.remaining}
+                  autoFilled={preview.autoFilled}
+                  scheduling={scheduling}
+                  procedureOptions={procedureOptions}
+                />
               )}
-              {state.signatureWarning && <p role="alert" className="w-full text-small text-warning">{state.signatureWarning}</p>}
-              <Button
-                type="button"
-                onClick={() =>
-                  downloadBase64File(state.pdfBase64, state.fileName.replace(/\.docx$/i, ".pdf"), "application/pdf")
-                }
-              >
-                Baixar PDF
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => downloadBase64File(state.docxBase64, state.fileName, DOCX_MIME_TYPE)}
-              >
-                Baixar Word (.docx)
-              </Button>
-              {state.signatureDocumentId ? <SignatureControls key={state.signatureDocumentId} documentId={state.signatureDocumentId} initialUrl={state.signatureUrl} /> : !state.signatureWarning && <p className="w-full text-small text-muted-foreground">Para solicitar assinatura, marque “Salvar o arquivo do contrato no perfil” e gere o contrato.</p>}
-            </div>
-          )}
-        </form>
-      </CardContent>
-    </Card>
-    {preview && <ContractLivePreview templateId={template.id} fields={template.fields} autoFilled={preview.autoFilled} formRef={formRef} />}
+
+              {customer &&
+                preview &&
+                preview.remaining.length === 0 &&
+                Object.keys(preview.autoFilled).length === 0 && (
+                  <p className="text-small text-muted-foreground">Esse modelo não tem campos de preenchimento.</p>
+                )}
+
+              {canLaunchPayments && preview && (
+                <ContractPaymentPlan
+                  formRef={formRef}
+                  fields={template.fields}
+                  autoFilled={preview.autoFilled}
+                  fallbackDescription={template.name.replace(/\.docx$/i, "")}
+                />
+              )}
+
+              <label className="flex items-center gap-2 text-body">
+                <input type="checkbox" name="saveToProfile" value="true" defaultChecked className="size-4" />
+                Salvar o arquivo do contrato no perfil do cliente
+              </label>
+              <p className="text-small text-muted-foreground">
+                Ao gerar, os dados pessoais preenchidos atualizam o perfil da cliente, incluindo correções de
+                informações já cadastradas. Campos deixados em branco não apagam dados do perfil.
+              </p>
+            </fieldset>
+
+            <Button
+              type="submit"
+              disabled={!customer || !preview || loadingPreview || generating}
+              aria-busy={generating}
+              className="self-start"
+            >
+              {generating && <Spinner />}
+              {generating ? "Gerando PDF e Word…" : "Gerar PDF e Word"}
+            </Button>
+            {state.status === "error" && (
+              <p role="alert" className="text-small text-danger">
+                {state.message}
+              </p>
+            )}
+
+            {state.status === "success" && (
+              <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/40 p-3">
+                {state.profileMessage && (
+                  <p role={state.profileWarning ? "alert" : "status"} className="w-full text-small">
+                    {state.profileMessage}
+                  </p>
+                )}
+                {state.signatureWarning && (
+                  <p role="alert" className="w-full text-small text-warning">
+                    {state.signatureWarning}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  onClick={() =>
+                    downloadBase64File(state.pdfBase64, state.fileName.replace(/\.docx$/i, ".pdf"), "application/pdf")
+                  }
+                >
+                  Baixar PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => downloadBase64File(state.docxBase64, state.fileName, DOCX_MIME_TYPE)}
+                >
+                  Baixar Word (.docx)
+                </Button>
+                {state.signatureDocumentId ? (
+                  <SignatureControls
+                    key={state.signatureDocumentId}
+                    documentId={state.signatureDocumentId}
+                    initialUrl={state.signatureUrl}
+                  />
+                ) : (
+                  !state.signatureWarning && (
+                    <p className="w-full text-small text-muted-foreground">
+                      Para solicitar assinatura, marque “Salvar o arquivo do contrato no perfil” e gere o contrato.
+                    </p>
+                  )
+                )}
+              </div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+      {preview && (
+        <ContractLivePreview
+          templateId={template.id}
+          fields={template.fields}
+          autoFilled={preview.autoFilled}
+          formRef={formRef}
+        />
+      )}
     </div>
   );
 }
@@ -229,7 +286,17 @@ function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field.replaceAll("_", " ");
 }
 
-export function ContractFields({ fields: remainingFields, autoFilled, scheduling, procedureOptions = [] }: { fields: string[]; autoFilled: Record<string, string>; scheduling?: ContractSchedulingOptions; procedureOptions?: string[] }) {
+export function ContractFields({
+  fields: remainingFields,
+  autoFilled,
+  scheduling,
+  procedureOptions = [],
+}: {
+  fields: string[];
+  autoFilled: Record<string, string>;
+  scheduling?: ContractSchedulingOptions;
+  procedureOptions?: string[];
+}) {
   const procedureListId = useId();
   // "Preencher sessões": a versão muda a key dos grupos de sessão para remontá-los com os novos valores.
   const [bulk, setBulk] = useState<{ version: number; preset: SessionBulkPreset | null }>({ version: 0, preset: null });
@@ -241,42 +308,57 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
     if (date && field === `sessao_${number}_data`) return maskContractDate(date);
     return bulk.preset.typed[field] ?? autoFilled[field];
   };
-  const signatureField = [...Object.keys(autoFilled), ...remainingFields].find((field) => normalizeFieldName(field) === "data_assinatura");
-  const [signatureDate, setSignatureDate] = useState(signatureField ? autoFilled[signatureField] ?? "" : "");
+  const signatureField = [...Object.keys(autoFilled), ...remainingFields].find(
+    (field) => normalizeFieldName(field) === "data_assinatura",
+  );
+  const [signatureDate, setSignatureDate] = useState(signatureField ? (autoFilled[signatureField] ?? "") : "");
   const addressFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) =>
     ["postal_code", "address", "city_state"].includes(contractFieldKind(field) ?? ""),
   );
   const fields = remainingFields.filter((field) => !addressFields.includes(field));
-  const autoFields = Object.keys(autoFilled).filter((field) => !addressFields.includes(field) && !/^(item|sessao)_\d+_/.test(field));
-  const procedureFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) => /^item_\d+_/.test(field));
-  const procedureNumbers = [...new Set(procedureFields.map((field) => /^item_(\d+)_/.exec(field)![1]!))]
-    .sort((a, b) => Number(a) - Number(b));
+  const autoFields = Object.keys(autoFilled).filter(
+    (field) => !addressFields.includes(field) && !/^(item|sessao)_\d+_/.test(field),
+  );
+  const procedureFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter((field) =>
+    /^item_\d+_/.test(field),
+  );
+  const procedureNumbers = [...new Set(procedureFields.map((field) => /^item_(\d+)_/.exec(field)![1]!))].sort(
+    (a, b) => Number(a) - Number(b),
+  );
   const procedureOrder = Object.keys(PROCEDURE_FIELD_LABELS);
   const procedureGroups = procedureNumbers.map((number) => ({
     title: `Procedimento ${number}`,
-    fields: procedureFields.filter((field) => field.startsWith(`item_${number}_`)).sort((a, b) => {
-      const order = (field: string) => {
-        const index = procedureOrder.indexOf(field.replace(/^item_\d+_/, ""));
-        return index < 0 ? procedureOrder.length : index;
-      };
-      return order(a) - order(b);
-    }),
+    fields: procedureFields
+      .filter((field) => field.startsWith(`item_${number}_`))
+      .sort((a, b) => {
+        const order = (field: string) => {
+          const index = procedureOrder.indexOf(field.replace(/^item_\d+_/, ""));
+          return index < 0 ? procedureOrder.length : index;
+        };
+        return order(a) - order(b);
+      }),
   }));
-  const sessionFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])]
-    .filter((field) => /^sessao_\d+_/.test(field) && !field.endsWith("_assinatura"));
-  const sessionNumbers = [...new Set(sessionFields.map((field) => /^sessao_(\d+)_/.exec(field)![1]!))]
-    .sort((a, b) => Number(a) - Number(b));
+  const sessionFields = [...new Set([...Object.keys(autoFilled), ...remainingFields])].filter(
+    (field) => /^sessao_\d+_/.test(field) && !field.endsWith("_assinatura"),
+  );
+  const sessionNumbers = [...new Set(sessionFields.map((field) => /^sessao_(\d+)_/.exec(field)![1]!))].sort(
+    (a, b) => Number(a) - Number(b),
+  );
   const sessionOrder = Object.keys(SESSION_FIELD_LABELS);
   const sessionGroups = sessionNumbers.map((number) => ({
     title: `Sessão ${number} (opcional)`,
     optional: true,
-    fields: sessionFields.filter((field) => field.startsWith(`sessao_${number}_`) && !(scheduling && field === `sessao_${number}_procedimento`)).sort((a, b) => {
-      const order = (field: string) => {
-        const index = sessionOrder.indexOf(field.replace(/^sessao_\d+_/, ""));
-        return index < 0 ? sessionOrder.length : index;
-      };
-      return order(a) - order(b);
-    }),
+    fields: sessionFields
+      .filter(
+        (field) => field.startsWith(`sessao_${number}_`) && !(scheduling && field === `sessao_${number}_procedimento`),
+      )
+      .sort((a, b) => {
+        const order = (field: string) => {
+          const index = sessionOrder.indexOf(field.replace(/^sessao_\d+_/, ""));
+          return index < 0 ? sessionOrder.length : index;
+        };
+        return order(a) - order(b);
+      }),
   }));
   const addressNames = {
     postal_code: addressFields.filter((field) => contractFieldKind(field) === "postal_code"),
@@ -300,7 +382,10 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
       ),
     },
     ...procedureGroups,
-    { title: "Resumo dos valores", fields: fields.filter((field) => ["valor_bruto", "desconto", "valor_final"].includes(field)) },
+    {
+      title: "Resumo dos valores",
+      fields: fields.filter((field) => ["valor_bruto", "desconto", "valor_final"].includes(field)),
+    },
     {
       title: "Pagamento e datas",
       fields: fields.filter((field) =>
@@ -327,72 +412,132 @@ export function ContractFields({ fields: remainingFields, autoFilled, scheduling
     <div className="flex flex-col gap-5">
       {procedureOptions.length > 0 && (
         <datalist id={procedureListId}>
-          {procedureOptions.map((name) => <option key={name} value={name} />)}
+          {procedureOptions.map((name) => (
+            <option key={name} value={name} />
+          ))}
         </datalist>
       )}
       {scheduling && sessionNumbers.length >= 2 && (
-        <SessionBulkFill sessionNumbers={sessionNumbers} {...scheduling}
-          onApply={(preset) => setBulk((current) => ({ version: current.version + 1, preset }))} />
+        <SessionBulkFill
+          sessionNumbers={sessionNumbers}
+          {...scheduling}
+          onApply={(preset) => setBulk((current) => ({ version: current.version + 1, preset }))}
+        />
       )}
       {groups
         .filter((group) => group.fields.length > 0)
         .map((group) => {
-          const inputs = group.title === "Endereço da cliente" ? (
-            <div className="flex flex-col gap-4 pt-3">
-              <CustomerAddressFields
-                initialValues={{
-                  postal_code: initialAddressValue(addressNames.postal_code),
-                  address: initialAddressValue(addressNames.address),
-                  city_state: initialAddressValue(addressNames.city_state),
-                }}
-                errors={{}}
-                names={{
-                  postal_code: addressNames.postal_code.map((field) => `field_${field}`),
-                  address: addressNames.address.map((field) => `field_${field}`),
-                  city_state: addressNames.city_state.map((field) => `field_${field}`),
-                }}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-4 pt-3 sm:grid-cols-2">
-              {group.fields.map((field) => {
-                const mask = contractFieldMask(field);
-                const props = { label: fieldLabel(field), name: `field_${field}`, defaultValue: defaultFor(field) };
-                const kind = contractFieldKind(field);
-                if (/^sessao_\d+_observacoes$/.test(field)) {
-                  return <div key={field} className="sm:col-span-2"><TextareaField {...props} rows={3} maxLength={2000} /></div>;
-                }
-                if (normalizeFieldName(field) === "forma_pagamento") {
-                  return <ContractPaymentField key={field} name={`field_${field}`} defaultValue={autoFilled[field]} />;
-                }
-                if (["date", "money", "integer"].includes(kind ?? "")) {
-                  return <ContractValueField key={field} field={field} label={fieldLabel(field)} defaultValue={defaultFor(field)}
-                    onValueChange={field === signatureField ? setSignatureDate : undefined} />;
-                }
-                if (signatureField && normalizeFieldName(field) === "data_assinatura_extenso") {
-                  return <TextField key={field} label={fieldLabel(field)} name={`field_${field}`}
-                    value={contractDateInWords(signatureDate)} readOnly placeholder="Preencha a data da assinatura"
-                    description="Preenchida automaticamente a partir da data da assinatura." />;
-                }
-                if (procedureOptions.length && /^(item|sessao)_\d+_procedimento$/.test(field)) {
-                  return <TextField key={field} {...props} list={procedureListId} autoComplete="off"
-                    description="Escolha um serviço cadastrado ou digite outro nome." />;
-                }
-                return mask ? (
-                  <MaskedTextField key={field} {...props} mask={mask} inputMode={contractFieldKind(field) === "phone" ? "tel" : "numeric"} />
-                ) : <TextField key={field} {...props} />;
-              })}
-            </div>
-          );
+          const inputs =
+            group.title === "Endereço da cliente" ? (
+              <div className="flex flex-col gap-4 pt-3">
+                <CustomerAddressFields
+                  initialValues={{
+                    postal_code: initialAddressValue(addressNames.postal_code),
+                    address: initialAddressValue(addressNames.address),
+                    city_state: initialAddressValue(addressNames.city_state),
+                  }}
+                  errors={{}}
+                  names={{
+                    postal_code: addressNames.postal_code.map((field) => `field_${field}`),
+                    address: addressNames.address.map((field) => `field_${field}`),
+                    city_state: addressNames.city_state.map((field) => `field_${field}`),
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 pt-3 sm:grid-cols-2">
+                {group.fields.map((field) => {
+                  const mask = contractFieldMask(field);
+                  const props = { label: fieldLabel(field), name: `field_${field}`, defaultValue: defaultFor(field) };
+                  const kind = contractFieldKind(field);
+                  if (/^sessao_\d+_observacoes$/.test(field)) {
+                    return (
+                      <div key={field} className="sm:col-span-2">
+                        <TextareaField {...props} rows={3} maxLength={2000} />
+                      </div>
+                    );
+                  }
+                  if (normalizeFieldName(field) === "forma_pagamento") {
+                    return (
+                      <ContractPaymentField key={field} name={`field_${field}`} defaultValue={autoFilled[field]} />
+                    );
+                  }
+                  if (["date", "money", "integer"].includes(kind ?? "")) {
+                    return (
+                      <ContractValueField
+                        key={field}
+                        field={field}
+                        label={fieldLabel(field)}
+                        defaultValue={defaultFor(field)}
+                        onValueChange={field === signatureField ? setSignatureDate : undefined}
+                      />
+                    );
+                  }
+                  if (signatureField && normalizeFieldName(field) === "data_assinatura_extenso") {
+                    return (
+                      <TextField
+                        key={field}
+                        label={fieldLabel(field)}
+                        name={`field_${field}`}
+                        value={contractDateInWords(signatureDate)}
+                        readOnly
+                        placeholder="Preencha a data da assinatura"
+                        description="Preenchida automaticamente a partir da data da assinatura."
+                      />
+                    );
+                  }
+                  if (procedureOptions.length && /^(item|sessao)_\d+_procedimento$/.test(field)) {
+                    return (
+                      <TextField
+                        key={field}
+                        {...props}
+                        list={procedureListId}
+                        autoComplete="off"
+                        description="Escolha um serviço cadastrado ou digite outro nome."
+                      />
+                    );
+                  }
+                  return mask ? (
+                    <MaskedTextField
+                      key={field}
+                      {...props}
+                      mask={mask}
+                      inputMode={contractFieldKind(field) === "phone" ? "tel" : "numeric"}
+                    />
+                  ) : (
+                    <TextField key={field} {...props} />
+                  );
+                })}
+              </div>
+            );
           if (group.optional) {
             const number = /^Sessão (\d+)/.exec(group.title)![1]!;
             const filled = Boolean(bulk.preset?.dates[number]);
             return (
-              <details key={`${group.title}-${bulk.version}`} open={filled || undefined} className="rounded-lg border border-border p-4">
+              <details
+                key={`${group.title}-${bulk.version}`}
+                open={filled || undefined}
+                className="rounded-lg border border-border p-4"
+              >
                 <summary className="cursor-pointer font-medium">{group.title}</summary>
                 {inputs}
-                {scheduling && <div className="mt-4"><SessionScheduleFields number={number} {...scheduling}
-                  defaults={filled ? { serviceId: bulk.preset!.serviceId, time: bulk.preset!.time, professionalId: bulk.preset!.professionalId } : undefined} /></div>}
+                {scheduling && (
+                  <div className="mt-4">
+                    <SessionScheduleFields
+                      number={number}
+                      {...scheduling}
+                      defaults={
+                        filled
+                          ? {
+                              serviceId: bulk.preset!.serviceId,
+                              time: bulk.preset!.time,
+                              professionalId: bulk.preset!.professionalId,
+                            }
+                          : undefined
+                      }
+                    />
+                  </div>
+                )}
               </details>
             );
           }

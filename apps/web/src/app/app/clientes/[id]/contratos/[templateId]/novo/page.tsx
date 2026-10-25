@@ -14,15 +14,23 @@ import { requireTenantContext } from "@/domains/tenants/context";
 
 export const metadata: Metadata = { title: "Novo contrato" };
 
-export default async function NewCustomerContractPage({ params }: PageProps<"/app/clientes/[id]/contratos/[templateId]/novo">) {
+export default async function NewCustomerContractPage({
+  params,
+}: PageProps<"/app/clientes/[id]/contratos/[templateId]/novo">) {
   const context = await requireTenantContext();
   if (!context.can("customers.read") || !context.can("documents.write") || !context.hasModule("documents")) {
-    return <PageContainer><PageHeader title="Novo contrato" /><AccessDenied /></PageContainer>;
+    return (
+      <PageContainer>
+        <PageHeader title="Novo contrato" />
+        <AccessDenied />
+      </PageContainer>
+    );
   }
   const { id, templateId } = await params;
-  if (![id, templateId].every(value => /^[0-9a-f-]{36}$/i.test(value))) notFound();
+  if (![id, templateId].every((value) => /^[0-9a-f-]{36}$/i.test(value))) notFound();
   const [customer, template] = await Promise.all([
-    getCustomerDetail(context, id), getDocumentTemplate(context, templateId),
+    getCustomerDetail(context, id),
+    getDocumentTemplate(context, templateId),
   ]);
   if (!customer || !template) notFound();
 
@@ -32,15 +40,36 @@ export default async function NewCustomerContractPage({ params }: PageProps<"/ap
     canListServices ? listServices(context, { activeOnly: true }) : [],
     canSchedule ? listTenantMembers(context) : [],
   ]);
-  const scheduling = canSchedule ? { services, professionals: members.filter(item => item.status === "ACTIVE").map(item => ({ userId: item.userId, fullName: item.fullName })) } : undefined;
-  return <PageContainer>
-    <div><Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
-      <Link href={`/app/clientes/${id}?aba=contratos`}><ArrowLeft /> Contratos de {customer.name}</Link>
-    </Button></div>
-    <PageHeader title={`Novo contrato — ${customer.name}`} description={template.name} />
-    <GenerateDocumentForm template={template} scheduling={scheduling} procedureOptions={services.map(service => service.name)}
-      canLaunchPayments={context.hasModule("financial") && context.can("financial.write")} initialCustomer={{
-      id: customer.id, name: customer.name, phone: customer.phone, whatsapp: customer.whatsapp,
-    }} />
-  </PageContainer>;
+  const scheduling = canSchedule
+    ? {
+        services,
+        professionals: members
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ userId: item.userId, fullName: item.fullName })),
+      }
+    : undefined;
+  return (
+    <PageContainer>
+      <div>
+        <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
+          <Link href={`/app/clientes/${id}?aba=contratos`}>
+            <ArrowLeft /> Contratos de {customer.name}
+          </Link>
+        </Button>
+      </div>
+      <PageHeader title={`Novo contrato — ${customer.name}`} description={template.name} />
+      <GenerateDocumentForm
+        template={template}
+        scheduling={scheduling}
+        procedureOptions={services.map((service) => service.name)}
+        canLaunchPayments={context.hasModule("financial") && context.can("financial.write")}
+        initialCustomer={{
+          id: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          whatsapp: customer.whatsapp,
+        }}
+      />
+    </PageContainer>
+  );
 }

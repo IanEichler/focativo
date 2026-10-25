@@ -3,27 +3,54 @@ import { addMonths, contractPaymentPlan, splitCents } from "./payment-plan";
 
 describe("contractPaymentPlan", () => {
   it("splits the final value into monthly installments from the due date", () => {
-    const { plan, problem } = contractPaymentPlan({
-      pacote_nome: "Pacote facial", valor_final: "1.000,00", numero_parcelas: "3", vencimento: "31/01/2027", forma_pagamento: "Cartão de crédito",
-    }, "Contrato");
+    const { plan, problem } = contractPaymentPlan(
+      {
+        pacote_nome: "Pacote facial",
+        valor_final: "1.000,00",
+        numero_parcelas: "3",
+        vencimento: "31/01/2027",
+        forma_pagamento: "Cartão de crédito",
+      },
+      "Contrato",
+    );
     expect(problem).toBeUndefined();
     expect(plan.map((item) => [item.number, item.count, item.amount, item.dueDate])).toEqual([
-      [1, 3, "333.34", "2027-01-31"], [2, 3, "333.33", "2027-02-28"], [3, 3, "333.33", "2027-03-31"],
+      [1, 3, "333.34", "2027-01-31"],
+      [2, 3, "333.33", "2027-02-28"],
+      [3, 3, "333.33", "2027-03-31"],
     ]);
     expect(plan[0]).toMatchObject({ description: "Pacote facial", paymentMethod: "Cartão de crédito" });
   });
 
   it("uses installment value times count when there is no final value, and falls back for the due date and description", () => {
-    const { plan } = contractPaymentPlan({ valor_final: "____", valor_parcela: "150", numero_parcelas: "2", data_contratacao: "10102026", item_1_procedimento: "Laser" }, "Contrato.docx");
-    expect(plan.map((item) => [item.amount, item.dueDate, item.description])).toEqual([["150.00", "2026-10-10", "Laser"], ["150.00", "2026-11-10", "Laser"]]);
+    const { plan } = contractPaymentPlan(
+      {
+        valor_final: "____",
+        valor_parcela: "150",
+        numero_parcelas: "2",
+        data_contratacao: "10102026",
+        item_1_procedimento: "Laser",
+      },
+      "Contrato.docx",
+    );
+    expect(plan.map((item) => [item.amount, item.dueDate, item.description])).toEqual([
+      ["150.00", "2026-10-10", "Laser"],
+      ["150.00", "2026-11-10", "Laser"],
+    ]);
   });
 
   it("asks for what is missing and ignores templates without money fields", () => {
     expect(contractPaymentPlan({ cliente_nome: "Maria" }, "Contrato")).toEqual({ plan: [] });
-    expect(contractPaymentPlan({ valor_final: "", vencimento: "10/10/2026" }, "Contrato").problem).toMatch(/valor final/);
+    expect(contractPaymentPlan({ valor_final: "", vencimento: "10/10/2026" }, "Contrato").problem).toMatch(
+      /valor final/,
+    );
     expect(contractPaymentPlan({ valor_final: "100", vencimento: "" }, "Contrato").problem).toMatch(/vencimento/);
-    expect(contractPaymentPlan({ valor_final: "100", vencimento: "10/10/2026", numero_parcelas: "0" }, "Contrato").problem).toMatch(/parcelas/);
-    expect(contractPaymentPlan({ valor_final: "0,05", vencimento: "10/10/2026", numero_parcelas: "10" }, "Contrato").problem).toMatch(/pequeno/);
+    expect(
+      contractPaymentPlan({ valor_final: "100", vencimento: "10/10/2026", numero_parcelas: "0" }, "Contrato").problem,
+    ).toMatch(/parcelas/);
+    expect(
+      contractPaymentPlan({ valor_final: "0,05", vencimento: "10/10/2026", numero_parcelas: "10" }, "Contrato").problem,
+    ).toMatch(/pequeno/);
   });
 });
 

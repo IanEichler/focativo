@@ -4,7 +4,8 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 export const SIGNATURE_BUCKET = "contract-signatures";
 export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const CONSENT_VERSION = "2026-09-29-v3-location";
-export const CONSENT_TEXT = "Declaro ser a pessoa identificada neste contrato, li seu conteúdo e concordo em assiná-lo eletronicamente. Autorizo o registro do meu aceite, data, horário, endereço IP e informações do navegador como evidências da minha manifestação de vontade. Se eu permitir o acesso à localização no navegador, suas coordenadas e precisão também serão incluídas no comprovante da assinatura.";
+export const CONSENT_TEXT =
+  "Declaro ser a pessoa identificada neste contrato, li seu conteúdo e concordo em assiná-lo eletronicamente. Autorizo o registro do meu aceite, data, horário, endereço IP e informações do navegador como evidências da minha manifestação de vontade. Se eu permitir o acesso à localização no navegador, suas coordenadas e precisão também serão incluídas no comprovante da assinatura.";
 
 function key() {
   const value = process.env.SIGNING_SECRET;
@@ -16,11 +17,17 @@ export const newToken = () => randomBytes(32).toString("base64url");
 // JSONB may reorder keys. Canonicalize recursively so archived evidence stays verifiable.
 export function serializeEvidence(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(serializeEvidence).join(",")}]`;
-  if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([key, item]) => `${JSON.stringify(key)}:${serializeEvidence(item)}`).join(",")}}`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, item]) => `${JSON.stringify(key)}:${serializeEvidence(item)}`)
+      .join(",")}}`;
   return JSON.stringify(value) ?? "null";
 }
-export const sealEvidence = (value: unknown) => createHmac("sha256", key()).update(`evidence:${serializeEvidence(value)}`).digest("hex");
+export const sealEvidence = (value: unknown) =>
+  createHmac("sha256", key())
+    .update(`evidence:${serializeEvidence(value)}`)
+    .digest("hex");
 export function safeEqual(a: string, b: string) {
   return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
@@ -38,16 +45,25 @@ export function decryptToken(value: string) {
 }
 export function publicSigningOrigin() {
   const raw = process.env.SIGNING_PUBLIC_URL;
-  if (!raw) throw new Error("Configure o domínio público HTTPS em SIGNING_PUBLIC_URL para liberar os links de assinatura.");
+  if (!raw)
+    throw new Error("Configure o domínio público HTTPS em SIGNING_PUBLIC_URL para liberar os links de assinatura.");
   const url = new URL(raw);
-  if (url.protocol !== "https:" || url.username || url.password || /^(localhost|127\.|0\.|\[::1\])/.test(url.hostname)) {
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    /^(localhost|127\.|0\.|\[::1\])/.test(url.hostname)
+  ) {
     throw new Error("O assinador precisa de um endereço público HTTPS.");
   }
   return url.origin;
 }
 export function signingReadiness(): string | null {
   try {
-    key(); publicSigningOrigin();
+    key();
+    publicSigningOrigin();
     return null;
-  } catch (error) { return error instanceof Error ? error.message : "Configure o assinador."; }
+  } catch (error) {
+    return error instanceof Error ? error.message : "Configure o assinador.";
+  }
 }

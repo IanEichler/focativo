@@ -6,11 +6,12 @@ export function UsageCard({ costUsd, isDev }: { costUsd: number; isDev: boolean 
       <p className="text-caption font-semibold text-subtle uppercase">Custo da IA no mês</p>
       <p className="text-title">{formatMoney(costUsd, "USD")}</p>
       {isDev && (
-        <div role="status" className="mt-3 rounded-md border border-border bg-muted p-3 text-body-sm">
+        <div role="status" className="text-body-sm mt-3 rounded-md border border-border bg-muted p-3">
           <p className="font-semibold">A IA ainda não está pronta para atender</p>
           <p className="mt-1 text-subtle">
             Falta configurar a integração de IA com o administrador. Até a ativação, as novas mensagens no WhatsApp
-            conectado serão encaminhadas para atendimento humano. Respostas simuladas ficam restritas ao ambiente de testes.
+            conectado serão encaminhadas para atendimento humano. Respostas simuladas ficam restritas ao ambiente de
+            testes.
           </p>
         </div>
       )}
