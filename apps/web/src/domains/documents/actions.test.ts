@@ -83,7 +83,13 @@ vi.mock("@/lib/supabase/server", () => ({
     },
   }),
 }));
-import { getCustomerDocumentPdfAction, getCustomerDocumentDownloadUrlAction, generateDocumentAction } from "./actions";
+import {
+  archiveDocumentTemplateAction,
+  generateDocumentAction,
+  getCustomerDocumentDownloadUrlAction,
+  getCustomerDocumentPdfAction,
+  uploadDocumentTemplateAction,
+} from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -264,4 +270,21 @@ it("does not render or save an invalid session or an occupied slot", async () =>
   });
   expect(mock.fill).not.toHaveBeenCalled();
   expect(mock.snapshot).not.toHaveBeenCalled();
+});
+
+it("refuses to upload or archive templates while template management is off, even with permission", async () => {
+  mock.rpc.mockClear();
+  const data = new FormData();
+  data.set("name", "Contrato novo");
+  data.set(
+    "file",
+    new File(["docx"], "novo.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }),
+  );
+  expect(await uploadDocumentTemplateAction({ status: "idle" }, data)).toMatchObject({ status: "error" });
+  expect(await archiveDocumentTemplateAction("33333333-3333-4333-8333-333333333333")).toMatchObject({
+    status: "error",
+  });
+  expect(mock.rpc).not.toHaveBeenCalled();
 });

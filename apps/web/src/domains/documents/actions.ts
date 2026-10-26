@@ -18,6 +18,7 @@ import { fillTemplate } from "./fill-template";
 import { getDocumentTemplate, getTenantFieldsForDocument } from "./queries";
 import { generateDocumentSchema, uploadTemplateSchema, type UploadTemplateField } from "./schemas";
 import { extractPlaceholders } from "./template-parser";
+import { TEMPLATE_MANAGEMENT_ENABLED } from "./templates-config";
 import { saveSigningSnapshot } from "@/domains/signatures/snapshot";
 import { signingClient } from "@/domains/signatures/client";
 import { downloadSignedContractAction, createSignatureLinkAction } from "@/domains/signatures/actions";
@@ -36,7 +37,7 @@ export async function uploadDocumentTemplateAction(
   formData: FormData,
 ): Promise<ActionState<UploadTemplateField>> {
   const context = await requireTenantContext();
-  if (!context.hasModule("documents") || !context.can("documents.write")) {
+  if (!TEMPLATE_MANAGEMENT_ENABLED || !context.hasModule("documents") || !context.can("documents.write")) {
     return denied(context, "document_template.upload");
   }
 
@@ -95,7 +96,7 @@ export async function uploadDocumentTemplateAction(
 
 export async function archiveDocumentTemplateAction(templateId: string): Promise<ActionState> {
   const context = await requireTenantContext();
-  if (!context.hasModule("documents") || !context.can("documents.write")) {
+  if (!TEMPLATE_MANAGEMENT_ENABLED || !context.hasModule("documents") || !context.can("documents.write")) {
     return denied(context, "document_template.archive");
   }
 

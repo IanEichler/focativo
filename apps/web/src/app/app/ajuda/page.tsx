@@ -161,9 +161,9 @@ export default function HelpPage() {
             tudo; <em>Funcionário</em> não vê o Financeiro (dá para liberar depois nas permissões).
           </Step>
           <Step>
-            <strong className="text-foreground">Modelo de contrato</strong>: abra qualquer cliente → aba Contratos →{" "}
-            <Ui>Cadastrar modelo</Ui> e envie o contrato em Word (.docx), com campos entre chaves no lugar dos dados que
-            mudam. Veja a lista no capítulo 11.
+            <strong className="text-foreground">Modelos de contrato</strong>: os modelos da clínica já estão cadastrados
+            e aparecem na aba Contratos de cada cliente. Precisa de um modelo novo ou de uma mudança no texto? Peça ao
+            suporte, enviando o contrato em Word (.docx) — os campos que o sistema preenche estão no capítulo 11.
           </Step>
         </Steps>
         <Example caption="trecho de um modelo Word">
@@ -654,7 +654,7 @@ export default function HelpPage() {
         id="campos"
         number={11}
         title="Campos do modelo de contrato"
-        intro="Escreva o campo entre chaves no Word, como {cliente_nome}. Qualquer outro nome vira um campo livre no formulário."
+        intro="Referência para pedir um modelo novo ao suporte: no Word, cada campo vai entre chaves, como {cliente_nome}. Qualquer outro nome vira um campo livre no formulário."
       >
         <InfoTable
           head={["Campo", "Conteúdo"]}

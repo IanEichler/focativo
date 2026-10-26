@@ -7,6 +7,7 @@ import { listCustomerDocuments, listDocumentTemplates } from "@/domains/document
 import type { TenantContext } from "@/domains/tenants/context";
 import { formatDateTime } from "@/lib/format";
 import { UploadTemplateDialog } from "@/domains/documents/components/upload-template-dialog";
+import { TEMPLATE_MANAGEMENT_ENABLED } from "@/domains/documents/templates-config";
 import { SignatureControls } from "@/domains/signatures/components/signature-controls";
 
 export async function DocumentsTab({ context, customerId }: { context: TenantContext; customerId: string }) {
@@ -28,7 +29,7 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
         <Card>
           <CardHeader className="flex-row items-center justify-between gap-3">
             <CardTitle>Novo contrato</CardTitle>
-            {templates.length > 0 && (
+            {TEMPLATE_MANAGEMENT_ENABLED && templates.length > 0 && (
               <UploadTemplateDialog
                 trigger={
                   <Button variant="outline" size="sm">
@@ -44,15 +45,21 @@ export async function DocumentsTab({ context, customerId }: { context: TenantCon
                 className="border-0"
                 icon={<FileText />}
                 title="Nenhum modelo de contrato cadastrado"
-                description="Cadastre um modelo Word para preencher os dados desta cliente e gerar PDF e DOCX."
+                description={
+                  TEMPLATE_MANAGEMENT_ENABLED
+                    ? "Cadastre um modelo Word para preencher os dados desta cliente e gerar PDF e DOCX."
+                    : "Os modelos de contrato são cadastrados pelo suporte. Peça para incluir o seu."
+                }
                 action={
-                  <UploadTemplateDialog
-                    trigger={
-                      <Button>
-                        <Plus /> Cadastrar modelo
-                      </Button>
-                    }
-                  />
+                  TEMPLATE_MANAGEMENT_ENABLED ? (
+                    <UploadTemplateDialog
+                      trigger={
+                        <Button>
+                          <Plus /> Cadastrar modelo
+                        </Button>
+                      }
+                    />
+                  ) : undefined
                 }
               />
             ) : (
