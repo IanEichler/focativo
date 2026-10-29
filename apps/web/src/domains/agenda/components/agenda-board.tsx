@@ -69,8 +69,10 @@ export function AgendaBoard({
               {appointments.map((appointment) => (
                 <article
                   key={appointment.id}
+                  id={`agendamento-${appointment.id}`}
                   className={cn(
-                    "rounded-xl border border-l-4 border-border bg-background p-4",
+                    // Aberto por link (#agendamento-…), o cartão fica em destaque.
+                    "scroll-mt-24 rounded-xl border border-l-4 border-border bg-background p-4 target:ring-2 target:ring-warning target:ring-offset-2 target:ring-offset-background",
                     accents[appointment.status],
                     appointment.status === "CANCELED" && "opacity-65",
                   )}

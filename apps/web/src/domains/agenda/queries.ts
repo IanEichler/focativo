@@ -64,6 +64,41 @@ export interface AppointmentListItem {
   origin?: string | null;
 }
 
+const APPOINTMENT_COLUMNS =
+  "id, customer_id, professional_user_id, starts_at, ends_at, status, notes, canceled_reason, origin, customer:customers(name), service:agenda_services(name), professional:profiles!agenda_appointments_professional_user_id_fkey(full_name)";
+
+type AppointmentRecord = {
+  id: string;
+  customer_id: string;
+  professional_user_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: Enums<"appointment_status">;
+  notes: string | null;
+  canceled_reason: string | null;
+  origin: string | null;
+  customer: { name: string } | null;
+  service: { name: string } | null;
+  professional: { full_name: string | null } | null;
+};
+
+function toAppointmentItem(row: AppointmentRecord): AppointmentListItem {
+  return {
+    id: row.id,
+    customerId: row.customer_id,
+    customerName: row.customer?.name ?? "",
+    serviceName: appointmentServiceLabel(row.service?.name ?? "", row.notes),
+    professionalUserId: row.professional_user_id,
+    professionalName: row.professional?.full_name || "Profissional",
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    status: row.status,
+    notes: row.notes,
+    canceledReason: row.canceled_reason,
+    origin: row.origin,
+  };
+}
+
 export async function listAppointments(
   context: TenantContext,
   params: {
@@ -79,10 +114,7 @@ export async function listAppointments(
   const supabase = await createClient();
   let query = supabase
     .from("agenda_appointments")
-    .select(
-      "id, customer_id, professional_user_id, starts_at, ends_at, status, notes, canceled_reason, origin, customer:customers(name), service:agenda_services(name), professional:profiles!agenda_appointments_professional_user_id_fkey(full_name)",
-      { count: "exact" },
-    )
+    .select(APPOINTMENT_COLUMNS, { count: "exact" })
     .eq("tenant_id", context.tenant.id);
 
   if (params.status) query = query.eq("status", params.status as Enums<"appointment_status">);
@@ -99,23 +131,40 @@ export async function listAppointments(
     .range(from, from + pageSize - 1);
   if (error) throw new Error(`listAppointments failed: ${error.code}`);
 
-  return {
-    total: count ?? 0,
-    rows: (data ?? []).map((row) => ({
-      id: row.id,
-      customerId: row.customer_id,
-      customerName: row.customer?.name ?? "",
-      serviceName: appointmentServiceLabel(row.service?.name ?? "", row.notes),
-      professionalUserId: row.professional_user_id,
-      professionalName: row.professional?.full_name || "Profissional",
-      startsAt: row.starts_at,
-      endsAt: row.ends_at,
-      status: row.status,
-      notes: row.notes,
-      canceledReason: row.canceled_reason,
-      origin: row.origin,
-    })),
-  };
+  return { total: count ?? 0, rows: (data ?? []).map((row) => toAppointmentItem(row as unknown as AppointmentRecord)) };
+}
+
+/**
+ * Atendimentos sem desfecho: já terminaram, mas continuam como agendado ou
+ * confirmado — ninguém marcou se foi concluído, cancelado ou falta.
+ */
+export async function listUnresolvedAppointments(
+  context: TenantContext,
+  limit = 50,
+): Promise<{ rows: AppointmentListItem[]; total: number }> {
+  const supabase = await createClient();
+  const { data, count, error } = await supabase
+    .from("agenda_appointments")
+    .select(APPOINTMENT_COLUMNS, { count: "exact" })
+    .eq("tenant_id", context.tenant.id)
+    .in("status", ["SCHEDULED", "CONFIRMED"])
+    .lt("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`listUnresolvedAppointments failed: ${error.code}`);
+  return { total: count ?? 0, rows: (data ?? []).map((row) => toAppointmentItem(row as unknown as AppointmentRecord)) };
+}
+
+export async function getUnresolvedAppointmentsCount(context: TenantContext): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("agenda_appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", context.tenant.id)
+    .in("status", ["SCHEDULED", "CONFIRMED"])
+    .lt("ends_at", new Date().toISOString());
+  if (error) throw new Error(`getUnresolvedAppointmentsCount failed: ${error.code}`);
+  return count ?? 0;
 }
 
 export interface TodayAgendaSummary {

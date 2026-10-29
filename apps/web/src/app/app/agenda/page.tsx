@@ -11,6 +11,7 @@ import { AgendaBoard } from "@/domains/agenda/components/agenda-board";
 import { AgendaToolbar } from "@/domains/agenda/components/agenda-toolbar";
 import { AppointmentFormSheet } from "@/domains/agenda/components/appointment-form";
 import { ContractSessionsPending } from "@/domains/agenda/components/contract-session-pending";
+import { UnresolvedAppointments } from "@/domains/agenda/components/unresolved-appointments";
 import { isAppointmentStatus } from "@/domains/agenda/labels";
 import { listAppointments, listServices } from "@/domains/agenda/queries";
 import { requireTenantContext } from "@/domains/tenants/context";
@@ -90,6 +91,7 @@ export default async function AgendaPage({ searchParams }: PageProps<"/app/agend
           )
         }
       />
+      <UnresolvedAppointments context={context} timeZone={timeZone} canWrite={canWrite} />
       <ContractSessionsPending
         context={context}
         services={services}

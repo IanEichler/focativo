@@ -5,6 +5,8 @@ import { StatusBadge } from "@/components/data/status-badge";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { calendarDate, calendarTime, dateLabel } from "@/domains/agenda/calendar";
+import { AppointmentQuickResolve } from "@/domains/agenda/components/appointment-quick-resolve";
+import { appointmentHref } from "@/domains/agenda/components/unresolved-appointments";
 import { customerHistory } from "@/domains/agenda/customer-history";
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_TONES } from "@/domains/agenda/labels";
 import { listAppointments, type AppointmentListItem } from "@/domains/agenda/queries";
@@ -18,10 +20,12 @@ function AppointmentRow({
   appointment,
   timeZone,
   unmarked,
+  canWrite,
 }: {
   appointment: AppointmentListItem;
   timeZone: string;
   unmarked: boolean;
+  canWrite: boolean;
 }) {
   const day = calendarDate(appointment.startsAt, timeZone);
   const label = dateLabel(day, { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
@@ -30,7 +34,7 @@ function AppointmentRow({
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="text-body font-medium text-foreground">{appointment.serviceName || "Atendimento"}</span>
         <span className="text-small text-muted-foreground">
-          <Link href={`/app/agenda?data=${day}`} className="hover:underline">
+          <Link href={appointmentHref(appointment.id, appointment.startsAt, timeZone)} className="hover:underline">
             {label} · {calendarTime(appointment.startsAt, timeZone)}
           </Link>{" "}
           · {appointment.professionalName}
@@ -42,6 +46,9 @@ function AppointmentRow({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {unmarked && <StatusBadge tone="warning">Não marcado</StatusBadge>}
+        {unmarked && canWrite && (
+          <AppointmentQuickResolve appointmentId={appointment.id} customerName={appointment.customerName} />
+        )}
         <StatusBadge tone={APPOINTMENT_STATUS_TONES[appointment.status]}>
           {APPOINTMENT_STATUS_LABELS[appointment.status]}
         </StatusBadge>
@@ -72,6 +79,7 @@ export async function HistoryTab({ context, customerId }: { context: TenantConte
   const history = customerHistory(rows, new Date());
   const timeZone = tenant.timezone;
   const pending = pendingSessions.count ?? 0;
+  const canWrite = context.can("agenda.write");
 
   if (rows.length === 0 && pending === 0) {
     return (
@@ -105,12 +113,16 @@ export async function HistoryTab({ context, customerId }: { context: TenantConte
       </div>
 
       {history.counts.unmarked > 0 && (
-        <p role="status" className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2.5 text-body">
+        <Link
+          href="/app/agenda#sem-desfecho"
+          className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2.5 text-body transition-colors hover:border-warning/60"
+        >
           {history.counts.unmarked === 1
             ? "1 atendimento já passou e continua como agendado ou confirmado."
             : `${history.counts.unmarked} atendimentos já passaram e continuam como agendados ou confirmados.`}{" "}
-          Marque na Agenda se foi concluído, cancelado ou se a cliente faltou.
-        </p>
+          Marque abaixo (em “Já aconteceram”) ou{" "}
+          <span className="font-medium underline underline-offset-4">resolva na Agenda</span>.
+        </Link>
       )}
 
       <Card>
@@ -132,7 +144,13 @@ export async function HistoryTab({ context, customerId }: { context: TenantConte
           ) : (
             <ul className="flex flex-col divide-y divide-border">
               {history.upcoming.map((appointment) => (
-                <AppointmentRow key={appointment.id} appointment={appointment} timeZone={timeZone} unmarked={false} />
+                <AppointmentRow
+                  key={appointment.id}
+                  appointment={appointment}
+                  timeZone={timeZone}
+                  unmarked={false}
+                  canWrite={canWrite}
+                />
               ))}
             </ul>
           )}
@@ -154,6 +172,7 @@ export async function HistoryTab({ context, customerId }: { context: TenantConte
                   appointment={appointment}
                   timeZone={timeZone}
                   unmarked={appointment.status === "SCHEDULED" || appointment.status === "CONFIRMED"}
+                  canWrite={canWrite}
                 />
               ))}
             </ul>

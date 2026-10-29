@@ -400,6 +400,11 @@ export default function HelpPage() {
           Sessões de contrato e serviços sem preço não geram cobrança (já estão nas parcelas do contrato). Cobrança já
           paga nunca é cancelada sozinha.
         </Text>
+        <Tip tone="warn" title="Atendimentos sem desfecho">
+          Atendimento que já passou e continua como agendado ou confirmado aparece no topo da Agenda (e no sino).
+          Resolva ali mesmo com <Ui>Concluído</Ui>, <Ui>Faltou</Ui> ou <Ui>Cancelar</Ui>, ou clique na data para abrir o
+          dia com o atendimento destacado. O mesmo aparece no Histórico da cliente, como “Não marcado”.
+        </Tip>
         <Tip title="Sessões de contratos que precisam de ajuste">
           Se, na assinatura, algum horário do contrato já estava ocupado, a sessão aparece no topo da Agenda com o
           motivo (e o sino avisa). Clique em <Ui>Resolver agendamento</Ui> e escolha outro horário.
