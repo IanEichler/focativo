@@ -25,7 +25,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { calendarDate } from "@/domains/agenda/calendar";
 import { BarList } from "@/domains/financial/components/bar-list";
 import { CashFlowChart } from "@/domains/financial/components/cash-flow-chart";
-import { EntryActions, installmentLabel, NewEntryDialog } from "@/domains/financial/components/entry-forms";
+import { EntryActions, NewEntryDialog } from "@/domains/financial/components/entry-forms";
+import { installmentLabel } from "@/domains/financial/labels";
 import { NewExpenseDialog, RecurringExpensesCard } from "@/domains/financial/components/expense-forms";
 import { formatDay, monthLabel, monthRange, shiftMonth, validMonth } from "@/domains/financial/period";
 import {

@@ -28,12 +28,9 @@ import {
   reverseEntryPaymentAction,
   updateEntryAction,
 } from "../actions";
+import { installmentLabel } from "../labels";
 import type { FinancialEntryRow } from "../queries";
 import type { CreateEntryField, PayEntryField, UpdateEntryField } from "../schemas";
-
-export function installmentLabel(entry: Pick<FinancialEntryRow, "installmentNumber" | "installmentCount">) {
-  return entry.installmentCount > 1 ? `Parcela ${entry.installmentNumber}/${entry.installmentCount}` : "Parcela única";
-}
 
 /** Sem `customerId` (tela Financeiro), o formulário pede a cliente. */
 export function NewEntryDialog({ customerId, today }: { customerId?: string; today: string }) {
