@@ -17,11 +17,11 @@ import { firstParam } from "@/lib/url";
 import { DocumentsTab } from "./documents-tab";
 import { FinancialTab } from "./financial-tab";
 import { OverviewTab } from "./overview-tab";
-import { PurchasesTab } from "./purchases-tab";
+import { HistoryTab } from "./history-tab";
 
 export const metadata: Metadata = { title: "Cliente" };
 
-const TABS = ["geral", "compras", "contratos", "financeiro", "documentos"] as const;
+const TABS = ["geral", "historico", "contratos", "financeiro", "documentos"] as const;
 
 export default async function CustomerDetailPage({ params, searchParams }: PageProps<"/app/clientes/[id]">) {
   const context = await requireTenantContext();
@@ -29,7 +29,9 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
   if (!context.can("customers.read") || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const search = await searchParams;
-  const tab = resolveTab(firstParam(search.aba), TABS, "geral");
+  // "compras" era o nome antigo desta aba: links salvos abrem o Histórico.
+  const requestedTab = firstParam(search.aba);
+  const tab = resolveTab(requestedTab === "compras" ? "historico" : requestedTab, TABS, "geral");
   const customer = await getCustomerDetail(context, id);
   if (!customer) notFound();
 
@@ -107,14 +109,14 @@ export default async function CustomerDetailPage({ params, searchParams }: PageP
         active={tab === "documentos" ? "contratos" : tab}
         items={[
           { id: "geral", label: "Visão geral", href: base },
-          { id: "compras", label: "Compras", href: `${base}?aba=compras` },
+          { id: "historico", label: "Histórico", href: `${base}?aba=historico` },
           { id: "contratos", label: "Contratos", href: `${base}?aba=contratos` },
           ...(showFinancial ? [{ id: "financeiro", label: "Financeiro", href: `${base}?aba=financeiro` }] : []),
         ]}
       />
 
       {tab === "geral" && <OverviewTab customer={customer} timeline={timeline.slice(0, 5)} />}
-      {tab === "compras" && <PurchasesTab context={context} customerId={customer.id} />}
+      {tab === "historico" && <HistoryTab context={context} customerId={customer.id} />}
       {(tab === "contratos" || tab === "documentos") && <DocumentsTab context={context} customerId={customer.id} />}
       {tab === "financeiro" && <FinancialTab context={context} customerId={customer.id} />}
     </PageContainer>

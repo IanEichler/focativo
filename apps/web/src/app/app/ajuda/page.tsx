@@ -198,7 +198,14 @@ export default function HelpPage() {
           </Step>
           <Step>
             Ache a cliente pela busca (nome, telefone, e-mail ou CPF) e abra o perfil: abas <Ui>Visão geral</Ui>,{" "}
-            <Ui>Contratos</Ui> e <Ui>Financeiro</Ui>.
+            <Ui>Histórico</Ui>, <Ui>Contratos</Ui> e <Ui>Financeiro</Ui>.
+          </Step>
+          <Step>
+            Em <Ui>Histórico</Ui> está tudo que a cliente já teve na agenda: os{" "}
+            <strong className="text-foreground">próximos</strong> atendimentos e os que{" "}
+            <strong className="text-foreground">já aconteceram</strong> (concluídos, cancelados com o motivo e faltas),
+            com o total de cada um. Atendimento que já passou e ninguém marcou aparece como <em>Não marcado</em> —
+            marque na Agenda o que aconteceu.
           </Step>
         </Steps>
         <InfoTable
